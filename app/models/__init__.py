@@ -9,6 +9,7 @@ from app.models.recommendation import Recommendation, Comparison, ChatHistory
 
 __all__ = [
     'User',
+    'Admin',
     'UserPreference',
     'Phone',
     'PhoneSpecification',
