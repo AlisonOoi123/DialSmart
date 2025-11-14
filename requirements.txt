@@ -25,8 +25,7 @@ flask-shell-ipython==0.4.1
 # Scheduler for automatic updates
 schedule==1.2.0
 
-# Optional: Web Scraping (for automatic price updates)
-# Uncomment these if you want to implement web scraping
-# requests==2.31.0
-# beautifulsoup4==4.12.2
-# lxml==5.1.0
+# Web Scraping (for TechNave data collection and price updates)
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
