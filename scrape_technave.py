@@ -21,13 +21,29 @@ class TechNaveScraper:
         self.base_url = "https://www.technave.com"
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9,ms;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
+            'Referer': 'https://www.google.com/',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'cross-site',
+            'Sec-Fetch-User': '?1',
+            'Upgrade-Insecure-Requests': '1',
+            'Cache-Control': 'max-age=0',
         }
         self.app = create_app()
         self.session = requests.Session()
         self.session.headers.update(self.headers)
+
+        # Warm up session by visiting homepage first
+        try:
+            print("[INFO] Initializing session...")
+            self.session.get(self.base_url, timeout=10)
+            time.sleep(2)  # Wait before scraping
+        except:
+            pass
 
     def scrape_phone_list(self, brand_name=None, max_pages=5):
         """
