@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Browse Phones - DialSmart{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2>Browse Smartphones</h2>
+    <div class="row">
+        {% for phone in phones.items %}
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <img src="{{ phone.main_image or 'https://via.placeholder.com/300x400?text=Phone' }}" class="card-img-top" alt="{{ phone.model_name }}" onerror="this.src='https://via.placeholder.com/300x400?text=Phone'">
+                <div class="card-body">
+                    <h6>{{ phone.model_name }}</h6>
+                    <p class="text-primary">RM {{ "{:,.0f}".format(phone.price) }}</p>
+                    <a href="{{ url_for('phone.details', phone_id=phone.id) }}" class="btn btn-sm btn-primary">View</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <!-- Pagination -->
+    {% if phones.pages > 1 %}
+    <nav>
+        <ul class="pagination justify-content-center">
+            {% for page_num in phones.iter_pages() %}
+            {% if page_num %}
+            <li class="page-item {% if page_num == phones.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('user.browse', page=page_num) }}">{{ page_num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

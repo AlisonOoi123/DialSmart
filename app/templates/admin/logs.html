@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}System Logs - Admin{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2>System Activity Logs</h2>
+
+    <div class="table-responsive mt-4">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User</th>
+                    <th>Phone</th>
+                    <th>Match %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in recommendations.items %}
+                <tr>
+                    <td>{{ rec.created_at.strftime('%d %b %Y %H:%M') }}</td>
+                    <td>{{ rec.user.full_name }}</td>
+                    <td>{{ rec.phone.model_name }}</td>
+                    <td><span class="badge bg-success">{{ rec.match_percentage }}%</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Manage Brands - Admin{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Manage Brands</h2>
+        <a href="{{ url_for('admin.add_brand') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add New Brand
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Phone Count</th>
+                    <th>Featured</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for brand in brands.items %}
+                <tr>
+                    <td>{{ brand.id }}</td>
+                    <td>{{ brand.name }}</td>
+                    <td>{{ brand.get_phone_count() }}</td>
+                    <td>{% if brand.is_featured %}<span class="badge bg-warning">Featured</span>{% endif %}</td>
+                    <td><span class="badge {% if brand.is_active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Active' if brand.is_active else 'Inactive' }}</span></td>
+                    <td>
+                        <a href="{{ url_for('admin.edit_brand', brand_id=brand.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

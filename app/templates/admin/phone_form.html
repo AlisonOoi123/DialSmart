@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{% if phone %}Edit{% else %}Add{% endif %} Phone - Admin{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2>{% if phone %}Edit{% else %}Add New{% endif %} Phone</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header"><h5>Basic Information</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Model Name *</label>
+                            <input type="text" name="model_name" class="form-control" value="{{ phone.model_name if phone else '' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Brand *</label>
+                            <select name="brand_id" class="form-select" required>
+                                {% for brand in brands %}
+                                <option value="{{ brand.id }}" {% if phone and phone.brand_id == brand.id %}selected{% endif %}>{{ brand.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Price (RM) *</label>
+                            <input type="number" name="price" step="0.01" class="form-control" value="{{ phone.price if phone else '' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Main Image</label>
+                            <input type="file" name="main_image" class="form-control" accept="image/*">
+                            {% if phone and phone.main_image %}
+                            <small class="text-muted">Current: {{ phone.main_image }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header"><h5>Specifications</h5></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Screen Size (inches)</label>
+                                <input type="number" name="screen_size" step="0.1" class="form-control" value="{{ specs.screen_size if specs else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Screen Type</label>
+                                <input type="text" name="screen_type" class="form-control" value="{{ specs.screen_type if specs else '' }}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Processor</label>
+                            <input type="text" name="processor" class="form-control" value="{{ specs.processor if specs else '' }}">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">RAM Options (e.g., 8GB, 12GB)</label>
+                                <input type="text" name="ram_options" class="form-control" value="{{ specs.ram_options if specs else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Storage Options</label>
+                                <input type="text" name="storage_options" class="form-control" value="{{ specs.storage_options if specs else '' }}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Rear Camera Main (MP)</label>
+                                <input type="number" name="rear_camera_main" class="form-control" value="{{ specs.rear_camera_main if specs else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Battery (mAh)</label>
+                                <input type="number" name="battery_capacity" class="form-control" value="{{ specs.battery_capacity if specs else '' }}">
+                            </div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" name="has_5g" class="form-check-input" {% if specs and specs.has_5g %}checked{% endif %}>
+                            <label class="form-check-label">5G Support</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i> {% if phone %}Update{% else %}Add{% endif %} Phone
+            </button>
+            <a href="{{ url_for('admin.phones') }}" class="btn btn-secondary btn-lg">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

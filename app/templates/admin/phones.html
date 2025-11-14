@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Manage Phones - Admin{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Manage Phones</h2>
+        <a href="{{ url_for('admin.add_phone') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add New Phone
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Model</th>
+                    <th>Brand</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for phone in phones.items %}
+                <tr>
+                    <td>{{ phone.id }}</td>
+                    <td>{{ phone.model_name }}</td>
+                    <td>{{ phone.brand.name }}</td>
+                    <td>RM {{ "{:,.0f}".format(phone.price) }}</td>
+                    <td><span class="badge {% if phone.is_active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Active' if phone.is_active else 'Inactive' }}</span></td>
+                    <td>
+                        <a href="{{ url_for('admin.edit_phone', phone_id=phone.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        <form method="POST" action="{{ url_for('admin.delete_phone', phone_id=phone.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this phone?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if phones.pages > 1 %}
+    <nav>
+        <ul class="pagination">
+            {% for page_num in phones.iter_pages() %}
+            {% if page_num %}
+            <li class="page-item {% if page_num == phones.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('admin.phones', page=page_num) }}">{{ page_num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

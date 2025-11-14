@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}{{ phone.model_name }} - DialSmart{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('user.index') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('phone.brand_page', brand_id=phone.brand_id) }}">{{ phone.brand.name }}</a></li>
+            <li class="breadcrumb-item active">{{ phone.model_name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-5">
+            {% if phone.main_image %}
+            <img src="{{ phone.main_image }}" class="img-fluid rounded shadow" alt="{{ phone.model_name }}" onerror="this.src='https://via.placeholder.com/500x600?text={{ phone.model_name }}'">
+            {% else %}
+            <img src="https://via.placeholder.com/500x600?text={{ phone.model_name }}" class="img-fluid rounded shadow" alt="{{ phone.model_name }}">
+            {% endif %}
+        </div>
+
+        <div class="col-md-7">
+            <h1>{{ phone.model_name }}</h1>
+            <h4 class="text-muted">{{ phone.brand.name }}</h4>
+            <h2 class="text-primary my-3">RM {{ "{:,.2f}".format(phone.price) }}</h2>
+
+            <p class="lead">
+                <span class="badge {% if phone.availability_status == 'Available' %}bg-success{% else %}bg-warning{% endif %}">
+                    {{ phone.availability_status }}
+                </span>
+            </p>
+
+            {% if specs %}
+            <h5 class="mt-4">Key Features</h5>
+            <ul class="list-unstyled">
+                {% if specs.screen_size %}<li><i class="bi bi-display"></i> {{ specs.screen_size }}" {{ specs.screen_type }} Display</li>{% endif %}
+                {% if specs.processor %}<li><i class="bi bi-cpu"></i> {{ specs.processor }}</li>{% endif %}
+                {% if specs.ram_options %}<li><i class="bi bi-memory"></i> {{ specs.ram_options }} RAM</li>{% endif %}
+                {% if specs.storage_options %}<li><i class="bi bi-hdd"></i> {{ specs.storage_options }} Storage</li>{% endif %}
+                {% if specs.rear_camera_main %}<li><i class="bi bi-camera"></i> {{ specs.rear_camera_main }}MP Main Camera</li>{% endif %}
+                {% if specs.battery_capacity %}<li><i class="bi bi-battery-charging"></i> {{ specs.battery_capacity }}mAh Battery</li>{% endif %}
+                {% if specs.has_5g %}<li><i class="bi bi-broadcast"></i> 5G Connectivity</li>{% endif %}
+            </ul>
+            {% endif %}
+
+            <div class="mt-4">
+                <a href="{{ url_for('phone.compare', phone1=phone.id) }}" class="btn btn-outline-primary">
+                    <i class="bi bi-phone-compare"></i> Add to Compare
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Specifications Tabs -->
+    {% if specs %}
+    <div class="card mt-5">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#overview">Overview</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#display">Display</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#performance">Performance</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#camera">Camera</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#battery">Battery</a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="overview">
+                    <table class="table">
+                        <tr><th>Model</th><td>{{ phone.model_name }}</td></tr>
+                        <tr><th>Brand</th><td>{{ phone.brand.name }}</td></tr>
+                        <tr><th>Price</th><td>RM {{ "{:,.2f}".format(phone.price) }}</td></tr>
+                        {% if specs.operating_system %}<tr><th>OS</th><td>{{ specs.operating_system }}</td></tr>{% endif %}
+                        {% if specs.weight %}<tr><th>Weight</th><td>{{ specs.weight }}g</td></tr>{% endif %}
+                        {% if specs.dimensions %}<tr><th>Dimensions</th><td>{{ specs.dimensions }}</td></tr>{% endif %}
+                    </table>
+                </div>
+
+                <div class="tab-pane fade" id="display">
+                    <table class="table">
+                        {% if specs.screen_size %}<tr><th>Size</th><td>{{ specs.screen_size }}"</td></tr>{% endif %}
+                        {% if specs.screen_resolution %}<tr><th>Resolution</th><td>{{ specs.screen_resolution }}</td></tr>{% endif %}
+                        {% if specs.screen_type %}<tr><th>Type</th><td>{{ specs.screen_type }}</td></tr>{% endif %}
+                        {% if specs.refresh_rate %}<tr><th>Refresh Rate</th><td>{{ specs.refresh_rate }}Hz</td></tr>{% endif %}
+                    </table>
+                </div>
+
+                <div class="tab-pane fade" id="performance">
+                    <table class="table">
+                        {% if specs.processor %}<tr><th>Processor</th><td>{{ specs.processor }}</td></tr>{% endif %}
+                        {% if specs.ram_options %}<tr><th>RAM</th><td>{{ specs.ram_options }}</td></tr>{% endif %}
+                        {% if specs.storage_options %}<tr><th>Storage</th><td>{{ specs.storage_options }}</td></tr>{% endif %}
+                        <tr><th>Expandable Storage</th><td>{{ 'Yes' if specs.expandable_storage else 'No' }}</td></tr>
+                    </table>
+                </div>
+
+                <div class="tab-pane fade" id="camera">
+                    <table class="table">
+                        {% if specs.rear_camera %}<tr><th>Rear Camera</th><td>{{ specs.rear_camera }}</td></tr>{% endif %}
+                        {% if specs.front_camera %}<tr><th>Front Camera</th><td>{{ specs.front_camera }}</td></tr>{% endif %}
+                    </table>
+                </div>
+
+                <div class="tab-pane fade" id="battery">
+                    <table class="table">
+                        {% if specs.battery_capacity %}<tr><th>Capacity</th><td>{{ specs.battery_capacity }}mAh</td></tr>{% endif %}
+                        {% if specs.charging_speed %}<tr><th>Charging</th><td>{{ specs.charging_speed }}</td></tr>{% endif %}
+                        <tr><th>Wireless Charging</th><td>{{ 'Yes' if specs.wireless_charging else 'No' }}</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Similar Phones -->
+    {% if similar_phones %}
+    <div class="mt-5">
+        <h3>Similar Phones</h3>
+        <div class="row">
+            {% for item in similar_phones %}
+            {% set sim_phone = item.phone %}
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5>{{ sim_phone.model_name }}</h5>
+                        <p class="text-primary">RM {{ "{:,.2f}".format(sim_phone.price) }}</p>
+                        <a href="{{ url_for('phone.details', phone_id=sim_phone.id) }}" class="btn btn-sm btn-primary">View</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

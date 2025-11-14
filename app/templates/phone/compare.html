@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Phones - DialSmart{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2><i class="bi bi-phone-compare"></i> Compare Smartphones</h2>
+
+    <div class="card mt-4">
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-5">
+                        <label class="form-label">Select First Phone</label>
+                        <select name="phone1_id" class="form-select" required>
+                            <option value="">Choose Phone...</option>
+                            {% for brand in brands %}
+                            <optgroup label="{{ brand.name }}">
+                                {% for phone in phones if phone.brand_id == brand.id %}
+                                <option value="{{ phone.id }}" {% if phone1_id == phone.id %}selected{% endif %}>
+                                    {{ phone.model_name }} - RM {{ "{:,.0f}".format(phone.price) }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 text-center pt-4">
+                        <h3 class="text-muted">VS</h3>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label">Select Second Phone</label>
+                        <select name="phone2_id" class="form-select" required>
+                            <option value="">Choose Phone...</option>
+                            {% for brand in brands %}
+                            <optgroup label="{{ brand.name }}">
+                                {% for phone in phones if phone.brand_id == brand.id %}
+                                <option value="{{ phone.id }}" {% if phone2_id == phone.id %}selected{% endif %}>
+                                    {{ phone.model_name }} - RM {{ "{:,.0f}".format(phone.price) }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-arrows-angle-expand"></i> Compare Now
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

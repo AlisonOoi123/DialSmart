@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{% if brand %}Edit{% else %}Add{% endif %} Brand - Admin{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2>{% if brand %}Edit{% else %}Add New{% endif %} Brand</h2>
+
+    <form method="POST" enctype="multipart/form-data" class="mt-4">
+        <div class="mb-3">
+            <label class="form-label">Brand Name *</label>
+            <input type="text" name="name" class="form-control" value="{{ brand.name if brand else '' }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3">{{ brand.description if brand else '' }}</textarea>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Tagline</label>
+            <input type="text" name="tagline" class="form-control" value="{{ brand.tagline if brand else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Logo</label>
+            <input type="file" name="logo" class="form-control" accept="image/*">
+            {% if brand and brand.logo_url %}
+            <small class="text-muted">Current: {{ brand.logo_url }}</small>
+            {% endif %}
+        </div>
+
+        <div class="form-check mb-3">
+            <input type="checkbox" name="is_featured" class="form-check-input" {% if brand and brand.is_featured %}checked{% endif %}>
+            <label class="form-check-label">Featured Brand</label>
+        </div>
+
+        {% if brand %}
+        <div class="form-check mb-3">
+            <input type="checkbox" name="is_active" class="form-check-input" {% if brand.is_active %}checked{% endif %}>
+            <label class="form-check-label">Active</label>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> {% if brand %}Update{% else %}Add{% endif %} Brand
+        </button>
+        <a href="{{ url_for('admin.brands') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
