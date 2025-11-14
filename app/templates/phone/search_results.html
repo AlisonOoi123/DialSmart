@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Search Results - DialSmart{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2>Search Results for "{{ query }}"</h2>
+    <p class="text-muted">Found {{ phones.total }} phone(s)</p>
+    <div class="row mt-4">
+        {% for phone in phones.items %}
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <img src="{{ phone.main_image or 'https://via.placeholder.com/300x400?text=Phone' }}" class="card-img-top" alt="{{ phone.model_name }}">
+                <div class="card-body">
+                    <h6>{{ phone.model_name }}</h6>
+                    <p class="text-primary">RM {{ "{:,.0f}".format(phone.price) }}</p>
+                    <a href="{{ url_for('phone.details', phone_id=phone.id) }}" class="btn btn-sm btn-primary">View</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

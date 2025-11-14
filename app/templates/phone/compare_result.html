@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Comparison: {{ comparison.phone1.info.model_name }} vs {{ comparison.phone2.info.model_name }} - DialSmart{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Phone Comparison</h2>
+
+    <!-- Winner Badge -->
+    {% if comparison.winner.phone %}
+    <div class="alert alert-success text-center">
+        <h4><i class="bi bi-trophy-fill"></i> Winner: {{ comparison.winner.name }}</h4>
+        <p>Based on overall specifications comparison</p>
+    </div>
+    {% endif %}
+
+    <!-- Phones Header -->
+    <div class="row text-center mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {% if comparison.phone1.info.main_image %}
+                    <img src="{{ comparison.phone1.info.main_image }}" style="height: 200px;" alt="{{ comparison.phone1.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250?text=Phone'">
+                    {% else %}
+                    <img src="https://via.placeholder.com/200x250?text=Phone" alt="{{ comparison.phone1.info.model_name }}">
+                    {% endif %}
+                    <h4 class="mt-3">{{ comparison.phone1.info.model_name }}</h4>
+                    <p class="text-muted">{{ comparison.phone1.info.brand.name }}</p>
+                    <h3 class="text-primary">RM {{ "{:,.2f}".format(comparison.phone1.info.price) }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {% if comparison.phone2.info.main_image %}
+                    <img src="{{ comparison.phone2.info.main_image }}" style="height: 200px;" alt="{{ comparison.phone2.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250?text=Phone'">
+                    {% else %}
+                    <img src="https://via.placeholder.com/200x250?text=Phone" alt="{{ comparison.phone2.info.model_name }}">
+                    {% endif %}
+                    <h4 class="mt-3">{{ comparison.phone2.info.model_name }}</h4>
+                    <p class="text-muted">{{ comparison.phone2.info.brand.name }}</p>
+                    <h3 class="text-primary">RM {{ "{:,.2f}".format(comparison.phone2.info.price) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison Table -->
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>{{ comparison.phone1.info.model_name }}</th>
+                        <th>{{ comparison.phone2.info.model_name }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, data in comparison.comparison.items() %}
+                    <tr>
+                        <td><strong>{{ data.label }}</strong></td>
+                        <td {% if data.winner == 1 %}class="table-success"{% endif %}>
+                            {{ data.phone1 }}
+                            {% if data.winner == 1 %}<i class="bi bi-trophy-fill text-warning"></i>{% endif %}
+                        </td>
+                        <td {% if data.winner == 2 %}class="table-success"{% endif %}>
+                            {{ data.phone2 }}
+                            {% if data.winner == 2 %}<i class="bi bi-trophy-fill text-warning"></i>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('phone.compare') }}" class="btn btn-primary">
+            <i class="bi bi-arrow-repeat"></i> Compare Other Phones
+        </a>
+        <a href="{{ url_for('phone.details', phone_id=comparison.phone1.info.id) }}" class="btn btn-outline-primary">
+            View {{ comparison.phone1.info.model_name }}
+        </a>
+        <a href="{{ url_for('phone.details', phone_id=comparison.phone2.info.id) }}" class="btn btn-outline-primary">
+            View {{ comparison.phone2.info.model_name }}
+        </a>
+    </div>
+</div>
+{% endblock %}

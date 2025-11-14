@@ -1,0 +1,278 @@
+/* DialSmart Custom Styles */
+
+:root {
+    --primary-color: #0B5ED7;
+    --secondary-color: #6C757D;
+    --success-color: #28A745;
+    --warning-color: #FFC107;
+    --danger-color: #DC3545;
+    --light-bg: #F8F9FA;
+}
+
+body {
+    font-family: 'Inter', 'Open Sans', sans-serif;
+    color: #212529;
+}
+
+/* Navbar Styling */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Hero Section */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #0B5ED7 0%, #6C757D 100%);
+}
+
+/* Cards */
+.card {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Buttons */
+.btn {
+    border-radius: 6px;
+    padding: 12px 24px;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Phone Cards */
+.phone-card img {
+    height: 250px;
+    object-fit: cover;
+}
+
+/* Chatbot Widget */
+#chatbot-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+#chatbot-toggle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#chatbot-window {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 400px;
+    max-height: 600px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#chat-messages {
+    background-color: #f5f5f5;
+    padding: 15px;
+}
+
+.chat-message {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 8px;
+    max-width: 80%;
+}
+
+.bot-message {
+    background-color: #e3f2fd;
+    margin-right: auto;
+}
+
+.user-message {
+    background-color: #c8e6c9;
+    margin-left: auto;
+    text-align: right;
+}
+
+.quick-reply-btn {
+    margin: 2px;
+}
+
+/* Comparison Table */
+.table-success {
+    background-color: #d4edda !important;
+}
+
+/* Hover Effects */
+.hover-lift {
+    transition: transform 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-5px);
+}
+
+/* Badge Styles */
+.badge {
+    padding: 6px 12px;
+    font-weight: 500;
+}
+
+/* Footer */
+footer {
+    margin-top: 80px;
+}
+
+footer a {
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+footer a:hover {
+    color: #ffffff !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #chatbot-window {
+        width: 90%;
+        right: 5%;
+    }
+
+    .navbar-brand small {
+        display: none;
+    }
+}
+
+/* Form Inputs */
+.form-control, .form-select {
+    border-radius: 4px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(11, 94, 215, 0.25);
+}
+
+/* Pagination */
+.pagination .page-link {
+    color: var(--primary-color);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Specs Icons */
+.specs-icons i {
+    color: var(--primary-color);
+    margin-right: 5px;
+}
+
+/* Feature Icons */
+.feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Loading Spinner */
+.spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+/* Alert Styles */
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+
+/* Brand Logos */
+.brand-logo {
+    max-height: 60px;
+    object-fit: contain;
+}
+
+/* Phone Details */
+.phone-details-img {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Wizard Steps */
+.wizard-step {
+    position: relative;
+    padding-left: 40px;
+}
+
+.wizard-step::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 30px;
+    bottom: -30px;
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.wizard-step:last-child::before {
+    display: none;
+}
+
+/* Admin Dashboard */
+.admin-stat-card {
+    border-left: 4px solid;
+}
+
+.admin-stat-card.primary {
+    border-left-color: var(--primary-color);
+}
+
+.admin-stat-card.success {
+    border-left-color: var(--success-color);
+}
+
+.admin-stat-card.warning {
+    border-left-color: var(--warning-color);
+}
+
+.admin-stat-card.danger {
+    border-left-color: var(--danger-color);
+}
+
+/* Utility Classes */
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.shadow-sm {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.shadow {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}

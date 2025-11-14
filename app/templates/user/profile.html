@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}My Profile - DialSmart{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2>My Profile</h2>
+    <form method="POST" class="mt-4">
+        <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">User Category</label>
+            <select name="user_category" class="form-select">
+                <option value="Student" {% if current_user.user_category == 'Student' %}selected{% endif %}>Student</option>
+                <option value="Working Professional" {% if current_user.user_category == 'Working Professional' %}selected{% endif %}>Working Professional</option>
+                <option value="Senior Citizen" {% if current_user.user_category == 'Senior Citizen' %}selected{% endif %}>Senior Citizen</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Update Profile</button>
+    </form>
+</div>
+{% endblock %}

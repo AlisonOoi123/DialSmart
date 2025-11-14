@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - DialSmart{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Welcome back, {{ current_user.full_name }}!</h2>
+
+    <!-- Quick Actions -->
+    <div class="row g-4 my-4">
+        <div class="col-md-3">
+            <a href="{{ url_for('user.recommendation_wizard') }}" class="text-decoration-none">
+                <div class="card text-center shadow-sm hover-lift">
+                    <div class="card-body">
+                        <i class="bi bi-robot" style="font-size: 3rem; color: #0B5ED7;"></i>
+                        <h5 class="mt-2">Get New Recommendation</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('phone.compare') }}" class="text-decoration-none">
+                <div class="card text-center shadow-sm hover-lift">
+                    <div class="card-body">
+                        <i class="bi bi-phone-compare" style="font-size: 3rem; color: #28A745;"></i>
+                        <h5 class="mt-2">Compare Phones</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('user.recommendation_history') }}" class="text-decoration-none">
+                <div class="card text-center shadow-sm hover-lift">
+                    <div class="card-body">
+                        <i class="bi bi-clock-history" style="font-size: 3rem; color: #FFC107;"></i>
+                        <h5 class="mt-2">View History</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{{ url_for('user.preferences') }}" class="text-decoration-none">
+                <div class="card text-center shadow-sm hover-lift">
+                    <div class="card-body">
+                        <i class="bi bi-sliders" style="font-size: 3rem; color: #DC3545;"></i>
+                        <h5 class="mt-2">Update Preferences</h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Recommendations -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-star"></i> Recent Recommendations</h5>
+        </div>
+        <div class="card-body">
+            {% if recommendations %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Phone Model</th>
+                            <th>Price</th>
+                            <th>Match</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rec in recommendations %}
+                        <tr>
+                            <td>{{ rec.created_at.strftime('%d %b %Y') }}</td>
+                            <td>{{ rec.phone.model_name }}</td>
+                            <td>RM {{ "{:,.2f}".format(rec.phone.price) }}</td>
+                            <td><span class="badge bg-success">{{ rec.match_percentage }}%</span></td>
+                            <td>
+                                <a href="{{ url_for('phone.details', phone_id=rec.phone_id) }}" class="btn btn-sm btn-primary">View</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No recommendations yet. <a href="{{ url_for('user.recommendation_wizard') }}">Get started!</a></p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Saved Comparisons -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-bookmark"></i> Saved Comparisons</h5>
+        </div>
+        <div class="card-body">
+            {% if comparisons %}
+            <div class="row">
+                {% for comp in comparisons %}
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>{{ comp.phone1.model_name }} vs {{ comp.phone2.model_name }}</h6>
+                            <small class="text-muted">{{ comp.created_at.strftime('%d %b %Y') }}</small>
+                            <div class="mt-2">
+                                <a href="{{ url_for('phone.compare', phone1=comp.phone1_id, phone2=comp.phone2_id) }}" class="btn btn-sm btn-primary">View</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No saved comparisons yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-lift {
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+.hover-lift:hover {
+    transform: translateY(-5px);
+}
+</style>
+{% endblock %}

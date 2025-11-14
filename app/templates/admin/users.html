@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Manage Users - Admin{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2>Manage Users</h2>
+
+    <div class="table-responsive mt-4">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Category</th>
+                    <th>Joined</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users.items %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.full_name }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.user_category or 'N/A' }}</td>
+                    <td>{{ user.created_at.strftime('%d %b %Y') }}</td>
+                    <td><span class="badge {% if user.is_active %}bg-success{% else %}bg-danger{% endif %}">{{ 'Active' if user.is_active else 'Suspended' }}</span></td>
+                    <td>
+                        <a href="{{ url_for('admin.user_details', user_id=user.id) }}" class="btn btn-sm btn-info">View</a>
+                        {% if not user.is_admin %}
+                        <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=user.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-{% if user.is_active %}warning{% else %}success{% endif %}">
+                                {{ 'Suspend' if user.is_active else 'Activate' }}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if users.pages > 1 %}
+    <nav>
+        <ul class="pagination">
+            {% for page_num in users.iter_pages() %}
+            {% if page_num %}
+            <li class="page-item {% if page_num == users.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('admin.users', page=page_num) }}">{{ page_num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

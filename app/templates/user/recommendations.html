@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}My Recommendations - DialSmart{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2>AI Recommendations For You</h2>
+    <div class="row mt-4">
+        {% for rec in recommendations %}
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5>{{ rec['phone'].model_name }}</h5>
+                    <p class="text-primary">RM {{ "{:,.0f}".format(rec['phone'].price) }}</p>
+                    <span class="badge bg-success">{{ rec['match_score'] }}% Match</span>
+                    <p class="small mt-2">{{ rec['reasoning'][:100] }}...</p>
+                    <a href="{{ url_for('phone.details', phone_id=rec['phone'].id) }}" class="btn btn-sm btn-primary">View</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}My Preferences - DialSmart{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2>Preference Settings</h2>
+    <form method="POST" class="mt-4">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Min Budget (RM)</label>
+                <input type="number" name="min_budget" class="form-control" value="{{ preferences.min_budget if preferences else 500 }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Max Budget (RM)</label>
+                <input type="number" name="max_budget" class="form-control" value="{{ preferences.max_budget if preferences else 5000 }}">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Min RAM (GB)</label>
+                <input type="number" name="min_ram" class="form-control" value="{{ preferences.min_ram if preferences else 4 }}">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Min Storage (GB)</label>
+                <input type="number" name="min_storage" class="form-control" value="{{ preferences.min_storage if preferences else 64 }}">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Min Camera (MP)</label>
+                <input type="number" name="min_camera" class="form-control" value="{{ preferences.min_camera if preferences else 12 }}">
+            </div>
+        </div>
+        <div class="form-check mb-3">
+            <input type="checkbox" name="requires_5g" class="form-check-input" {% if preferences and preferences.requires_5g %}checked{% endif %}>
+            <label class="form-check-label">Requires 5G</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Preferences</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}System Settings - Admin{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2>System Settings</h2>
+
+    <form method="POST" class="mt-4">
+        <div class="card">
+            <div class="card-header"><h5>General Settings</h5></div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Site Name</label>
+                    <input type="text" class="form-control" value="DialSmart">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Items Per Page</label>
+                    <input type="number" class="form-control" value="12">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">AI Match Threshold (%)</label>
+                    <input type="number" class="form-control" value="50">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Save Settings</button>
+    </form>
+</div>
+{% endblock %}
