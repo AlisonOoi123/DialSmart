@@ -336,7 +336,7 @@ Just ask me anything like:
             response=response,
             intent=intent,
             session_id=session_id or datetime.utcnow().strftime('%Y%m%d%H%M%S'),
-            metadata=json.dumps(metadata) if metadata else None
+            chat_metadata=json.dumps(metadata) if metadata else None
         )
         db.session.add(chat)
         db.session.commit()
