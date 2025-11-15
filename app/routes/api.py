@@ -15,25 +15,39 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 @login_required
 def chat():
     """Process chatbot message"""
-    data = request.get_json()
-    message = data.get('message', '')
-    session_id = data.get('session_id') or str(uuid.uuid4())
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        session_id = data.get('session_id') or str(uuid.uuid4())
 
-    if not message:
-        return jsonify({'error': 'Message is required'}), 400
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
 
-    # Process with chatbot engine
-    chatbot = ChatbotEngine()
-    response = chatbot.process_message(current_user.id, message, session_id)
+        # Process with chatbot engine
+        chatbot = ChatbotEngine()
+        response = chatbot.process_message(current_user.id, message, session_id)
 
-    return jsonify({
-        'success': True,
-        'response': response['response'],
-        'type': response.get('type', 'text'),
-        'metadata': response.get('metadata', {}),
-        'quick_replies': response.get('quick_replies', []),
-        'session_id': session_id
-    })
+        return jsonify({
+            'success': True,
+            'response': response['response'],
+            'type': response.get('type', 'text'),
+            'metadata': response.get('metadata', {}),
+            'quick_replies': response.get('quick_replies', []),
+            'session_id': session_id
+        })
+    except Exception as e:
+        print(f"Chatbot error: {str(e)}")  # Log error
+        import traceback
+        traceback.print_exc()
+
+        # Return a friendly error message instead of failing
+        return jsonify({
+            'success': True,
+            'response': "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
+            'type': 'text',
+            'quick_replies': ['Find a phone', 'Budget options', 'Popular brands'],
+            'session_id': session_id
+        })
 
 @bp.route('/chat/history', methods=['GET'])
 @login_required

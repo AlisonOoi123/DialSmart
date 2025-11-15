@@ -92,6 +92,12 @@ def preferences():
         # Update preferences from form
         user_prefs.min_budget = int(request.form.get('min_budget', 500))
         user_prefs.max_budget = int(request.form.get('max_budget', 5000))
+
+        # Validate budget: min cannot be greater than max
+        if user_prefs.min_budget > user_prefs.max_budget:
+            flash('Minimum budget cannot be greater than maximum budget. Please correct your values.', 'danger')
+            return redirect(url_for('user.preferences'))
+
         user_prefs.min_ram = int(request.form.get('min_ram', 4))
         user_prefs.min_storage = int(request.form.get('min_storage', 64))
         user_prefs.min_camera = int(request.form.get('min_camera', 12))
@@ -158,6 +164,12 @@ def recommendation_wizard():
             'min_ram': int(request.form.get('min_ram', 4)),
             'requires_5g': bool(request.form.get('requires_5g'))
         }
+
+        # Validate budget: min cannot be greater than max
+        if criteria['min_budget'] > criteria['max_budget']:
+            flash('Minimum budget cannot be greater than maximum budget. Please correct your values.', 'danger')
+            brands = Brand.query.filter_by(is_active=True).all()
+            return render_template('user/wizard.html', brands=brands)
 
         # Get AI recommendations
         ai_engine = AIRecommendationEngine()

@@ -15,14 +15,14 @@ class ChatbotEngine:
     def __init__(self):
         self.ai_engine = AIRecommendationEngine()
         self.intents = {
-            'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
-            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm'],
-            'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want'],
-            'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
-            'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen'],
-            'brand_query': ['brand', 'samsung', 'apple', 'iphone', 'xiaomi', 'huawei'],
-            'help': ['help', 'how', 'what can you do'],
-            'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment']
+            'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening'],
+            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm', 'ringgit', 'myr'],
+            'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'show', 'get', 'search', 'phone', '5g', 'smartphone'],
+            'comparison': ['compare', 'difference', 'vs', 'versus', 'better', 'which is better'],
+            'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor'],
+            'brand_query': ['brand', 'samsung', 'apple', 'iphone', 'xiaomi', 'huawei', 'oppo', 'vivo', 'realme', 'infinix', 'poco'],
+            'help': ['help', 'how', 'what can you do', 'what can i ask'],
+            'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'video']
         }
 
     def process_message(self, user_id, message, session_id=None):

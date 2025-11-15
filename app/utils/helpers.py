@@ -4,9 +4,45 @@ Common utility functions used across the application
 """
 import os
 import json
+import re
 from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime
+
+def validate_password(password):
+    """
+    Validate password strength
+    Requirements:
+    - 8-12 characters long
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one number
+    - At least one special character
+
+    Returns: (is_valid, error_message)
+    """
+    if not password:
+        return False, "Password is required"
+
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long"
+
+    if len(password) > 12:
+        return False, "Password must not exceed 12 characters"
+
+    if not re.search(r'[A-Z]', password):
+        return False, "Password must contain at least one uppercase letter"
+
+    if not re.search(r'[a-z]', password):
+        return False, "Password must contain at least one lowercase letter"
+
+    if not re.search(r'\d', password):
+        return False, "Password must contain at least one number"
+
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        return False, "Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)"
+
+    return True, ""
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -79,16 +115,26 @@ def calculate_match_score(user_prefs, phone, phone_specs):
         # RAM match (weight: 10)
         max_score += 10
         if phone_specs.ram_options:
-            ram_values = [int(r.replace('GB', '')) for r in phone_specs.ram_options.split(',') if 'GB' in r]
-            if ram_values and max(ram_values) >= user_prefs.min_ram:
-                score += 10
+            try:
+                # Handle formats: "8GB, 12GB" or "8 / 12" or "8GB / 12GB"
+                ram_str = phone_specs.ram_options.replace('GB', '').replace('/', ',')
+                ram_values = [int(r.strip()) for r in ram_str.split(',') if r.strip().isdigit()]
+                if ram_values and max(ram_values) >= user_prefs.min_ram:
+                    score += 10
+            except:
+                pass
 
         # Storage match (weight: 10)
         max_score += 10
         if phone_specs.storage_options:
-            storage_values = [int(s.replace('GB', '')) for s in phone_specs.storage_options.split(',') if 'GB' in s]
-            if storage_values and max(storage_values) >= user_prefs.min_storage:
-                score += 10
+            try:
+                # Handle formats: "128GB, 256GB" or "128 / 256 /512" or "128GB / 256GB"
+                storage_str = phone_specs.storage_options.replace('GB', '').replace('/', ',')
+                storage_values = [int(s.strip()) for s in storage_str.split(',') if s.strip().isdigit()]
+                if storage_values and max(storage_values) >= user_prefs.min_storage:
+                    score += 10
+            except:
+                pass
 
         # Camera match (weight: 15)
         max_score += 15
