@@ -34,10 +34,10 @@ def dashboard():
     total_phones = Phone.query.filter_by(is_active=True).count()
     total_brands = Brand.query.filter_by(is_active=True).count()
 
-    # Today's recommendations
+    # Today's recommendations (Oracle-compatible using TRUNC)
     today = datetime.utcnow().date()
     today_recommendations = Recommendation.query.filter(
-        db.func.date(Recommendation.created_at) == today
+        db.func.trunc(Recommendation.created_at) == today
     ).count()
 
     # Recent activity (last 7 days)
