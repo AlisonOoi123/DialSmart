@@ -9,6 +9,53 @@
         </a>
     </div>
 
+    <!-- Search and Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('admin.phones') }}" class="row g-3">
+                <div class="col-md-6">
+                    <label for="search" class="form-label">Search by Model Name</label>
+                    <input type="text" class="form-control" id="search" name="search"
+                           value="{{ search }}" placeholder="Enter phone model name...">
+                </div>
+                <div class="col-md-4">
+                    <label for="brand_id" class="form-label">Filter by Brand</label>
+                    <select class="form-select" id="brand_id" name="brand_id">
+                        <option value="">All Brands</option>
+                        {% for brand in brands %}
+                        <option value="{{ brand.id }}" {% if brand_id == brand.id %}selected{% endif %}>
+                            {{ brand.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </form>
+            {% if search or brand_id %}
+            <div class="mt-3">
+                <a href="{{ url_for('admin.phones') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear Filters
+                </a>
+                <span class="text-muted ms-2">
+                    Showing results for:
+                    {% if search %}<span class="badge bg-info">Search: "{{ search }}"</span>{% endif %}
+                    {% if brand_id %}
+                        {% for brand in brands %}
+                            {% if brand.id == brand_id %}
+                                <span class="badge bg-primary">Brand: {{ brand.name }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
     <div class="table-responsive">
         <table class="table table-striped">
             <thead>
@@ -48,7 +95,7 @@
             {% for page_num in phones.iter_pages() %}
             {% if page_num %}
             <li class="page-item {% if page_num == phones.page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('admin.phones', page=page_num) }}">{{ page_num }}</a>
+                <a class="page-link" href="{{ url_for('admin.phones', page=page_num, search=search, brand_id=brand_id) }}">{{ page_num }}</a>
             </li>
             {% endif %}
             {% endfor %}
