@@ -18,6 +18,7 @@
                 <option value="Student" {% if current_user.user_category == 'Student' %}selected{% endif %}>Student</option>
                 <option value="Working Professional" {% if current_user.user_category == 'Working Professional' %}selected{% endif %}>Working Professional</option>
                 <option value="Senior Citizen" {% if current_user.user_category == 'Senior Citizen' %}selected{% endif %}>Senior Citizen</option>
+                <option value="Others" {% if current_user.user_category == 'Others' %}selected{% endif %}>Others</option>
             </select>
         </div>
         <button type="submit" class="btn btn-primary">Update Profile</button>
