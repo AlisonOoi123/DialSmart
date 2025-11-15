@@ -30,8 +30,8 @@ class Config:
 
     # Oracle Database connection (for Oracle SQL*Plus users)
     # Change these values to match your Oracle setup:
-    ORACLE_USER = os.environ.get('ORACLE_USER', 'dialsmart_user')
-    ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD', 'dialsmart123')
+    ORACLE_USER = os.environ.get('ORACLE_USER', 'ds_user')
+    ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD', 'dsuser123')
     ORACLE_HOST = os.environ.get('ORACLE_HOST', 'localhost')
     ORACLE_PORT = os.environ.get('ORACLE_PORT', '1521')
     ORACLE_SERVICE = os.environ.get('ORACLE_SERVICE', 'ORCLPDB')  # Oracle 21c pluggable database
