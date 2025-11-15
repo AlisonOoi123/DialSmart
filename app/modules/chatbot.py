@@ -281,6 +281,11 @@ Just ask me anything like:
         if '5g' in message.lower():
             criteria['requires_5g'] = True
 
+        # Extract brand preference
+        brand_name = self._extract_brand(message)
+        if brand_name:
+            criteria['preferred_brands'] = [brand_name]
+
         # Check for RAM mention
         ram_match = re.search(r'(\d+)\s*gb\s*ram', message.lower())
         if ram_match:
@@ -317,7 +322,8 @@ Just ask me anything like:
 
     def _extract_brand(self, message):
         """Extract brand name from message"""
-        brands = ['Samsung', 'Apple', 'iPhone', 'Xiaomi', 'Huawei', 'Nokia', 'Lenovo', 'Honor', 'Oppo', 'Realme', 'Vivo']
+        brands = ['Samsung', 'Apple', 'iPhone', 'Xiaomi', 'Huawei', 'Nokia', 'Lenovo',
+                  'Honor', 'Oppo', 'Realme', 'Vivo', 'Infinix', 'Poco', 'Redmi', 'Google', 'Asus']
 
         message_lower = message.lower()
         for brand in brands:
