@@ -77,9 +77,9 @@ class PhoneSpecification(db.Model):
     card_slot = db.Column(db.String(100))  # microSD details
 
     # Camera specifications
-    rear_camera = db.Column(db.String(200))  # Full rear camera specs
+    rear_camera = db.Column(db.String(500))  # Full rear camera specs (increased for multi-camera setups)
     rear_camera_main = db.Column(db.Integer)  # Main camera MP
-    front_camera = db.Column(db.String(100))  # Front camera specs
+    front_camera = db.Column(db.String(200))  # Front camera specs
     front_camera_mp = db.Column(db.Integer)  # Front camera MP
     camera_features = db.Column(db.Text)  # Camera features
     flash = db.Column(db.String(100))  # Flash type
