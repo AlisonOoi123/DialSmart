@@ -3,7 +3,7 @@ Chatbot Engine
 NLP-powered conversational assistant for phone recommendations
 """
 from app import db
-from app.models import ChatHistory, Phone, Brand
+from app.models import ChatHistory, Phone, Brand, Recommendation
 from app.modules.ai_engine import AIRecommendationEngine
 import re
 import json
@@ -52,6 +52,19 @@ class ChatbotEngine:
             session_id=session_id,
             metadata=response_data.get('metadata', {})
         )
+
+        # Save recommendations to Recommendation table if phones were recommended
+        metadata = response_data.get('metadata', {})
+        if metadata.get('phones'):
+            # Extract criteria from message for tracking
+            criteria = self._extract_criteria(message)
+            if not criteria:
+                criteria = {}
+            criteria['source'] = 'chatbot'
+            criteria['intent'] = intent
+
+            # Save recommendations
+            self._save_recommendations(user_id, metadata['phones'], criteria)
 
         return response_data
 
@@ -346,6 +359,41 @@ Just ask me anything like:
         )
         db.session.add(chat)
         db.session.commit()
+
+    def _save_recommendations(self, user_id, phones, criteria=None):
+        """Save chatbot recommendations to Recommendation table"""
+        for phone_data in phones:
+            # Extract phone_id and match_score from phone_data
+            phone_id = phone_data.get('id')
+            match_score = phone_data.get('match_score', 0)
+
+            if not phone_id:
+                continue
+
+            # Build reasoning based on available data
+            phone = Phone.query.get(phone_id)
+            if not phone:
+                continue
+
+            reasoning = f"Recommended via chatbot based on your query."
+            if match_score > 0:
+                reasoning = f"{match_score}% match - {phone.model_name} meets your requirements."
+
+            # Save to database
+            recommendation = Recommendation(
+                user_id=user_id,
+                phone_id=phone_id,
+                match_percentage=match_score,
+                reasoning=reasoning,
+                user_criteria=json.dumps(criteria) if criteria else None
+            )
+            db.session.add(recommendation)
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error saving chatbot recommendations: {str(e)}")
 
     def get_chat_history(self, user_id, session_id=None, limit=50):
         """Retrieve chat history for a user"""
