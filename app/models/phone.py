@@ -90,8 +90,8 @@ class PhoneSpecification(db.Model):
     battery = db.Column(db.String(100))  # Full battery description
     charging_speed = db.Column(db.String(100))  # "33W Fast Charging"
     fast_charging = db.Column(db.String(200))  # Detailed fast charging info
-    wireless_charging = db.Column(db.String(100))  # Wireless charging details
-    removable_battery = db.Column(db.String(50))  # Removable/Non-Removable
+    wireless_charging = db.Column(db.String(150))  # Wireless charging details (increased for new dataset)
+    removable_battery = db.Column(db.String(150))  # Removable/Non-Removable (increased for new dataset)
 
     # Network and Connectivity
     sim = db.Column(db.String(300))  # SIM type details (increased for new dataset)
