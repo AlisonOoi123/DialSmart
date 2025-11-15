@@ -100,9 +100,22 @@ class ChatbotEngine:
             if last_intent == 'recommendation' and 'specification' in intent_scores:
                 intent_scores['specification'] += 1
 
+        # Boost specific intents over generic 'recommendation'
+        # If usage_type or specification is detected, give them priority
+        if 'usage_type' in intent_scores and 'recommendation' in intent_scores:
+            # Boost usage_type to prioritize over generic recommendation
+            intent_scores['usage_type'] += 2
+
+        if 'specification' in intent_scores and 'recommendation' in intent_scores:
+            # Boost specification to prioritize over generic recommendation
+            intent_scores['specification'] += 1
+
         # Return intent with highest score
         if intent_scores:
             primary_intent = max(intent_scores, key=intent_scores.get)
+
+            # Debug logging
+            print(f"DEBUG Intent Detection - Scores: {intent_scores}, Selected: {primary_intent}")
 
             # Store context
             if session_id:
@@ -173,8 +186,14 @@ class ChatbotEngine:
             # Check for specific criteria in message
             criteria = self._extract_criteria(message)
 
+            # Debug logging
+            print(f"DEBUG Chatbot - Criteria extracted: {criteria}")
+
             # Get recommendations
             recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=3)
+
+            # Debug logging
+            print(f"DEBUG Chatbot - Got {len(recommendations)} recommendations")
 
             if recommendations:
                 response = "Based on your needs, I recommend:\n\n"
@@ -209,13 +228,21 @@ class ChatbotEngine:
         elif intent == 'usage_type':
             # Detect usage type and use intelligent recommendation system
             usage = self._detect_usage_type(message)
+            print(f"DEBUG Chatbot - Usage type intent detected: {usage}")
+
             if usage:
                 # Build criteria with usage type
                 criteria = self._extract_criteria(message) or {}
                 criteria['primary_usage'] = usage
 
+                # Debug logging
+                print(f"DEBUG Chatbot - Criteria for usage type: {criteria}")
+
                 # Use the intelligent recommendation system
                 recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=3)
+
+                # Debug logging
+                print(f"DEBUG Chatbot - Got {len(recommendations)} recommendations for usage type")
 
                 if recommendations:
                     response = f"Great choice! Here are the best phones for {usage}:\n\n"

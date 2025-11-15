@@ -185,9 +185,9 @@ class AIRecommendationEngine:
         prefs.min_screen_size = criteria.get('min_screen_size', None)
         prefs.max_screen_size = criteria.get('max_screen_size', None)
 
-        # Lists - use provided or empty list
-        prefs.primary_usage = criteria.get('primary_usage', [])
-        prefs.important_features = criteria.get('important_features', [])
+        # Usage and features - use provided values (strings/lists)
+        prefs.primary_usage = criteria.get('primary_usage', None)  # String like 'Gaming'
+        prefs.important_features = criteria.get('important_features', [])  # List like ['Battery', 'Camera']
         prefs.preferred_brands = criteria.get('preferred_brands', [])
 
         return prefs
