@@ -476,3 +476,78 @@ def settings():
         return redirect(url_for('admin.settings'))
 
     return render_template('admin/settings.html')
+
+# Contact Messages
+@bp.route('/messages')
+@login_required
+@admin_required
+def messages():
+    """View contact messages"""
+    from app.models.contact import ContactMessage
+    page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status', 'all')  # all, unread, read
+
+    query = ContactMessage.query
+
+    if status_filter == 'unread':
+        query = query.filter_by(is_read=False)
+    elif status_filter == 'read':
+        query = query.filter_by(is_read=True)
+
+    messages = query.order_by(ContactMessage.created_at.desc())\
+        .paginate(page=page, per_page=20, error_out=False)
+
+    # Count unread messages
+    unread_count = ContactMessage.query.filter_by(is_read=False).count()
+
+    return render_template('admin/messages.html',
+                         messages=messages,
+                         unread_count=unread_count,
+                         status_filter=status_filter)
+
+@bp.route('/messages/<int:message_id>')
+@login_required
+@admin_required
+def view_message(message_id):
+    """View single message"""
+    from app.models.contact import ContactMessage
+    message = ContactMessage.query.get_or_404(message_id)
+
+    # Mark as read
+    if not message.is_read:
+        message.mark_as_read()
+        db.session.commit()
+
+    return render_template('admin/message_detail.html', message=message)
+
+@bp.route('/messages/<int:message_id>/reply', methods=['POST'])
+@login_required
+@admin_required
+def reply_message(message_id):
+    """Mark message as replied and add admin notes"""
+    from app.models.contact import ContactMessage
+    message = ContactMessage.query.get_or_404(message_id)
+
+    admin_notes = request.form.get('admin_notes')
+    if admin_notes:
+        message.admin_notes = admin_notes
+
+    message.mark_as_replied()
+    db.session.commit()
+
+    flash('Message marked as replied.', 'success')
+    return redirect(url_for('admin.view_message', message_id=message_id))
+
+@bp.route('/messages/<int:message_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_message(message_id):
+    """Delete contact message"""
+    from app.models.contact import ContactMessage
+    message = ContactMessage.query.get_or_404(message_id)
+
+    db.session.delete(message)
+    db.session.commit()
+
+    flash('Message deleted successfully.', 'success')
+    return redirect(url_for('admin.messages'))

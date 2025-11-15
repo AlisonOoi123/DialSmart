@@ -274,9 +274,21 @@ def contact():
         # Process contact form
         name = request.form.get('name')
         email = request.form.get('email')
+        subject = request.form.get('subject', 'General Inquiry')
         message = request.form.get('message')
 
-        # In production, send email or store in database
+        # Save to database for admin to view
+        from app.models.contact import ContactMessage
+        contact_msg = ContactMessage(
+            name=name,
+            email=email,
+            subject=subject,
+            message=message,
+            user_id=current_user.id if current_user.is_authenticated else None
+        )
+        db.session.add(contact_msg)
+        db.session.commit()
+
         flash('Thank you for contacting us. We will get back to you soon.', 'success')
         return redirect(url_for('user.contact'))
 
