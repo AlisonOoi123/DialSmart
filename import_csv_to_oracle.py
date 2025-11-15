@@ -78,9 +78,17 @@ def parse_camera_mp(camera_str):
     return None
 
 def parse_release_date(date_str):
-    """Parse release date: 'Released 2025, October' -> date object"""
+    """Parse release date: '2023-09-22' or 'Released 2025, October' -> date object"""
     if not date_str:
         return None
+
+    # Try ISO format first (YYYY-MM-DD)
+    if re.match(r'\d{4}-\d{2}-\d{2}', date_str):
+        try:
+            return datetime.strptime(date_str, '%Y-%m-%d').date()
+        except:
+            pass
+
     # Extract year
     year_match = re.search(r'(\d{4})', date_str)
     if not year_match:
@@ -105,6 +113,39 @@ def parse_release_date(date_str):
         return datetime(year, month, 1).date()
     except:
         return None
+
+def parse_ram_storage(ram_storage_str):
+    """Parse combined RAM/Storage: '8GB' or '6GB / 8GB' or '128GB / 256GB / 512GB'
+    Returns tuple: (ram_options, storage_options)"""
+    if not ram_storage_str or not ram_storage_str.strip():
+        return (None, None)
+
+    # Clean the string
+    ram_storage_str = ram_storage_str.strip()
+
+    # Look for GB values
+    gb_values = re.findall(r'(\d+)\s*GB', ram_storage_str)
+
+    if not gb_values:
+        return (None, None)
+
+    # Convert to integers
+    values = [int(v) for v in gb_values]
+
+    # RAM is typically 2-16GB, Storage is typically 32GB+
+    ram_values = [v for v in values if v <= 32]  # Assume RAM <= 32GB
+    storage_values = [v for v in values if v >= 32]  # Assume Storage >= 32GB
+
+    # If all values are in the RAM range but look like storage (e.g., 128, 256)
+    if not storage_values and ram_values and min(ram_values) >= 64:
+        storage_values = ram_values
+        ram_values = []
+
+    # Format the options
+    ram_options = ' / '.join([f'{v}GB' for v in ram_values]) if ram_values else None
+    storage_options = ' / '.join([f'{v}GB' for v in storage_values]) if storage_values else None
+
+    return (ram_options, storage_options)
 
 def extract_processor_brand(chipset):
     """Extract processor brand from chipset"""
@@ -197,14 +238,17 @@ with app.app_context():
             # Parse price
             price = parse_price(row.get('Price', '0'))
 
+            # Parse RAM and Storage from combined field
+            ram_options, storage_options = parse_ram_storage(row.get('RAMStorage', ''))
+
             # Create phone
             phone = Phone(
                 brand_id=brand.id,
                 model_name=model_name,
                 price=price,
-                main_image=row.get('Image URL', '').strip() or None,
+                main_image=row.get('ImageURL', '').strip() or None,
                 availability_status=row.get('Status', 'Available').strip(),
-                release_date=parse_release_date(row.get('Release Date', '')),
+                release_date=parse_release_date(row.get('Date', '')),
                 is_active=True
             )
             db.session.add(phone)
@@ -214,10 +258,10 @@ with app.app_context():
             spec = PhoneSpecification(
                 phone_id=phone.id,
                 # Display
-                screen_size=parse_screen_size(row.get('Screen Size', '')),
+                screen_size=parse_screen_size(row.get('ScreenSize', '')),
                 screen_resolution=row.get('Resolution', '').strip() or None,
-                screen_type=row.get('Type', '').strip() or None,
-                display_type=row.get('Display Type', '').strip() or None,
+                screen_type=row.get('DisplayType', '').strip() or None,
+                display_type=row.get('DisplayType', '').strip() or None,
                 ppi=parse_ppi(row.get('PPI', '')),
                 multitouch=row.get('Multi-touch', '').strip() or None,
                 protection=row.get('Protection', '').strip() or None,
@@ -228,42 +272,43 @@ with app.app_context():
                 cpu=row.get('CPU', '').strip() or None,
                 gpu=row.get('GPU', '').strip() or None,
                 processor_brand=extract_processor_brand(row.get('Chipset', '')),
-                ram_options=row.get('RAM', '').strip() or None,
-                storage_options=row.get('Storage', '').strip() or None,
-                card_slot=row.get('Card Slot', '').strip() or None,
-                expandable_storage='microSD' in row.get('Card Slot', '') if row.get('Card Slot') else False,
+                ram_options=ram_options,
+                storage_options=storage_options,
+                card_slot=row.get('CardSlot', '').strip() or None,
+                expandable_storage='microSD' in row.get('CardSlot', '') if row.get('CardSlot') else False,
 
                 # Camera
-                rear_camera=row.get('Rear Camera', '').strip() or None,
-                rear_camera_main=parse_camera_mp(row.get('Rear Camera', '')),
-                front_camera=row.get('Front Camera', '').strip() or None,
-                front_camera_mp=parse_camera_mp(row.get('Front Camera', '')),
-                camera_features=row.get('Camera Features', '').strip() or None,
+                rear_camera=row.get('RearCamera', '').strip() or None,
+                rear_camera_main=parse_camera_mp(row.get('RearCamera', '')),
+                front_camera=row.get('FrontCamera', '').strip() or None,
+                front_camera_mp=parse_camera_mp(row.get('FrontCamera', '')),
+                camera_features=row.get('CameraFeatures', '').strip() or None,
                 flash=row.get('Flash', '').strip() or None,
-                video_recording=row.get('Video Recording', '').strip() or None,
+                video_recording=row.get('VideoRecording', '').strip() or None,
 
                 # Battery
-                battery_capacity=parse_battery(row.get('Battery Capacity', '')),
+                battery_capacity=parse_battery(row.get('BatteryCapacity', '')),
                 battery=row.get('Battery', '').strip() or None,
-                charging_speed=row.get('Fast Charging', '').strip() or None,
-                fast_charging=row.get('Fast Charging', '').strip() or None,
-                removable_battery=row.get('Removable Battery', '').strip() or None,
+                charging_speed=row.get('FastCharging', '').strip() or None,
+                fast_charging=row.get('FastCharging', '').strip() or None,
+                wireless_charging=row.get('WirelessCharging', '').strip() or None,
+                removable_battery=row.get('RemovableBattery', '').strip() or None,
 
                 # Network
                 sim=row.get('SIM', '').strip() or None,
                 technology=row.get('Technology', '').strip() or None,
-                network_5g=row.get('5G Networks', '').strip() or None,
-                network_4g=row.get('4G Networks', '').strip() or None,
-                network_3g=row.get('3G Networks', '').strip() or None,
-                network_2g=row.get('2G Networks', '').strip() or None,
-                network_speed=row.get('Network Speed', '').strip() or None,
-                has_5g=check_5g(row.get('5G Networks', ''), row.get('Technology', '')),
+                network_5g=row.get('5GNetworks', '').strip() or None,
+                network_4g=row.get('4GNetworks', '').strip() or None,
+                network_3g=row.get('3GNetworks', '').strip() or None,
+                network_2g=row.get('2GNetworks', '').strip() or None,
+                network_speed=row.get('NetworkSpeed', '').strip() or None,
+                has_5g=check_5g(row.get('5GNetworks', ''), row.get('Technology', '')),
                 wifi_standard=row.get('Wi-Fi', '').strip() or None,
                 bluetooth_version=row.get('Bluetooth', '').strip() or None,
                 gps=row.get('GPS', '').strip() or None,
                 nfc=row.get('NFC', '').strip() or None,
                 usb=row.get('USB', '').strip() or None,
-                audio_jack=row.get('Audio Jack', '').strip() or None,
+                audio_jack=None,  # Not in new CSV format
                 radio=row.get('Radio', '').strip() or None,
 
                 # OS
@@ -273,7 +318,7 @@ with app.app_context():
                 weight=row.get('Weight', '').strip() or None,
                 dimensions=row.get('Dimensions', '').strip() or None,
                 colors_available=row.get('Color', '').strip() or None,
-                body_material=row.get('Body Material', '').strip() or None,
+                body_material=row.get('BodyMaterial', '').strip() or None,
 
                 # Features
                 sensors=row.get('Sensors', '').strip() or None,
