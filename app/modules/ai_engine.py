@@ -55,19 +55,33 @@ class AIRecommendationEngine:
                 except:
                     preferred_brands = []
 
+            # Debug logging
+            print(f"DEBUG: preferred_brands type: {type(preferred_brands)}, value: {preferred_brands}")
+
             # Only filter if brands are actually specified
             if preferred_brands and len(preferred_brands) > 0:
-                # Get brand IDs from brand names
+                # Get brand IDs from brand names (case-insensitive)
                 from app.models import Brand
+                from sqlalchemy import func
                 brand_ids = []
                 for brand_name in preferred_brands:
-                    brand = Brand.query.filter_by(name=brand_name, is_active=True).first()
+                    # Case-insensitive brand lookup
+                    brand = Brand.query.filter(
+                        func.upper(Brand.name) == func.upper(brand_name),
+                        Brand.is_active == True
+                    ).first()
                     if brand:
                         brand_ids.append(brand.id)
+                        print(f"DEBUG: Found brand '{brand_name}' with ID {brand.id}")
+                    else:
+                        print(f"DEBUG: Brand '{brand_name}' NOT FOUND in database")
 
                 # Filter phones by brand IDs
                 if brand_ids:
+                    print(f"DEBUG: Filtering phones by brand IDs: {brand_ids}")
                     phones_query = phones_query.filter(Phone.brand_id.in_(brand_ids))
+                else:
+                    print("DEBUG: No valid brand IDs found, not filtering by brand")
 
         phones = phones_query.all()
 

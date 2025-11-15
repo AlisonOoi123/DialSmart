@@ -79,11 +79,14 @@ class PhoneComparison:
         }
 
         # Display comparisons - check each phone's specs individually
+        # Screen size
+        screen1 = (specs1.screen_size or 0) if specs1 else 0
+        screen2 = (specs2.screen_size or 0) if specs2 else 0
         comparison['screen_size'] = {
             'label': 'Screen Size',
             'phone1': f"{specs1.screen_size}\"" if specs1 and specs1.screen_size else 'N/A',
             'phone2': f"{specs2.screen_size}\"" if specs2 and specs2.screen_size else 'N/A',
-            'winner': 1 if (specs1.screen_size if specs1 else 0) > (specs2.screen_size if specs2 else 0) else 2
+            'winner': 1 if screen1 > screen2 else (2 if screen2 > screen1 else None)
         }
 
         comparison['resolution'] = {
@@ -100,11 +103,14 @@ class PhoneComparison:
             'winner': None
         }
 
+        # Refresh rate
+        refresh1 = (specs1.refresh_rate or 0) if specs1 else 0
+        refresh2 = (specs2.refresh_rate or 0) if specs2 else 0
         comparison['refresh_rate'] = {
             'label': 'Refresh Rate',
             'phone1': f"{specs1.refresh_rate}Hz" if specs1 and specs1.refresh_rate else 'N/A',
             'phone2': f"{specs2.refresh_rate}Hz" if specs2 and specs2.refresh_rate else 'N/A',
-            'winner': 1 if (specs1.refresh_rate if specs1 else 0) > (specs2.refresh_rate if specs2 else 0) else 2
+            'winner': 1 if refresh1 > refresh2 else (2 if refresh2 > refresh1 else None)
         }
 
         # Performance comparisons
@@ -130,26 +136,32 @@ class PhoneComparison:
         }
 
         # Camera comparisons
+        rear_cam1 = (specs1.rear_camera_main or 0) if specs1 else 0
+        rear_cam2 = (specs2.rear_camera_main or 0) if specs2 else 0
         comparison['rear_camera'] = {
             'label': 'Rear Camera',
             'phone1': specs1.rear_camera if specs1 and specs1.rear_camera else 'N/A',
             'phone2': specs2.rear_camera if specs2 and specs2.rear_camera else 'N/A',
-            'winner': 1 if (specs1.rear_camera_main if specs1 else 0) > (specs2.rear_camera_main if specs2 else 0) else 2
+            'winner': 1 if rear_cam1 > rear_cam2 else (2 if rear_cam2 > rear_cam1 else None)
         }
 
+        front_cam1 = (specs1.front_camera_mp or 0) if specs1 else 0
+        front_cam2 = (specs2.front_camera_mp or 0) if specs2 else 0
         comparison['front_camera'] = {
             'label': 'Front Camera',
             'phone1': specs1.front_camera if specs1 and specs1.front_camera else 'N/A',
             'phone2': specs2.front_camera if specs2 and specs2.front_camera else 'N/A',
-            'winner': 1 if (specs1.front_camera_mp if specs1 else 0) > (specs2.front_camera_mp if specs2 else 0) else 2
+            'winner': 1 if front_cam1 > front_cam2 else (2 if front_cam2 > front_cam1 else None)
         }
 
         # Battery comparisons
+        battery1 = (specs1.battery_capacity or 0) if specs1 else 0
+        battery2 = (specs2.battery_capacity or 0) if specs2 else 0
         comparison['battery'] = {
             'label': 'Battery Capacity',
             'phone1': f"{specs1.battery_capacity}mAh" if specs1 and specs1.battery_capacity else 'N/A',
             'phone2': f"{specs2.battery_capacity}mAh" if specs2 and specs2.battery_capacity else 'N/A',
-            'winner': 1 if (specs1.battery_capacity if specs1 else 0) > (specs2.battery_capacity if specs2 else 0) else 2
+            'winner': 1 if battery1 > battery2 else (2 if battery2 > battery1 else None)
         }
 
         comparison['charging'] = {
@@ -203,11 +215,14 @@ class PhoneComparison:
             'winner': None
         }
 
+        # Weight comparison (lighter is better)
+        weight1 = (specs1.weight or 999) if specs1 else 999
+        weight2 = (specs2.weight or 999) if specs2 else 999
         comparison['weight'] = {
             'label': 'Weight',
             'phone1': f"{specs1.weight}g" if specs1 and specs1.weight else 'N/A',
             'phone2': f"{specs2.weight}g" if specs2 and specs2.weight else 'N/A',
-            'winner': 1 if (specs1.weight if specs1 else 999) < (specs2.weight if specs2 else 999) else 2
+            'winner': 1 if weight1 < weight2 else (2 if weight2 < weight1 else None)
         }
 
         return comparison
