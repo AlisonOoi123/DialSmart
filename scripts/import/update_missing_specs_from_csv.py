@@ -35,11 +35,14 @@ def parse_screen_size(screen_str):
         return float(match.group(1))
     return None
 
-def clean_text(text):
-    """Clean text field"""
+def clean_text(text, max_length=None):
+    """Clean text field and optionally truncate to max length"""
     if not text or text.strip() == '':
         return None
-    return text.strip()
+    cleaned = text.strip()
+    if max_length and len(cleaned) > max_length:
+        return cleaned[:max_length]
+    return cleaned
 
 def update_specs_from_csv(csv_path):
     """Read CSV and update missing specifications"""
@@ -104,28 +107,28 @@ def update_specs_from_csv(csv_path):
 
                     # Update ram_options if NULL
                     if not specs.ram_options:
-                        ram = clean_text(row.get('RAM'))
+                        ram = clean_text(row.get('RAM'), max_length=50)
                         if ram:
                             specs.ram_options = ram
                             updated = True
 
                     # Update storage_options if NULL
                     if not specs.storage_options:
-                        storage = clean_text(row.get('Storage'))
+                        storage = clean_text(row.get('Storage'), max_length=100)
                         if storage:
                             specs.storage_options = storage
                             updated = True
 
                     # Update rear_camera if NULL
                     if not specs.rear_camera:
-                        rear_camera = clean_text(row.get('RearCamera'))
+                        rear_camera = clean_text(row.get('RearCamera'), max_length=500)
                         if rear_camera:
                             specs.rear_camera = rear_camera
                             updated = True
 
                     # Update front_camera if NULL
                     if not specs.front_camera:
-                        front_camera = clean_text(row.get('FrontCamera'))
+                        front_camera = clean_text(row.get('FrontCamera'), max_length=200)
                         if front_camera:
                             specs.front_camera = front_camera
                             updated = True
@@ -139,37 +142,43 @@ def update_specs_from_csv(csv_path):
 
                     # Update other fields if NULL
                     if not specs.screen_resolution:
-                        resolution = clean_text(row.get('Resolution'))
+                        resolution = clean_text(row.get('Resolution'), max_length=100)
                         if resolution:
                             specs.screen_resolution = resolution
                             updated = True
 
                     if not specs.screen_type:
-                        display_type = clean_text(row.get('DisplayType'))
+                        display_type = clean_text(row.get('DisplayType'), max_length=200)
                         if display_type:
                             specs.screen_type = display_type
                             updated = True
 
                     if not specs.processor:
-                        chipset = clean_text(row.get('Chipset'))
+                        chipset = clean_text(row.get('Chipset'), max_length=100)
                         if chipset:
                             specs.processor = chipset
                             updated = True
 
                     if updated:
-                        print(f"✓ Updated: {brand_name} {model_name}")
-                        updated_count += 1
+                        try:
+                            db.session.commit()
+                            print(f"✓ Updated: {brand_name} {model_name}")
+                            updated_count += 1
+                        except Exception as commit_error:
+                            db.session.rollback()
+                            print(f"❌ Error saving {brand_name} {model_name}: {commit_error}")
+                            error_count += 1
                     else:
                         # print(f"  Skipped (already has data): {brand_name} {model_name}")
                         skipped_count += 1
 
                 except Exception as e:
+                    db.session.rollback()
                     print(f"❌ Error processing {row.get('Brand', 'Unknown')} {row.get('Model', 'Unknown')}: {e}")
                     error_count += 1
 
-            # Commit all changes
+            # Summary
             if updated_count > 0:
-                db.session.commit()
                 print(f"\n✅ Successfully updated {updated_count} phones")
             else:
                 print(f"\n⚠️  No phones needed updating")
