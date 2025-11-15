@@ -57,72 +57,72 @@ class PhoneSpecification(db.Model):
 
     # Display specifications
     screen_size = db.Column(db.Float)  # in inches
-    screen_resolution = db.Column(db.String(150))  # e.g., "1080x2400" (increased for detailed resolutions)
-    screen_type = db.Column(db.String(200))  # AMOLED, IPS LCD, etc. (increased for detailed descriptions)
-    display_type = db.Column(db.String(200))  # Full display description
+    screen_resolution = db.Column(db.String(350))  # e.g., "1080x2400"
+    screen_type = db.Column(db.String(350))  # AMOLED, IPS LCD, etc.
+    display_type = db.Column(db.String(350))  # Full display description
     refresh_rate = db.Column(db.Integer, default=60)  # Hz
     ppi = db.Column(db.Integer)  # Pixels per inch
-    multitouch = db.Column(db.String(150))  # Yes/No or specific info (increased for new dataset)
-    protection = db.Column(db.String(300))  # Corning Gorilla Glass, etc. (increased for new dataset)
+    multitouch = db.Column(db.String(350))  # Yes/No or specific info
+    protection = db.Column(db.String(350))  # Corning Gorilla Glass, etc.
 
     # Performance specifications
-    processor = db.Column(db.String(100))  # Chipset name
-    chipset = db.Column(db.String(150))  # Full chipset details
-    cpu = db.Column(db.String(250))  # CPU architecture and cores (increased for detailed specs)
-    gpu = db.Column(db.String(100))  # GPU model
-    processor_brand = db.Column(db.String(50))  # Qualcomm, MediaTek, Apple, etc.
-    ram_options = db.Column(db.String(100))  # RAM options (increased for expandable RAM descriptions)
-    storage_options = db.Column(db.String(100))  # Storage options (increased for detailed descriptions)
+    processor = db.Column(db.String(350))  # Chipset name
+    chipset = db.Column(db.String(350))  # Full chipset details
+    cpu = db.Column(db.String(350))  # CPU architecture and cores
+    gpu = db.Column(db.String(350))  # GPU model
+    processor_brand = db.Column(db.String(350))  # Qualcomm, MediaTek, Apple, etc.
+    ram_options = db.Column(db.String(350))  # RAM options
+    storage_options = db.Column(db.String(350))  # Storage options
     expandable_storage = db.Column(db.Boolean, default=False)
-    card_slot = db.Column(db.String(100))  # microSD details
+    card_slot = db.Column(db.String(350))  # microSD details
 
     # Camera specifications
-    rear_camera = db.Column(db.String(500))  # Full rear camera specs (increased for multi-camera setups)
+    rear_camera = db.Column(db.String(500))  # Full rear camera specs (keep 500 for multi-camera)
     rear_camera_main = db.Column(db.Integer)  # Main camera MP
-    front_camera = db.Column(db.String(200))  # Front camera specs
+    front_camera = db.Column(db.String(350))  # Front camera specs
     front_camera_mp = db.Column(db.Integer)  # Front camera MP
     camera_features = db.Column(db.Text)  # Camera features
-    flash = db.Column(db.String(100))  # Flash type
-    video_recording = db.Column(db.String(200))  # Video capabilities
+    flash = db.Column(db.String(350))  # Flash type
+    video_recording = db.Column(db.String(350))  # Video capabilities
 
     # Battery specifications
     battery_capacity = db.Column(db.Integer)  # in mAh
-    battery = db.Column(db.String(100))  # Full battery description
-    charging_speed = db.Column(db.String(200))  # "33W Fast Charging" (increased for new dataset)
-    fast_charging = db.Column(db.String(200))  # Detailed fast charging info
-    wireless_charging = db.Column(db.String(150))  # Wireless charging details (increased for new dataset)
-    removable_battery = db.Column(db.String(150))  # Removable/Non-Removable (increased for new dataset)
+    battery = db.Column(db.String(350))  # Full battery description
+    charging_speed = db.Column(db.String(350))  # Fast charging details
+    fast_charging = db.Column(db.String(350))  # Detailed fast charging info
+    wireless_charging = db.Column(db.String(350))  # Wireless charging details
+    removable_battery = db.Column(db.String(350))  # Removable/Non-Removable
 
     # Network and Connectivity
-    sim = db.Column(db.String(300))  # SIM type details (increased for new dataset)
-    technology = db.Column(db.String(200))  # GSM / HSPA / LTE / 5G
-    network_5g = db.Column(db.String(500))  # 5G bands (increased for new dataset)
-    network_4g = db.Column(db.String(500))  # 4G bands (increased for new dataset)
-    network_3g = db.Column(db.String(300))  # 3G bands (increased for new dataset)
-    network_2g = db.Column(db.String(300))  # 2G bands (increased for new dataset)
-    network_speed = db.Column(db.String(200))  # Network speed capabilities
+    sim = db.Column(db.String(350))  # SIM type details
+    technology = db.Column(db.String(350))  # GSM / HSPA / LTE / 5G
+    network_5g = db.Column(db.String(500))  # 5G bands (keep 500 for band lists)
+    network_4g = db.Column(db.String(500))  # 4G bands (keep 500 for band lists)
+    network_3g = db.Column(db.String(350))  # 3G bands
+    network_2g = db.Column(db.String(350))  # 2G bands
+    network_speed = db.Column(db.String(350))  # Network speed capabilities
     has_5g = db.Column(db.Boolean, default=False, index=True)
-    wifi_standard = db.Column(db.String(200))  # WiFi standard (increased for new dataset)
-    bluetooth_version = db.Column(db.String(200))  # Bluetooth version (increased for new dataset)
-    gps = db.Column(db.String(200))  # GPS capabilities (increased for new dataset)
-    nfc = db.Column(db.String(150))  # NFC support (increased for new dataset)
-    usb = db.Column(db.String(150))  # USB type and version (increased for new dataset)
-    audio_jack = db.Column(db.String(100))  # 3.5mm jack presence
-    radio = db.Column(db.String(200))  # FM radio support (increased for new dataset)
+    wifi_standard = db.Column(db.String(350))  # WiFi standard
+    bluetooth_version = db.Column(db.String(350))  # Bluetooth version
+    gps = db.Column(db.String(350))  # GPS capabilities
+    nfc = db.Column(db.String(350))  # NFC support
+    usb = db.Column(db.String(350))  # USB type and version
+    audio_jack = db.Column(db.String(350))  # 3.5mm jack presence
+    radio = db.Column(db.String(350))  # FM radio support
 
     # Operating System
-    operating_system = db.Column(db.String(200))  # "Android 13", "iOS 16", full OS details
+    operating_system = db.Column(db.String(350))  # "Android 13", "iOS 16", full OS details
 
     # Physical characteristics
-    weight = db.Column(db.String(100))  # Weight with unit (increased for new dataset)
-    dimensions = db.Column(db.String(200))  # "160.5 x 74.8 x 8.4 mm" (increased for new dataset)
-    colors_available = db.Column(db.String(200))  # "Black, White, Blue"
-    body_material = db.Column(db.String(300))  # Body material description (increased for detailed material specs)
+    weight = db.Column(db.String(350))  # Weight with unit
+    dimensions = db.Column(db.String(350))  # "160.5 x 74.8 x 8.4 mm"
+    colors_available = db.Column(db.String(350))  # "Black, White, Blue"
+    body_material = db.Column(db.String(350))  # Body material description
 
     # Additional features
     fingerprint_sensor = db.Column(db.Boolean, default=True)
     face_unlock = db.Column(db.Boolean, default=False)
-    water_resistance = db.Column(db.String(20))  # "IP68"
+    water_resistance = db.Column(db.String(350))  # "IP68"
     dual_sim = db.Column(db.Boolean, default=True)
     sensors = db.Column(db.Text)  # All sensors
 
