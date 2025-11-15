@@ -14,7 +14,8 @@ class Config:
     # Options: SQLite (development), MySQL (production), Oracle (enterprise)
     #
     # For MySQL: mysql+pymysql://username:password@localhost/dialsmart
-    # For Oracle: oracle+oracledb://username:password@localhost:1521/?service_name=XEPDB1
+    # For Oracle XE 11g: oracle+oracledb://username:password@localhost:1521/?service_name=XE
+    # For Oracle XE 21c: oracle+oracledb://username:password@localhost:1521/?service_name=XEPDB1
     #
     # Or edit the default below directly
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -33,7 +34,7 @@ class Config:
     ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD', 'dialsmart123')
     ORACLE_HOST = os.environ.get('ORACLE_HOST', 'localhost')
     ORACLE_PORT = os.environ.get('ORACLE_PORT', '1521')
-    ORACLE_SERVICE = os.environ.get('ORACLE_SERVICE', 'XEPDB1')  # For Oracle XE, use XEPDB1 or XE
+    ORACLE_SERVICE = os.environ.get('ORACLE_SERVICE', 'XE')  # Oracle XE 11g service name
 
     # Database URI - Change DB_TYPE to switch databases
     # Options: 'sqlite', 'mysql', 'oracle'
