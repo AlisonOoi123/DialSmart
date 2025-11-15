@@ -109,10 +109,87 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for phone, count in popular_phones %}
+                            {% for item in popular_phones %}
                             <tr>
-                                <td>{{ phone.model_name }}</td>
-                                <td><span class="badge bg-success">{{ count }}</span></td>
+                                <td>{{ item.phone.model_name }}</td>
+                                <td><span class="badge bg-success">{{ item.recommendation_count }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="2" class="text-center text-muted">No data available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Latest Recommendations and Comparisons -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-star-fill"></i> Latest Recommendations</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Phone</th>
+                                <th>Match %</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rec in latest_recommendations %}
+                            <tr>
+                                <td>{{ rec.user.full_name if rec.user else 'Guest' }}</td>
+                                <td>{{ rec.phone.model_name if rec.phone else 'N/A' }}</td>
+                                <td><span class="badge bg-info">{{ rec.match_percentage }}%</span></td>
+                                <td>{{ rec.created_at.strftime('%d %b') if rec.created_at else 'N/A' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No recommendations yet</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-arrow-left-right"></i> Latest Comparisons</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Phones Compared</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for comp in latest_comparisons %}
+                            <tr>
+                                <td>{{ comp.user.full_name if comp.user else 'Guest' }}</td>
+                                <td>
+                                    <small>{{ comp.phone1.model_name if comp.phone1 else 'N/A' }}
+                                    vs
+                                    {{ comp.phone2.model_name if comp.phone2 else 'N/A' }}</small>
+                                </td>
+                                <td>{{ comp.created_at.strftime('%d %b') if comp.created_at else 'N/A' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">No comparisons yet</td>
                             </tr>
                             {% endfor %}
                         </tbody>

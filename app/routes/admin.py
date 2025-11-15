@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from functools import wraps
 from app import db
-from app.models import User, Phone, PhoneSpecification, Brand, Recommendation
+from app.models import User, Phone, PhoneSpecification, Brand, Recommendation, Comparison
 from app.utils.helpers import save_uploaded_file
 from datetime import datetime, timedelta
 import json
@@ -81,6 +81,18 @@ def dashboard():
                 'recommendation_count': phone_data[5]
             })
 
+    # Get latest recommendations (from wizard, chatbot, or any source)
+    latest_recommendations = Recommendation.query\
+        .order_by(Recommendation.created_at.desc())\
+        .limit(5)\
+        .all()
+
+    # Get latest comparisons
+    latest_comparisons = Comparison.query\
+        .order_by(Comparison.created_at.desc())\
+        .limit(5)\
+        .all()
+
     return render_template('admin/dashboard.html',
                          total_users=total_users,
                          total_phones=total_phones,
@@ -89,7 +101,9 @@ def dashboard():
                          new_users=new_users,
                          recent_recommendations=recent_recommendations,
                          recent_users=recent_users_list,
-                         popular_phones=popular_phones_list)
+                         popular_phones=popular_phones_list,
+                         latest_recommendations=latest_recommendations,
+                         latest_comparisons=latest_comparisons)
 
 # Phone Management
 @bp.route('/phones')
@@ -109,7 +123,7 @@ def phones():
     if brand_id:
         query = query.filter_by(brand_id=brand_id)
 
-    phones = query.order_by(Phone.created_at.desc())\
+    phones = query.order_by(Phone.id.desc())\
         .paginate(page=page, per_page=20, error_out=False)
 
     brands = Brand.query.filter_by(is_active=True).all()
@@ -290,7 +304,7 @@ def delete_phone(phone_id):
 def brands():
     """List all brands"""
     page = request.args.get('page', 1, type=int)
-    brands = Brand.query.order_by(Brand.name)\
+    brands = Brand.query.order_by(Brand.id.desc())\
         .paginate(page=page, per_page=20, error_out=False)
 
     return render_template('admin/brands.html', brands=brands)
