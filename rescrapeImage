@@ -1,0 +1,98 @@
+# rescrape_with_images.py
+import time
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+import pandas as pd
+import re
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+}
+
+base_url = "https://www.mobile57.com/my/home"
+
+def extract_image_url(soup, model_name):
+    """Extract the main phone image URL"""
+    image_url = ""
+    
+    strategies = [
+        lambda: soup.select_one('img.phone-image'),
+        lambda: soup.select_one('img.product-image'),
+        lambda: soup.find('img', alt=re.compile(model_name, re.I)),
+        lambda: soup.select_one('.phone-details img'),
+        lambda: soup.select_one('article img'),
+        lambda: soup.select_one('main img'),
+    ]
+    
+    for strategy in strategies:
+        try:
+            img_tag = strategy()
+            if img_tag:
+                img_url = img_tag.get('src') or img_tag.get('data-src')
+                if img_url:
+                    if img_url.startswith('//'):
+                        img_url = 'https:' + img_url
+                    elif img_url.startswith('/'):
+                        img_url = urljoin(base_url, img_url)
+                    
+                    skip_patterns = ['icon', 'logo', 'placeholder', 'thumb', 'avatar', 'banner']
+                    if not any(pattern in img_url.lower() for pattern in skip_patterns):
+                        if len(img_url) > 20:
+                            image_url = img_url
+                            print(f"    → Found image: {img_url[:80]}...")
+                            break
+        except:
+            continue
+    
+    return image_url if image_url else "N/A"
+
+def update_csv_with_images(brand_name, csv_file):
+    """Update existing CSV with image URLs"""
+    print(f"\nUpdating {brand_name} phones with images...")
+    
+    df = pd.read_csv(csv_file)
+    updated_count = 0
+    
+    for index, row in df.iterrows():
+        if row['Brand'] == brand_name and (pd.isna(row.get('ImageURL')) or row.get('ImageURL') == 'N/A'):
+            url = row.get('URL')
+            if pd.isna(url):
+                continue
+            
+            print(f"  Fetching image for: {row['Model']}")
+            try:
+                res = requests.get(url, headers=headers, timeout=15)
+                if res.status_code == 200:
+                    soup = BeautifulSoup(res.text, 'html.parser')
+                    image_url = extract_image_url(soup, row['Model'])
+                    df.at[index, 'ImageURL'] = image_url
+                    updated_count += 1
+                    print(f"    ✓ Updated")
+                time.sleep(2)
+            except Exception as e:
+                print(f"    ✗ Error: {str(e)}")
+    
+    # Save updated CSV
+    output_file = f"{brand_name.lower()}_updated_{int(time.time())}.csv"
+    df.to_csv(output_file, index=False, encoding='utf-8-sig')
+    print(f"\n✓ Updated {updated_count} images for {brand_name}")
+    print(f"✓ Saved to: {output_file}")
+    
+    return output_file
+
+# Brands that need images
+brands_to_update = ['Honor', 'Huawei', 'Apple', 'Google', 'Asus']
+
+print("="*60)
+print("Re-scraping Images for Missing Brands")
+print("="*60)
+
+# Update each brand
+for brand in brands_to_update:
+    update_csv_with_images(brand, 'fyp_phoneDataset.csv')
+    time.sleep(5)
+
+print("\n" + "="*60)
+print("All brands updated!")
+print("="*60)
