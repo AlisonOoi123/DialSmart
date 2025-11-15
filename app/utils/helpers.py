@@ -116,11 +116,14 @@ def calculate_match_score(user_prefs, phone, phone_specs):
         max_score += 10
         if phone_specs.ram_options:
             try:
-                # Handle formats: "8GB, 12GB" or "8 / 12" or "8GB / 12GB"
-                ram_str = phone_specs.ram_options.replace('GB', '').replace('/', ',')
-                ram_values = [int(r.strip()) for r in ram_str.split(',') if r.strip().isdigit()]
+                # Extract all numbers from RAM string (handles "8GB / 12GB", "4GB / 6GB (Expandable...)", etc.)
+                ram_values = re.findall(r'(\d+)\s*GB', phone_specs.ram_options, re.IGNORECASE)
+                ram_values = [int(r) for r in ram_values]
                 if ram_values and max(ram_values) >= user_prefs.min_ram:
                     score += 10
+                elif ram_values:
+                    # Partial credit for some RAM (better than nothing)
+                    score += 5
             except:
                 pass
 
@@ -128,11 +131,20 @@ def calculate_match_score(user_prefs, phone, phone_specs):
         max_score += 10
         if phone_specs.storage_options:
             try:
-                # Handle formats: "128GB, 256GB" or "128 / 256 /512" or "128GB / 256GB"
-                storage_str = phone_specs.storage_options.replace('GB', '').replace('/', ',')
-                storage_values = [int(s.strip()) for s in storage_str.split(',') if s.strip().isdigit()]
+                # Extract all numbers from storage string (handles "256GB / 512GB / 1TBUFS 4.0", etc.)
+                storage_values = re.findall(r'(\d+)\s*GB', phone_specs.storage_options, re.IGNORECASE)
+                storage_values = [int(s) for s in storage_values]
+
+                # Also check for TB (terabytes)
+                tb_values = re.findall(r'(\d+)\s*TB', phone_specs.storage_options, re.IGNORECASE)
+                if tb_values:
+                    storage_values.extend([int(t) * 1024 for t in tb_values])
+
                 if storage_values and max(storage_values) >= user_prefs.min_storage:
                     score += 10
+                elif storage_values:
+                    # Partial credit for some storage
+                    score += 5
             except:
                 pass
 

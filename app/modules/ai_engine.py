@@ -11,7 +11,7 @@ class AIRecommendationEngine:
     """AI-powered recommendation engine for smartphones"""
 
     def __init__(self):
-        self.min_match_threshold = 50  # Minimum match percentage to recommend
+        self.min_match_threshold = 30  # Minimum match percentage to recommend (lowered for better results)
 
     def get_recommendations(self, user_id, criteria=None, top_n=3):
         """
