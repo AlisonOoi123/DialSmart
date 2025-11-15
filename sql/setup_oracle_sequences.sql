@@ -58,6 +58,13 @@ EXCEPTION
 END;
 /
 
+BEGIN
+   EXECUTE IMMEDIATE 'DROP SEQUENCE contact_messages_seq';
+EXCEPTION
+   WHEN OTHERS THEN NULL;
+END;
+/
+
 -- Create sequences for auto-increment
 CREATE SEQUENCE users_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE brands_seq START WITH 1 INCREMENT BY 1;
@@ -67,6 +74,7 @@ CREATE SEQUENCE user_preferences_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE recommendations_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE comparisons_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE chat_history_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE contact_messages_seq START WITH 1 INCREMENT BY 1;
 
 -- Drop existing triggers if they exist
 BEGIN
@@ -120,6 +128,13 @@ END;
 
 BEGIN
    EXECUTE IMMEDIATE 'DROP TRIGGER chat_history_id_trigger';
+EXCEPTION
+   WHEN OTHERS THEN NULL;
+END;
+/
+
+BEGIN
+   EXECUTE IMMEDIATE 'DROP TRIGGER contact_messages_id_trigger';
 EXCEPTION
    WHEN OTHERS THEN NULL;
 END;
@@ -202,6 +217,16 @@ FOR EACH ROW
 BEGIN
   IF :new.id IS NULL THEN
     SELECT chat_history_seq.NEXTVAL INTO :new.id FROM dual;
+  END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER contact_messages_id_trigger
+BEFORE INSERT ON contact_messages
+FOR EACH ROW
+BEGIN
+  IF :new.id IS NULL THEN
+    SELECT contact_messages_seq.NEXTVAL INTO :new.id FROM dual;
   END IF;
 END;
 /
