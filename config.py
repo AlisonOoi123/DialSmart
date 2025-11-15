@@ -37,7 +37,7 @@ class Config:
 
     # Database URI - Change DB_TYPE to switch databases
     # Options: 'sqlite', 'mysql', 'oracle'
-    DB_TYPE = os.environ.get('DB_TYPE', 'sqlite').lower()
+    DB_TYPE = 'oracle'
 
     if DB_TYPE == 'oracle':
         # Oracle Database URI
