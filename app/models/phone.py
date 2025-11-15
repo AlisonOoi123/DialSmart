@@ -49,7 +49,7 @@ class Phone(db.Model):
 
 
 class PhoneSpecification(db.Model):
-    """Detailed phone specifications"""
+    """Detailed phone specifications - Enhanced for comprehensive CSV dataset"""
     __tablename__ = 'phone_specifications'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -58,45 +58,76 @@ class PhoneSpecification(db.Model):
     # Display specifications
     screen_size = db.Column(db.Float)  # in inches
     screen_resolution = db.Column(db.String(50))  # e.g., "1080x2400"
-    screen_type = db.Column(db.String(50))  # AMOLED, IPS LCD, etc.
+    screen_type = db.Column(db.String(100))  # AMOLED, IPS LCD, etc.
+    display_type = db.Column(db.String(200))  # Full display description
     refresh_rate = db.Column(db.Integer, default=60)  # Hz
+    ppi = db.Column(db.Integer)  # Pixels per inch
+    multitouch = db.Column(db.String(50))  # Yes/No or specific info
+    protection = db.Column(db.String(100))  # Corning Gorilla Glass, etc.
 
     # Performance specifications
-    processor = db.Column(db.String(100))
+    processor = db.Column(db.String(100))  # Chipset name
+    chipset = db.Column(db.String(150))  # Full chipset details
+    cpu = db.Column(db.String(200))  # CPU architecture and cores
+    gpu = db.Column(db.String(100))  # GPU model
     processor_brand = db.Column(db.String(50))  # Qualcomm, MediaTek, Apple, etc.
     ram_options = db.Column(db.String(50))  # "4GB, 6GB, 8GB"
     storage_options = db.Column(db.String(50))  # "64GB, 128GB, 256GB"
     expandable_storage = db.Column(db.Boolean, default=False)
+    card_slot = db.Column(db.String(100))  # microSD details
 
     # Camera specifications
-    rear_camera = db.Column(db.String(100))  # "48MP + 8MP + 2MP"
+    rear_camera = db.Column(db.String(200))  # Full rear camera specs
     rear_camera_main = db.Column(db.Integer)  # Main camera MP
-    front_camera = db.Column(db.String(50))  # "16MP"
+    front_camera = db.Column(db.String(100))  # Front camera specs
     front_camera_mp = db.Column(db.Integer)  # Front camera MP
-    camera_features = db.Column(db.Text)  # JSON string of features
+    camera_features = db.Column(db.Text)  # Camera features
+    flash = db.Column(db.String(100))  # Flash type
+    video_recording = db.Column(db.String(200))  # Video capabilities
 
     # Battery specifications
     battery_capacity = db.Column(db.Integer)  # in mAh
-    charging_speed = db.Column(db.String(50))  # "33W Fast Charging"
-    wireless_charging = db.Column(db.Boolean, default=False)
+    battery = db.Column(db.String(100))  # Full battery description
+    charging_speed = db.Column(db.String(100))  # "33W Fast Charging"
+    fast_charging = db.Column(db.String(200))  # Detailed fast charging info
+    wireless_charging = db.Column(db.String(100))  # Wireless charging details
+    removable_battery = db.Column(db.String(50))  # Removable/Non-Removable
 
-    # Connectivity
+    # Network and Connectivity
+    sim = db.Column(db.String(100))  # SIM type details
+    technology = db.Column(db.String(100))  # GSM / HSPA / LTE / 5G
+    network_5g = db.Column(db.String(200))  # 5G bands
+    network_4g = db.Column(db.String(200))  # 4G bands
+    network_3g = db.Column(db.String(200))  # 3G bands
+    network_2g = db.Column(db.String(200))  # 2G bands
+    network_speed = db.Column(db.String(100))  # Network speed capabilities
     has_5g = db.Column(db.Boolean, default=False, index=True)
-    wifi_standard = db.Column(db.String(50))  # "WiFi 6", "WiFi 5"
-    bluetooth_version = db.Column(db.String(20))  # "5.2"
-    nfc = db.Column(db.Boolean, default=False)
+    wifi_standard = db.Column(db.String(100))  # "WiFi 6", "WiFi 5"
+    bluetooth_version = db.Column(db.String(50))  # "5.2"
+    gps = db.Column(db.String(100))  # GPS capabilities
+    nfc = db.Column(db.String(50))  # NFC support
+    usb = db.Column(db.String(100))  # USB type and version
+    audio_jack = db.Column(db.String(50))  # 3.5mm jack presence
+    radio = db.Column(db.String(50))  # FM radio support
+
+    # Operating System
+    operating_system = db.Column(db.String(200))  # "Android 13", "iOS 16", full OS details
+
+    # Physical characteristics
+    weight = db.Column(db.String(50))  # Weight with unit
+    dimensions = db.Column(db.String(100))  # "160.5 x 74.8 x 8.4 mm"
+    colors_available = db.Column(db.String(200))  # "Black, White, Blue"
+    body_material = db.Column(db.String(100))  # Body material description
 
     # Additional features
-    operating_system = db.Column(db.String(50))  # "Android 13", "iOS 16"
     fingerprint_sensor = db.Column(db.Boolean, default=True)
     face_unlock = db.Column(db.Boolean, default=False)
     water_resistance = db.Column(db.String(20))  # "IP68"
     dual_sim = db.Column(db.Boolean, default=True)
+    sensors = db.Column(db.Text)  # All sensors
 
-    # Physical characteristics
-    weight = db.Column(db.Integer)  # in grams
-    dimensions = db.Column(db.String(50))  # "160.5 x 74.8 x 8.4 mm"
-    colors_available = db.Column(db.String(200))  # "Black, White, Blue"
+    # Reference
+    product_url = db.Column(db.String(500))  # Original product page URL
 
     def __repr__(self):
         return f'<PhoneSpecification for Phone {self.phone_id}>'

@@ -11,6 +11,9 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dialsmart-secret-key-2024'
 
     # Database settings
+    # Default: SQLite (good for development)
+    # Production: Set DATABASE_URL environment variable to PostgreSQL
+    # Example: postgresql://user:password@localhost/dialsmart
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(BASE_DIR, 'dialsmart.db')
@@ -39,10 +42,10 @@ class Config:
         'premium': (3000, 10000)
     }
 
-    # Feature brands
+    # Featured brands (from CSV dataset + popular brands)
     FEATURED_BRANDS = [
-        'Samsung', 'Apple', 'Huawei', 'XIAOMI', 'Nokia',
-        'Lenovo', 'Honor', 'Oppo', 'Realme', 'Vivo'
+        'Samsung', 'Apple', 'Xiaomi', 'Oppo', 'Vivo', 'Realme',
+        'Honor', 'Huawei', 'Google', 'Asus', 'Poco', 'Redmi', 'Infinix'
     ]
 
 class DevelopmentConfig(Config):

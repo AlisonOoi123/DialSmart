@@ -28,3 +28,7 @@ schedule==1.2.0
 # Web Scraping (for TechNave data collection and price updates)
 requests==2.31.0
 beautifulsoup4==4.12.3
+
+# PostgreSQL support (optional - for production databases)
+# Uncomment the line below if using PostgreSQL instead of SQLite
+# psycopg2-binary==2.9.9
