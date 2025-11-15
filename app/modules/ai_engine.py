@@ -121,6 +121,40 @@ class AIRecommendationEngine:
         # Sort by match score (descending)
         recommendations.sort(key=lambda x: x['match_score'], reverse=True)
 
+        # If multiple brands selected, get top phone from each brand
+        if user_prefs.preferred_brands:
+            preferred_brands = user_prefs.preferred_brands
+            if isinstance(preferred_brands, str):
+                try:
+                    import json
+                    preferred_brands = json.loads(preferred_brands)
+                except:
+                    preferred_brands = []
+
+            if preferred_brands and len(preferred_brands) > 1:
+                # Group recommendations by brand
+                brand_groups = {}
+                for rec in recommendations:
+                    brand_id = rec['phone'].brand_id
+                    if brand_id not in brand_groups:
+                        brand_groups[brand_id] = []
+                    brand_groups[brand_id].append(rec)
+
+                # Get top phone from each brand
+                top_per_brand = []
+                for brand_id, brand_recs in brand_groups.items():
+                    top_per_brand.append(brand_recs[0])  # Already sorted by score
+
+                # Sort combined results by match score
+                top_per_brand.sort(key=lambda x: x['match_score'], reverse=True)
+
+                # Save and return top phones from each brand
+                if not criteria and user_prefs and hasattr(user_prefs, 'user_id'):
+                    self._save_recommendations(user_id, top_per_brand[:top_n], user_prefs)
+
+                print(f"DEBUG: Returning top phone from each of {len(brand_groups)} brands")
+                return top_per_brand[:top_n]
+
         # Save recommendations to database if using actual user preferences
         if not criteria and user_prefs and hasattr(user_prefs, 'user_id'):
             self._save_recommendations(user_id, recommendations[:top_n], user_prefs)

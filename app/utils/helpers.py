@@ -99,23 +99,110 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     score = 0
     max_score = 0
 
-    # Budget match (weight: 30) - only if user specified budget
+    # Budget match (weight: 25) - reduced to make room for usage/features
     if user_prefs.min_budget is not None or user_prefs.max_budget is not None:
-        max_score += 30
+        max_score += 25
         min_budget = user_prefs.min_budget if user_prefs.min_budget is not None else 0
         max_budget = user_prefs.max_budget if user_prefs.max_budget is not None else float('inf')
 
         if min_budget <= phone.price <= max_budget:
-            score += 30
+            score += 25
         elif phone.price < min_budget:
             # Slight bonus for cheaper phones (under budget)
-            score += 20
+            score += 18
         else:
             # Penalty for over-budget phones
             if max_budget != float('inf'):
                 over_budget = phone.price - max_budget
-                penalty = min(30, (over_budget / max_budget) * 30)
-                score += max(0, 30 - penalty)
+                penalty = min(25, (over_budget / max_budget) * 25)
+                score += max(0, 25 - penalty)
+
+    # Primary usage scoring (weight: 15)
+    if hasattr(user_prefs, 'primary_usage') and user_prefs.primary_usage:
+        primary_usage = user_prefs.primary_usage
+        if isinstance(primary_usage, str):
+            try:
+                primary_usage = json.loads(primary_usage)
+            except:
+                primary_usage = []
+
+        if primary_usage and phone_specs:
+            max_score += 15
+            usage_score = 0
+
+            for usage in primary_usage:
+                if usage == 'Photography':
+                    # Bonus for high MP camera
+                    if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= 48:
+                        usage_score += 5
+                elif usage == 'Gaming':
+                    # Bonus for high RAM and refresh rate
+                    if phone_specs.ram_options and '12GB' in phone_specs.ram_options:
+                        usage_score += 3
+                    if phone_specs.refresh_rate and phone_specs.refresh_rate >= 90:
+                        usage_score += 2
+                elif usage in ['Work', 'Work/Productivity']:
+                    # Bonus for good battery and RAM
+                    if phone_specs.battery_capacity and phone_specs.battery_capacity >= 4000:
+                        usage_score += 3
+                    if phone_specs.ram_options and ('8GB' in phone_specs.ram_options or '12GB' in phone_specs.ram_options):
+                        usage_score += 2
+                elif usage == 'Entertainment':
+                    # Bonus for large screen and battery
+                    if phone_specs.screen_size and phone_specs.screen_size >= 6.5:
+                        usage_score += 3
+                    if phone_specs.battery_capacity and phone_specs.battery_capacity >= 4500:
+                        usage_score += 2
+                elif usage == 'Social Media':
+                    # Bonus for good front camera
+                    if phone_specs.front_camera_mp and phone_specs.front_camera_mp >= 16:
+                        usage_score += 5
+
+            score += min(15, usage_score)
+
+    # Important features scoring (weight: 15)
+    if hasattr(user_prefs, 'important_features') and user_prefs.important_features:
+        important_features = user_prefs.important_features
+        if isinstance(important_features, str):
+            try:
+                important_features = json.loads(important_features)
+            except:
+                important_features = []
+
+        if important_features and phone_specs:
+            max_score += 15
+            feature_score = 0
+
+            for feature in important_features:
+                if feature == 'Battery' or feature == 'Long Battery Life':
+                    if phone_specs.battery_capacity and phone_specs.battery_capacity >= 5000:
+                        feature_score += 5
+                    elif phone_specs.battery_capacity and phone_specs.battery_capacity >= 4000:
+                        feature_score += 3
+                elif feature == 'Camera' or feature == 'Great Camera':
+                    if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= 64:
+                        feature_score += 5
+                    elif phone_specs.rear_camera_main and phone_specs.rear_camera_main >= 48:
+                        feature_score += 3
+                elif feature == 'Performance' or feature == 'Fast Performance':
+                    if phone_specs.ram_options and '12GB' in phone_specs.ram_options:
+                        feature_score += 5
+                    elif phone_specs.ram_options and '8GB' in phone_specs.ram_options:
+                        feature_score += 3
+                elif feature == 'Storage' or feature == 'Large Storage':
+                    if phone_specs.storage_options and ('512GB' in phone_specs.storage_options or '1TB' in phone_specs.storage_options):
+                        feature_score += 5
+                    elif phone_specs.storage_options and '256GB' in phone_specs.storage_options:
+                        feature_score += 3
+                elif feature == '5G' or feature == '5G Connectivity':
+                    if phone_specs.has_5g:
+                        feature_score += 5
+                elif feature == 'Design' or feature == 'Premium Design':
+                    # Bonus for lighter weight and premium materials
+                    if phone_specs.weight and phone_specs.weight <= 180:
+                        feature_score += 3
+
+            score += min(15, feature_score)
 
     if phone_specs:
         # RAM match (weight: 10) - only if user specified RAM requirement

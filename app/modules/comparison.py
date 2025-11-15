@@ -62,6 +62,25 @@ class PhoneComparison:
 
     def _build_comparison_table(self, phone1, specs1, phone2, specs2):
         """Build detailed comparison table"""
+        # Debug logging
+        print(f"DEBUG Comparison - Phone1: {phone1.model_name}, Brand: {phone1.brand.name}")
+        print(f"DEBUG Comparison - Phone1 has specs: {specs1 is not None}")
+        if specs1:
+            print(f"  - screen_size: {specs1.screen_size}")
+            print(f"  - ram_options: {specs1.ram_options}")
+            print(f"  - storage_options: {specs1.storage_options}")
+            print(f"  - rear_camera: {specs1.rear_camera}")
+            print(f"  - battery_capacity: {specs1.battery_capacity}")
+
+        print(f"DEBUG Comparison - Phone2: {phone2.model_name}, Brand: {phone2.brand.name}")
+        print(f"DEBUG Comparison - Phone2 has specs: {specs2 is not None}")
+        if specs2:
+            print(f"  - screen_size: {specs2.screen_size}")
+            print(f"  - ram_options: {specs2.ram_options}")
+            print(f"  - storage_options: {specs2.storage_options}")
+            print(f"  - rear_camera: {specs2.rear_camera}")
+            print(f"  - battery_capacity: {specs2.battery_capacity}")
+
         comparison = {
             'price': {
                 'label': 'Price',
