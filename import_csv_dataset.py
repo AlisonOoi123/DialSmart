@@ -188,8 +188,7 @@ class CSVDatasetImporter:
                                 main_image=row.get('Image URL', '').strip(),
                                 availability_status=row.get('Status', 'Available').strip(),
                                 release_date=self.parse_release_date(row.get('Release Date', '')),
-                                is_active=True,
-                                is_featured=False
+                                is_active=True
                             )
                             db.session.add(phone)
                             db.session.flush()
