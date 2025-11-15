@@ -20,6 +20,18 @@ def create_app(config_name='default'):
     # Load configuration
     app.config.from_object(config[config_name])
 
+    # Enable Oracle thick mode for Oracle 11g compatibility
+    if app.config.get('DB_TYPE') == 'oracle':
+        try:
+            import oracledb
+            # Initialize thick mode (required for Oracle 11g)
+            # This uses the Oracle Client libraries that come with Oracle installation
+            oracledb.init_oracle_client()
+        except Exception as e:
+            # If thick mode initialization fails, provide helpful error
+            print(f"Warning: Oracle thick mode initialization failed: {e}")
+            print("Oracle 11g requires thick mode. Make sure Oracle is installed.")
+
     # Initialize extensions
     db.init_app(app)
     login_manager.init_app(app)
