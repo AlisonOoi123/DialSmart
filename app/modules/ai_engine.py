@@ -42,7 +42,34 @@ class AIRecommendationEngine:
             user_prefs = self._create_default_preferences(user_id)
 
         # Get all active phones with their specifications
-        phones = Phone.query.filter_by(is_active=True).all()
+        phones_query = Phone.query.filter_by(is_active=True)
+
+        # Filter by preferred brands if specified
+        if user_prefs.preferred_brands:
+            # Handle both JSON string and list
+            preferred_brands = user_prefs.preferred_brands
+            if isinstance(preferred_brands, str):
+                try:
+                    import json
+                    preferred_brands = json.loads(preferred_brands)
+                except:
+                    preferred_brands = []
+
+            # Only filter if brands are actually specified
+            if preferred_brands and len(preferred_brands) > 0:
+                # Get brand IDs from brand names
+                from app.models import Brand
+                brand_ids = []
+                for brand_name in preferred_brands:
+                    brand = Brand.query.filter_by(name=brand_name, is_active=True).first()
+                    if brand:
+                        brand_ids.append(brand.id)
+
+                # Filter phones by brand IDs
+                if brand_ids:
+                    phones_query = phones_query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = phones_query.all()
 
         # Calculate match scores for each phone
         recommendations = []

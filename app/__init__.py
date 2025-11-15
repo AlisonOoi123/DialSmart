@@ -66,6 +66,29 @@ def create_app(config_name='default'):
                 return f"/api/image-proxy?url={quote(image_url)}"
         return image_url or 'https://via.placeholder.com/300x400?text=Phone'
 
+    @app.template_filter('nl2br')
+    def nl2br_filter(text):
+        """Convert newlines to HTML line breaks"""
+        if not text:
+            return ''
+        from markupsafe import escape, Markup
+        escaped_text = escape(text)
+        return Markup(str(escaped_text).replace('\n', '<br>\n'))
+
+    @app.template_filter('local_time')
+    def local_time_filter(dt, format='%Y-%m-%d %H:%M:%S'):
+        """Convert UTC datetime to local time"""
+        if not dt:
+            return ''
+        from datetime import datetime, timezone
+        import time
+        # If datetime is naive (no timezone), assume UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        # Convert to local time
+        local_dt = dt.astimezone()
+        return local_dt.strftime(format)
+
     # Create database tables
     with app.app_context():
         db.create_all()

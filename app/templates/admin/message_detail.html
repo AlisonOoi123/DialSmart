@@ -39,7 +39,7 @@
             </div>
             <div class="col-md-6 text-md-end">
                 <h6 class="text-muted">Date:</h6>
-                <p>{{ message.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                <p>{{ message.created_at|local_time('%B %d, %Y at %I:%M %p') }}</p>
             </div>
         </div>
 
@@ -84,7 +84,7 @@
         </div>
         {% else %}
         <div class="alert alert-success">
-            <i class="bi bi-check-circle"></i> This message was marked as replied on {{ message.replied_at.strftime('%B %d, %Y') }}.
+            <i class="bi bi-check-circle"></i> This message was marked as replied on {{ message.replied_at|local_time('%B %d, %Y') }}.
             <a href="mailto:{{ message.email }}?subject=Re: {{ message.subject or 'Your inquiry' }}"
                class="btn btn-sm btn-outline-success ms-2">
                 Send Another Reply
