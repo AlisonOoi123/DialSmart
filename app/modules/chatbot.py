@@ -14,31 +14,34 @@ class ChatbotEngine:
 
     def __init__(self):
         self.ai_engine = AIRecommendationEngine()
+        # Enhanced keyword lists for better matching
         self.intents = {
-            'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening'],
-            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm', 'ringgit', 'myr'],
-            'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'show', 'get', 'search', 'phone', '5g', 'smartphone'],
-            'comparison': ['compare', 'difference', 'vs', 'versus', 'better', 'which is better'],
-            'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor'],
-            'brand_query': ['brand', 'samsung', 'apple', 'iphone', 'xiaomi', 'huawei', 'oppo', 'vivo', 'realme', 'infinix', 'poco'],
-            'help': ['help', 'how', 'what can you do', 'what can i ask'],
-            'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'video']
+            'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'greetings', 'howdy', 'hiya'],
+            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm', 'ringgit', 'myr', 'how much', 'under', 'below', 'within', 'range'],
+            'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'show', 'get', 'search', 'phone', '5g', 'smartphone', 'which phone', 'best phone', 'top phone'],
+            'comparison': ['compare', 'difference', 'vs', 'versus', 'better', 'which is better', 'or', 'between'],
+            'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor', 'features', 'megapixel', 'mp', 'mah', 'gb', 'inch'],
+            'brand_query': ['brand', 'samsung', 'apple', 'iphone', 'xiaomi', 'huawei', 'oppo', 'vivo', 'realme', 'infinix', 'poco', 'oneplus', 'google', 'pixel', 'asus', 'honor'],
+            'help': ['help', 'how', 'what can you do', 'what can i ask', 'guide', 'assist', 'support'],
+            'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'video', 'games', 'photos', 'selfie', 'streaming']
         }
+        # Conversation context storage (session_id -> context dict)
+        self.conversation_context = {}
 
     def process_message(self, user_id, message, session_id=None):
         """
-        Process user message and generate response
+        Process user message and generate response with context awareness
 
         Args:
             user_id: User ID
             message: User's message text
-            session_id: Optional session ID for conversation grouping
+            session_id: Optional session ID for conversation grouping and context
 
         Returns:
             Dictionary with response and metadata
         """
-        # Detect intent
-        intent = self._detect_intent(message.lower())
+        # Detect intent with context awareness
+        intent = self._detect_intent(message.lower(), session_id)
 
         # Generate response based on intent
         response_data = self._generate_response(user_id, message, intent)
@@ -68,15 +71,48 @@ class ChatbotEngine:
 
         return response_data
 
-    def _detect_intent(self, message):
-        """Detect user intent from message"""
+    def _detect_intent(self, message, session_id=None):
+        """
+        Detect user intent from message with enhanced multi-keyword matching
+        Returns primary intent and detected keywords
+        """
         message_lower = message.lower()
+        intent_scores = {}
+        detected_keywords = []
 
-        # Check each intent
+        # Score each intent based on keyword matches
         for intent, keywords in self.intents.items():
+            score = 0
             for keyword in keywords:
                 if keyword in message_lower:
-                    return intent
+                    score += 1
+                    detected_keywords.append((intent, keyword))
+
+            if score > 0:
+                intent_scores[intent] = score
+
+        # Check conversation context for follow-up questions
+        if session_id and session_id in self.conversation_context:
+            context = self.conversation_context[session_id]
+            last_intent = context.get('last_intent')
+
+            # Boost scoring for related intents in follow-up
+            if last_intent == 'recommendation' and 'specification' in intent_scores:
+                intent_scores['specification'] += 1
+
+        # Return intent with highest score
+        if intent_scores:
+            primary_intent = max(intent_scores, key=intent_scores.get)
+
+            # Store context
+            if session_id:
+                self.conversation_context[session_id] = {
+                    'last_intent': primary_intent,
+                    'keywords': detected_keywords,
+                    'message': message
+                }
+
+            return primary_intent
 
         return 'general'
 
@@ -84,10 +120,17 @@ class ChatbotEngine:
         """Generate appropriate response based on intent"""
 
         if intent == 'greeting':
+            import random
+            greetings = [
+                "Hello! I'm DialSmart AI Assistant. I'm here to help you find the perfect smartphone. How can I assist you today?",
+                "Hi there! Looking for a new phone? I can help you find the perfect match based on your needs and budget!",
+                "Hey! Welcome to DialSmart. Tell me what you're looking for in a phone, and I'll recommend the best options for you!",
+                "Greetings! I specialize in helping people find their ideal smartphone. What features are most important to you?"
+            ]
             return {
-                'response': "Hello! I'm DialSmart AI Assistant. I'm here to help you find the perfect smartphone. How can I assist you today?",
+                'response': random.choice(greetings),
                 'type': 'text',
-                'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
+                'quick_replies': ['Find a phone', 'Show budget options', 'Best for gaming', 'Best camera phones']
             }
 
         elif intent == 'budget_query':
@@ -106,7 +149,8 @@ class ChatbotEngine:
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
-                            'price': phone.price
+                            'price': phone.price,
+                            'image': phone.main_image
                         })
 
                     return {
@@ -147,7 +191,8 @@ class ChatbotEngine:
                         'id': phone.id,
                         'name': phone.model_name,
                         'price': phone.price,
-                        'match_score': rec['match_score']
+                        'match_score': rec['match_score'],
+                        'image': phone.main_image
                     })
 
                 return {
@@ -178,7 +223,8 @@ class ChatbotEngine:
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
-                            'price': phone.price
+                            'price': phone.price,
+                            'image': phone.main_image
                         })
 
                     return {
@@ -207,7 +253,8 @@ class ChatbotEngine:
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
-                            'price': phone.price
+                            'price': phone.price,
+                            'image': phone.main_image
                         })
 
                     return {
@@ -247,11 +294,62 @@ Just ask me anything like:
                 'type': 'text'
             }
 
-        else:  # general
+        else:  # general - try to be helpful even without clear intent
+            import random
+
+            # Try to extract any useful information from the message
+            criteria_found = self._extract_criteria(message)
+            budget_found = self._extract_budget(message)
+            brand_found = self._extract_brand(message)
+            usage_found = self._detect_usage_type(message)
+
+            # If we found any criteria, try to help
+            if criteria_found or budget_found or brand_found or usage_found:
+                responses = [
+                    f"I understand you're interested in a phone{' for ' + usage_found if usage_found else ''}. Let me find some options for you!",
+                    "Great! I can help you with that. Let me search for phones matching your requirements.",
+                    "I'm on it! Searching for the best phones based on what you told me..."
+                ]
+
+                # Try to recommend based on what we found
+                recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria_found if criteria_found else {}, top_n=3)
+
+                if recommendations:
+                    response = random.choice(responses) + "\n\n"
+                    phone_list = []
+
+                    for rec in recommendations[:3]:
+                        phone = rec['phone']
+                        response += f"📱 {phone.model_name}\n"
+                        response += f"   💰 RM{phone.price:,.2f}\n"
+                        response += f"   ✨ {rec['match_score']}% match\n\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price,
+                            'match_score': rec['match_score'],
+                            'image': phone.main_image
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+
+            # Fallback to conversational response
+            fallback_responses = [
+                "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
+                "I'd love to help you find a great phone! Tell me - what's most important to you? Budget, camera quality, gaming performance, or something else?",
+                "Looking for a new phone? I can help! Just tell me your budget or what you'll mainly use it for, and I'll suggest the best options.",
+                "I specialize in finding the perfect phone for your needs. What are you looking for - a budget phone, gaming phone, camera phone, or something else?"
+            ]
+
             return {
-                'response': "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
+                'response': random.choice(fallback_responses),
                 'type': 'text',
-                'quick_replies': ['Find a phone', 'Budget options', 'Popular brands']
+                'quick_replies': ['Under RM1500', 'Best for gaming', 'Best camera', 'Show all brands']
             }
 
     def _extract_budget(self, message):

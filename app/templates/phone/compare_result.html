@@ -34,7 +34,7 @@
             <div class="card shadow-sm h-100">
                 <div class="card-body">
                     {% if comparison.phone1.info.main_image %}
-                    <img src="{{ comparison.phone1.info.main_image }}" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone1.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250?text=Phone'">
+                    <img src="{{ comparison.phone1.info.main_image|proxy_image }}" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone1.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250?text=Phone'">
                     {% else %}
                     <img src="https://via.placeholder.com/200x250?text=Phone" alt="{{ comparison.phone1.info.model_name }}">
                     {% endif %}
@@ -52,7 +52,7 @@
             <div class="card shadow-sm h-100">
                 <div class="card-body">
                     {% if comparison.phone2.info.main_image %}
-                    <img src="{{ comparison.phone2.info.main_image }}" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone2.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250?text=Phone'">
+                    <img src="{{ comparison.phone2.info.main_image|proxy_image }}" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone2.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250?text=Phone'">
                     {% else %}
                     <img src="https://via.placeholder.com/200x250?text=Phone" alt="{{ comparison.phone2.info.model_name }}">
                     {% endif %}

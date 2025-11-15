@@ -154,22 +154,45 @@ def recommendation_history():
 def recommendation_wizard():
     """Multi-step recommendation wizard"""
     if request.method == 'POST':
-        # Process wizard form
-        criteria = {
-            'min_budget': int(request.form.get('min_budget', 500)),
-            'max_budget': int(request.form.get('max_budget', 5000)),
-            'primary_usage': request.form.getlist('primary_usage'),
-            'important_features': request.form.getlist('important_features'),
-            'preferred_brands': request.form.getlist('preferred_brands'),
-            'min_ram': int(request.form.get('min_ram', 4)),
-            'requires_5g': bool(request.form.get('requires_5g'))
-        }
+        # Process wizard form - only include values that user actually provided
+        criteria = {}
 
-        # Validate budget: min cannot be greater than max
-        if criteria['min_budget'] > criteria['max_budget']:
-            flash('Minimum budget cannot be greater than maximum budget. Please correct your values.', 'danger')
-            brands = Brand.query.filter_by(is_active=True).all()
-            return render_template('user/wizard.html', brands=brands)
+        # Budget (only add if provided)
+        min_budget = request.form.get('min_budget')
+        max_budget = request.form.get('max_budget')
+        if min_budget:
+            criteria['min_budget'] = int(min_budget)
+        if max_budget:
+            criteria['max_budget'] = int(max_budget)
+
+        # User selections (lists)
+        primary_usage = request.form.getlist('primary_usage')
+        if primary_usage:
+            criteria['primary_usage'] = primary_usage
+
+        important_features = request.form.getlist('important_features')
+        if important_features:
+            criteria['important_features'] = important_features
+
+        preferred_brands = request.form.getlist('preferred_brands')
+        if preferred_brands:
+            criteria['preferred_brands'] = preferred_brands
+
+        # RAM (only add if provided)
+        min_ram = request.form.get('min_ram')
+        if min_ram:
+            criteria['min_ram'] = int(min_ram)
+
+        # 5G (only add if checked)
+        if request.form.get('requires_5g'):
+            criteria['requires_5g'] = True
+
+        # Validate budget if both provided: min cannot be greater than max
+        if 'min_budget' in criteria and 'max_budget' in criteria:
+            if criteria['min_budget'] > criteria['max_budget']:
+                flash('Minimum budget cannot be greater than maximum budget. Please correct your values.', 'danger')
+                brands = Brand.query.filter_by(is_active=True).all()
+                return render_template('user/wizard.html', brands=brands)
 
         # Get AI recommendations
         ai_engine = AIRecommendationEngine()

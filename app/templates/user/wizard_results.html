@@ -15,7 +15,7 @@
                     <h5>{{ rec['match_score'] }}% Match</h5>
                 </div>
                 {% if rec['phone'].main_image %}
-                <img src="{{ rec['phone'].main_image }}" class="card-img-top" alt="{{ rec['phone'].model_name }}" onerror="this.src='https://via.placeholder.com/300x400?text=Phone'">
+                <img src="{{ rec['phone'].main_image|proxy_image }}" class="card-img-top" alt="{{ rec['phone'].model_name }}" onerror="this.src='https://via.placeholder.com/300x400?text=Phone'">
                 {% else %}
                 <img src="https://via.placeholder.com/300x400?text=Phone" class="card-img-top">
                 {% endif %}

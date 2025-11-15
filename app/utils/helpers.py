@@ -94,83 +94,97 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     """
     Calculate how well a phone matches user preferences
     Returns a score from 0-100
+    Only considers criteria explicitly set by user (None values are ignored)
     """
     score = 0
     max_score = 0
 
-    # Budget match (weight: 30)
-    max_score += 30
-    if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
-        score += 30
-    elif phone.price < user_prefs.min_budget:
-        # Slight penalty for cheaper phones
-        score += 20
-    else:
-        # Penalty for over-budget phones
-        over_budget = phone.price - user_prefs.max_budget
-        penalty = min(30, (over_budget / user_prefs.max_budget) * 30)
-        score += max(0, 30 - penalty)
+    # Budget match (weight: 30) - only if user specified budget
+    if user_prefs.min_budget is not None or user_prefs.max_budget is not None:
+        max_score += 30
+        min_budget = user_prefs.min_budget if user_prefs.min_budget is not None else 0
+        max_budget = user_prefs.max_budget if user_prefs.max_budget is not None else float('inf')
+
+        if min_budget <= phone.price <= max_budget:
+            score += 30
+        elif phone.price < min_budget:
+            # Slight bonus for cheaper phones (under budget)
+            score += 20
+        else:
+            # Penalty for over-budget phones
+            if max_budget != float('inf'):
+                over_budget = phone.price - max_budget
+                penalty = min(30, (over_budget / max_budget) * 30)
+                score += max(0, 30 - penalty)
 
     if phone_specs:
-        # RAM match (weight: 10)
-        max_score += 10
-        if phone_specs.ram_options:
-            try:
-                # Extract all numbers from RAM string (handles "8GB / 12GB", "4GB / 6GB (Expandable...)", etc.)
-                ram_values = re.findall(r'(\d+)\s*GB', phone_specs.ram_options, re.IGNORECASE)
-                ram_values = [int(r) for r in ram_values]
-                if ram_values and max(ram_values) >= user_prefs.min_ram:
-                    score += 10
-                elif ram_values:
-                    # Partial credit for some RAM (better than nothing)
-                    score += 5
-            except:
-                pass
+        # RAM match (weight: 10) - only if user specified RAM requirement
+        if user_prefs.min_ram is not None:
+            max_score += 10
+            if phone_specs.ram_options:
+                try:
+                    # Extract all numbers from RAM string (handles "8GB / 12GB", "4GB / 6GB (Expandable...)", etc.)
+                    ram_values = re.findall(r'(\d+)\s*GB', phone_specs.ram_options, re.IGNORECASE)
+                    ram_values = [int(r) for r in ram_values]
+                    if ram_values and max(ram_values) >= user_prefs.min_ram:
+                        score += 10
+                    elif ram_values:
+                        # Partial credit for some RAM (better than nothing)
+                        score += 5
+                except:
+                    pass
 
-        # Storage match (weight: 10)
-        max_score += 10
-        if phone_specs.storage_options:
-            try:
-                # Extract all numbers from storage string (handles "256GB / 512GB / 1TBUFS 4.0", etc.)
-                storage_values = re.findall(r'(\d+)\s*GB', phone_specs.storage_options, re.IGNORECASE)
-                storage_values = [int(s) for s in storage_values]
+        # Storage match (weight: 10) - only if user specified storage requirement
+        if user_prefs.min_storage is not None:
+            max_score += 10
+            if phone_specs.storage_options:
+                try:
+                    # Extract all numbers from storage string (handles "256GB / 512GB / 1TBUFS 4.0", etc.)
+                    storage_values = re.findall(r'(\d+)\s*GB', phone_specs.storage_options, re.IGNORECASE)
+                    storage_values = [int(s) for s in storage_values]
 
-                # Also check for TB (terabytes)
-                tb_values = re.findall(r'(\d+)\s*TB', phone_specs.storage_options, re.IGNORECASE)
-                if tb_values:
-                    storage_values.extend([int(t) * 1024 for t in tb_values])
+                    # Also check for TB (terabytes)
+                    tb_values = re.findall(r'(\d+)\s*TB', phone_specs.storage_options, re.IGNORECASE)
+                    if tb_values:
+                        storage_values.extend([int(t) * 1024 for t in tb_values])
 
-                if storage_values and max(storage_values) >= user_prefs.min_storage:
-                    score += 10
-                elif storage_values:
-                    # Partial credit for some storage
-                    score += 5
-            except:
-                pass
+                    if storage_values and max(storage_values) >= user_prefs.min_storage:
+                        score += 10
+                    elif storage_values:
+                        # Partial credit for some storage
+                        score += 5
+                except:
+                    pass
 
-        # Camera match (weight: 15)
-        max_score += 15
-        if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= user_prefs.min_camera:
-            score += 15
+        # Camera match (weight: 15) - only if user specified camera requirement
+        if user_prefs.min_camera is not None:
+            max_score += 15
+            if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= user_prefs.min_camera:
+                score += 15
 
-        # Battery match (weight: 15)
-        max_score += 15
-        if phone_specs.battery_capacity and phone_specs.battery_capacity >= user_prefs.min_battery:
-            score += 15
+        # Battery match (weight: 15) - only if user specified battery requirement
+        if user_prefs.min_battery is not None:
+            max_score += 15
+            if phone_specs.battery_capacity and phone_specs.battery_capacity >= user_prefs.min_battery:
+                score += 15
 
         # 5G requirement (weight: 10)
         max_score += 10
         if user_prefs.requires_5g:
             if phone_specs.has_5g:
                 score += 10
+            # If user requires 5G but phone doesn't have it, give 0 points
         else:
-            score += 10  # No requirement, so full points
+            score += 10  # No 5G requirement, so full points
 
-        # Screen size match (weight: 10)
-        max_score += 10
-        if phone_specs.screen_size:
-            if user_prefs.min_screen_size <= phone_specs.screen_size <= user_prefs.max_screen_size:
-                score += 10
+        # Screen size match (weight: 10) - only if user specified screen size range
+        if user_prefs.min_screen_size is not None or user_prefs.max_screen_size is not None:
+            max_score += 10
+            if phone_specs.screen_size:
+                min_screen = user_prefs.min_screen_size if user_prefs.min_screen_size is not None else 0
+                max_screen = user_prefs.max_screen_size if user_prefs.max_screen_size is not None else float('inf')
+                if min_screen <= phone_specs.screen_size <= max_screen:
+                    score += 10
 
     # Calculate final percentage
     if max_score > 0:

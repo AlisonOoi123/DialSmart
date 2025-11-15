@@ -75,23 +75,33 @@ class AIRecommendationEngine:
         return recommendations[:top_n]
 
     def _create_temp_preferences(self, criteria):
-        """Create temporary preference object from criteria dictionary"""
+        """
+        Create temporary preference object from criteria dictionary
+        Only uses values explicitly provided by user (no defaults)
+        """
         class TempPreference:
             pass
 
         prefs = TempPreference()
-        prefs.min_budget = criteria.get('min_budget', 500)
-        prefs.max_budget = criteria.get('max_budget', 5000)
-        prefs.min_ram = criteria.get('min_ram', 4)
-        prefs.min_storage = criteria.get('min_storage', 64)
-        prefs.min_camera = criteria.get('min_camera', 12)
-        prefs.min_battery = criteria.get('min_battery', 3000)
+        # Budget - use provided values or None
+        prefs.min_budget = criteria.get('min_budget', None)
+        prefs.max_budget = criteria.get('max_budget', None)
+
+        # Specifications - use provided values or None for flexible matching
+        prefs.min_ram = criteria.get('min_ram', None)
+        prefs.min_storage = criteria.get('min_storage', None)
+        prefs.min_camera = criteria.get('min_camera', None)
+        prefs.min_battery = criteria.get('min_battery', None)
         prefs.requires_5g = criteria.get('requires_5g', False)
-        prefs.min_screen_size = criteria.get('min_screen_size', 5.5)
-        prefs.max_screen_size = criteria.get('max_screen_size', 7.0)
-        prefs.primary_usage = criteria.get('primary_usage', '[]')
-        prefs.important_features = criteria.get('important_features', '[]')
-        prefs.preferred_brands = criteria.get('preferred_brands', '[]')
+
+        # Screen size - use provided values or None
+        prefs.min_screen_size = criteria.get('min_screen_size', None)
+        prefs.max_screen_size = criteria.get('max_screen_size', None)
+
+        # Lists - use provided or empty list
+        prefs.primary_usage = criteria.get('primary_usage', [])
+        prefs.important_features = criteria.get('important_features', [])
+        prefs.preferred_brands = criteria.get('preferred_brands', [])
 
         return prefs
 

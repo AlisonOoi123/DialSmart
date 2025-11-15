@@ -2,11 +2,13 @@
 API Routes
 RESTful API endpoints for AJAX requests and chatbot
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file, Response
 from flask_login import login_required, current_user
 from app.models import Phone, PhoneSpecification, Brand
 from app.modules import ChatbotEngine, AIRecommendationEngine
 import uuid
+import requests
+from io import BytesIO
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -280,3 +282,55 @@ def get_stats():
             'max_price': max(prices) if prices else 0
         }
     })
+
+# Image proxy endpoint to fix CORS issues
+@bp.route('/image-proxy', methods=['GET'])
+def image_proxy():
+    """
+    Proxy external images to bypass CORS restrictions
+    Usage: /api/image-proxy?url=https://example.com/image.webp
+    """
+    image_url = request.args.get('url')
+
+    if not image_url:
+        return jsonify({'error': 'Image URL is required'}), 400
+
+    # Validate URL is from allowed domains
+    allowed_domains = ['www.mobile57.com', 'mobile57.com', 'via.placeholder.com']
+    from urllib.parse import urlparse
+    parsed_url = urlparse(image_url)
+
+    if not any(domain in parsed_url.netloc for domain in allowed_domains):
+        return jsonify({'error': 'Domain not allowed'}), 403
+
+    try:
+        # Fetch the image from external URL
+        response = requests.get(
+            image_url,
+            timeout=10,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        )
+
+        if response.status_code == 200:
+            # Determine content type from response headers
+            content_type = response.headers.get('Content-Type', 'image/webp')
+
+            # Return the image with appropriate headers
+            return Response(
+                response.content,
+                mimetype=content_type,
+                headers={
+                    'Cache-Control': 'public, max-age=86400',  # Cache for 24 hours
+                    'Access-Control-Allow-Origin': '*'
+                }
+            )
+        else:
+            # Return placeholder if fetch fails
+            return jsonify({'error': 'Failed to fetch image'}), response.status_code
+
+    except requests.exceptions.Timeout:
+        return jsonify({'error': 'Request timeout'}), 504
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Failed to fetch image: {str(e)}'}), 500

@@ -55,6 +55,17 @@ def create_app(config_name='default'):
         """Inject featured brands into all templates"""
         return dict(featured_brands=app.config['FEATURED_BRANDS'])
 
+    # Register template filters
+    @app.template_filter('proxy_image')
+    def proxy_image_filter(image_url):
+        """Convert external image URLs to use proxy endpoint"""
+        if not image_url or image_url.startswith('http://') or image_url.startswith('https://'):
+            # Only proxy external URLs
+            from urllib.parse import quote
+            if image_url and ('mobile57.com' in image_url):
+                return f"/api/image-proxy?url={quote(image_url)}"
+        return image_url or 'https://via.placeholder.com/300x400?text=Phone'
+
     # Create database tables
     with app.app_context():
         db.create_all()
