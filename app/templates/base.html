@@ -113,6 +113,16 @@
         {% endwith %}
     </div>
 
+    <!-- Back to Dashboard Button (Shows on all pages except dashboards and home) -->
+    {% if current_user.is_authenticated and request.endpoint not in ['user.index', 'user.dashboard', 'admin.dashboard'] %}
+    <div class="container mt-2 mb-3">
+        <a href="{% if current_user.is_admin %}{{ url_for('admin.dashboard') }}{% else %}{{ url_for('user.dashboard') }}{% endif %}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Main Content -->
     <main>
         {% block content %}{% endblock %}

@@ -331,8 +331,8 @@ def edit_brand(brand_id):
         brand.name = request.form.get('name', brand.name)
         brand.description = request.form.get('description')
         brand.tagline = request.form.get('tagline')
-        brand.is_featured = bool(request.form.get('is_featured'))
-        brand.is_active = bool(request.form.get('is_active', True))
+        brand.is_featured = 'is_featured' in request.form
+        brand.is_active = 'is_active' in request.form
 
         # Handle logo upload
         if 'logo' in request.files:
