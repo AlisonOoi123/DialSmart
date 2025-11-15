@@ -51,15 +51,33 @@ with app.app_context():
         db.session.commit()
         print("  ✓ Network speed column updated")
 
-        print("\n[5/5] Increasing WiFi and Bluetooth columns...")
+        print("\n[5/7] Increasing WiFi and Bluetooth columns...")
         db.session.execute(db.text("""
             ALTER TABLE phone_specifications MODIFY (
                 wifi_standard VARCHAR2(200),
-                bluetooth_version VARCHAR2(100)
+                bluetooth_version VARCHAR2(200)
             )
         """))
         db.session.commit()
         print("  ✓ WiFi and Bluetooth columns updated")
+
+        print("\n[6/7] Increasing GPS, NFC, USB columns...")
+        db.session.execute(db.text("""
+            ALTER TABLE phone_specifications MODIFY (
+                gps VARCHAR2(200),
+                nfc VARCHAR2(150),
+                usb VARCHAR2(150)
+            )
+        """))
+        db.session.commit()
+        print("  ✓ GPS, NFC, USB columns updated")
+
+        print("\n[7/7] Increasing Radio column...")
+        db.session.execute(db.text("""
+            ALTER TABLE phone_specifications MODIFY (radio VARCHAR2(200))
+        """))
+        db.session.commit()
+        print("  ✓ Radio column updated")
 
         print("\n" + "="*70)
         print("✓ COLUMN MIGRATION COMPLETE!")
