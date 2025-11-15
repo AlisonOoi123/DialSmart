@@ -50,7 +50,8 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Product URL</label>
-                            <input type="url" name="product_url" class="form-control" value="{{ specs.product_url if specs else '' }}" placeholder="https://example.com/product">
+                            <input type="text" name="product_url" class="form-control" value="{{ specs.product_url if specs else '' }}" placeholder="https://example.com/product or leave empty">
+                            <small class="text-muted">Optional - Enter a URL or leave empty/type 'None'</small>
                         </div>
                     </div>
                 </div>

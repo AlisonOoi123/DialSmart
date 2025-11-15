@@ -93,6 +93,10 @@ def dashboard():
         .limit(5)\
         .all()
 
+    # Get unread contact messages count
+    from app.models.contact import ContactMessage
+    unread_messages = ContactMessage.query.filter_by(is_read=False).count()
+
     return render_template('admin/dashboard.html',
                          total_users=total_users,
                          total_phones=total_phones,
@@ -103,7 +107,8 @@ def dashboard():
                          recent_users=recent_users_list,
                          popular_phones=popular_phones_list,
                          latest_recommendations=latest_recommendations,
-                         latest_comparisons=latest_comparisons)
+                         latest_comparisons=latest_comparisons,
+                         unread_messages=unread_messages)
 
 # Phone Management
 @bp.route('/phones')
@@ -173,6 +178,11 @@ def add_phone():
         db.session.flush()  # Get phone ID
 
         # Create specifications
+        # Handle product_url - allow empty, 'None', or valid URL
+        product_url = request.form.get('product_url', '').strip()
+        if product_url.lower() == 'none' or not product_url:
+            product_url = None
+
         specs = PhoneSpecification(
             phone_id=phone.id,
             screen_size=request.form.get('screen_size', type=float),
@@ -202,7 +212,8 @@ def add_phone():
             dual_sim=bool(request.form.get('dual_sim')),
             weight=request.form.get('weight', type=int),
             dimensions=request.form.get('dimensions'),
-            colors_available=request.form.get('colors_available')
+            colors_available=request.form.get('colors_available'),
+            product_url=product_url
         )
 
         db.session.add(specs)
@@ -272,6 +283,13 @@ def edit_phone(phone_id):
         specs.weight = request.form.get('weight', type=int)
         specs.dimensions = request.form.get('dimensions')
         specs.colors_available = request.form.get('colors_available')
+
+        # Handle product_url - allow empty, 'None', or valid URL
+        product_url = request.form.get('product_url', '').strip()
+        if product_url.lower() == 'none' or not product_url:
+            specs.product_url = None
+        else:
+            specs.product_url = product_url
 
         db.session.commit()
         flash(f'Phone "{phone.model_name}" updated successfully.', 'success')

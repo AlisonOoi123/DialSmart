@@ -48,17 +48,26 @@
                     <h5>Quick Actions</h5>
                 </div>
                 <div class="card-body">
-                    <a href="{{ url_for('admin.add_phone') }}" class="btn btn-primary me-2">
+                    <a href="{{ url_for('admin.add_phone') }}" class="btn btn-primary me-2 mb-2">
                         <i class="bi bi-plus-circle"></i> Add Phone
                     </a>
-                    <a href="{{ url_for('admin.phones') }}" class="btn btn-outline-primary me-2">
+                    <a href="{{ url_for('admin.phones') }}" class="btn btn-outline-primary me-2 mb-2">
                         <i class="bi bi-phone"></i> Manage Phones
                     </a>
-                    <a href="{{ url_for('admin.brands') }}" class="btn btn-outline-primary me-2">
+                    <a href="{{ url_for('admin.brands') }}" class="btn btn-outline-primary me-2 mb-2">
                         <i class="bi bi-tag"></i> Manage Brands
                     </a>
-                    <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary">
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary me-2 mb-2">
                         <i class="bi bi-people"></i> Manage Users
+                    </a>
+                    <a href="{{ url_for('admin.messages') }}" class="btn btn-outline-success mb-2 position-relative">
+                        <i class="bi bi-envelope"></i> Contact Messages
+                        {% if unread_messages > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ unread_messages }}
+                            <span class="visually-hidden">unread messages</span>
+                        </span>
+                        {% endif %}
                     </a>
                 </div>
             </div>

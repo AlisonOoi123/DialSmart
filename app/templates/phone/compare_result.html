@@ -207,29 +207,31 @@
 
 <script>
 function saveComparison() {
-    // Store comparison data in localStorage for saving to history
+    // Save comparison to database via AJAX
     const comparisonData = {
         phone1_id: {{ comparison.phone1.info.id }},
-        phone2_id: {{ comparison.phone2.info.id }},
-        phone1_name: "{{ comparison.phone1.info.model_name }}",
-        phone2_name: "{{ comparison.phone2.info.model_name }}",
-        timestamp: new Date().toISOString()
+        phone2_id: {{ comparison.phone2.info.id }}
     };
 
-    // Get existing comparisons from localStorage
-    let savedComparisons = JSON.parse(localStorage.getItem('savedComparisons') || '[]');
-
-    // Add new comparison
-    savedComparisons.unshift(comparisonData);
-
-    // Keep only last 10 comparisons
-    savedComparisons = savedComparisons.slice(0, 10);
-
-    // Save back to localStorage
-    localStorage.setItem('savedComparisons', JSON.stringify(savedComparisons));
-
-    // Show success message
-    alert('Comparison saved successfully! View it in your comparison history.');
+    fetch("{{ url_for('phone.save_comparison_ajax') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(comparisonData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while saving the comparison.');
+    });
 }
 </script>
 {% endblock %}

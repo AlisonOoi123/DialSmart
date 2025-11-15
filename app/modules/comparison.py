@@ -78,138 +78,137 @@ class PhoneComparison:
             }
         }
 
-        # Display comparisons
-        if specs1 and specs2:
-            comparison['screen_size'] = {
-                'label': 'Screen Size',
-                'phone1': f"{specs1.screen_size}\"" if specs1.screen_size else 'N/A',
-                'phone2': f"{specs2.screen_size}\"" if specs2.screen_size else 'N/A',
-                'winner': 1 if (specs1.screen_size or 0) > (specs2.screen_size or 0) else 2
-            }
+        # Display comparisons - check each phone's specs individually
+        comparison['screen_size'] = {
+            'label': 'Screen Size',
+            'phone1': f"{specs1.screen_size}\"" if specs1 and specs1.screen_size else 'N/A',
+            'phone2': f"{specs2.screen_size}\"" if specs2 and specs2.screen_size else 'N/A',
+            'winner': 1 if (specs1.screen_size if specs1 else 0) > (specs2.screen_size if specs2 else 0) else 2
+        }
 
-            comparison['resolution'] = {
-                'label': 'Resolution',
-                'phone1': specs1.screen_resolution or 'N/A',
-                'phone2': specs2.screen_resolution or 'N/A',
-                'winner': None
-            }
+        comparison['resolution'] = {
+            'label': 'Resolution',
+            'phone1': specs1.screen_resolution if specs1 and specs1.screen_resolution else 'N/A',
+            'phone2': specs2.screen_resolution if specs2 and specs2.screen_resolution else 'N/A',
+            'winner': None
+        }
 
-            comparison['screen_type'] = {
-                'label': 'Display Type',
-                'phone1': specs1.screen_type or 'N/A',
-                'phone2': specs2.screen_type or 'N/A',
-                'winner': None
-            }
+        comparison['screen_type'] = {
+            'label': 'Display Type',
+            'phone1': specs1.screen_type if specs1 and specs1.screen_type else 'N/A',
+            'phone2': specs2.screen_type if specs2 and specs2.screen_type else 'N/A',
+            'winner': None
+        }
 
-            comparison['refresh_rate'] = {
-                'label': 'Refresh Rate',
-                'phone1': f"{specs1.refresh_rate}Hz" if specs1.refresh_rate else 'N/A',
-                'phone2': f"{specs2.refresh_rate}Hz" if specs2.refresh_rate else 'N/A',
-                'winner': 1 if (specs1.refresh_rate or 0) > (specs2.refresh_rate or 0) else 2
-            }
+        comparison['refresh_rate'] = {
+            'label': 'Refresh Rate',
+            'phone1': f"{specs1.refresh_rate}Hz" if specs1 and specs1.refresh_rate else 'N/A',
+            'phone2': f"{specs2.refresh_rate}Hz" if specs2 and specs2.refresh_rate else 'N/A',
+            'winner': 1 if (specs1.refresh_rate if specs1 else 0) > (specs2.refresh_rate if specs2 else 0) else 2
+        }
 
-            # Performance comparisons
-            comparison['processor'] = {
-                'label': 'Processor',
-                'phone1': specs1.processor or 'N/A',
-                'phone2': specs2.processor or 'N/A',
-                'winner': None
-            }
+        # Performance comparisons
+        comparison['processor'] = {
+            'label': 'Processor',
+            'phone1': specs1.processor if specs1 and specs1.processor else 'N/A',
+            'phone2': specs2.processor if specs2 and specs2.processor else 'N/A',
+            'winner': None
+        }
 
-            comparison['ram'] = {
-                'label': 'RAM',
-                'phone1': specs1.ram_options or 'N/A',
-                'phone2': specs2.ram_options or 'N/A',
-                'winner': None
-            }
+        comparison['ram'] = {
+            'label': 'RAM',
+            'phone1': specs1.ram_options if specs1 and specs1.ram_options else 'N/A',
+            'phone2': specs2.ram_options if specs2 and specs2.ram_options else 'N/A',
+            'winner': None
+        }
 
-            comparison['storage'] = {
-                'label': 'Storage',
-                'phone1': specs1.storage_options or 'N/A',
-                'phone2': specs2.storage_options or 'N/A',
-                'winner': None
-            }
+        comparison['storage'] = {
+            'label': 'Storage',
+            'phone1': specs1.storage_options if specs1 and specs1.storage_options else 'N/A',
+            'phone2': specs2.storage_options if specs2 and specs2.storage_options else 'N/A',
+            'winner': None
+        }
 
-            # Camera comparisons
-            comparison['rear_camera'] = {
-                'label': 'Rear Camera',
-                'phone1': specs1.rear_camera or 'N/A',
-                'phone2': specs2.rear_camera or 'N/A',
-                'winner': 1 if (specs1.rear_camera_main or 0) > (specs2.rear_camera_main or 0) else 2
-            }
+        # Camera comparisons
+        comparison['rear_camera'] = {
+            'label': 'Rear Camera',
+            'phone1': specs1.rear_camera if specs1 and specs1.rear_camera else 'N/A',
+            'phone2': specs2.rear_camera if specs2 and specs2.rear_camera else 'N/A',
+            'winner': 1 if (specs1.rear_camera_main if specs1 else 0) > (specs2.rear_camera_main if specs2 else 0) else 2
+        }
 
-            comparison['front_camera'] = {
-                'label': 'Front Camera',
-                'phone1': specs1.front_camera or 'N/A',
-                'phone2': specs2.front_camera or 'N/A',
-                'winner': 1 if (specs1.front_camera_mp or 0) > (specs2.front_camera_mp or 0) else 2
-            }
+        comparison['front_camera'] = {
+            'label': 'Front Camera',
+            'phone1': specs1.front_camera if specs1 and specs1.front_camera else 'N/A',
+            'phone2': specs2.front_camera if specs2 and specs2.front_camera else 'N/A',
+            'winner': 1 if (specs1.front_camera_mp if specs1 else 0) > (specs2.front_camera_mp if specs2 else 0) else 2
+        }
 
-            # Battery comparisons
-            comparison['battery'] = {
-                'label': 'Battery Capacity',
-                'phone1': f"{specs1.battery_capacity}mAh" if specs1.battery_capacity else 'N/A',
-                'phone2': f"{specs2.battery_capacity}mAh" if specs2.battery_capacity else 'N/A',
-                'winner': 1 if (specs1.battery_capacity or 0) > (specs2.battery_capacity or 0) else 2
-            }
+        # Battery comparisons
+        comparison['battery'] = {
+            'label': 'Battery Capacity',
+            'phone1': f"{specs1.battery_capacity}mAh" if specs1 and specs1.battery_capacity else 'N/A',
+            'phone2': f"{specs2.battery_capacity}mAh" if specs2 and specs2.battery_capacity else 'N/A',
+            'winner': 1 if (specs1.battery_capacity if specs1 else 0) > (specs2.battery_capacity if specs2 else 0) else 2
+        }
 
-            comparison['charging'] = {
-                'label': 'Charging',
-                'phone1': specs1.charging_speed or 'N/A',
-                'phone2': specs2.charging_speed or 'N/A',
-                'winner': None
-            }
+        comparison['charging'] = {
+            'label': 'Charging',
+            'phone1': specs1.charging_speed if specs1 and specs1.charging_speed else 'N/A',
+            'phone2': specs2.charging_speed if specs2 and specs2.charging_speed else 'N/A',
+            'winner': None
+        }
 
-            comparison['wireless_charging'] = {
-                'label': 'Wireless Charging',
-                'phone1': '✓ Yes' if specs1.wireless_charging else '✗ No',
-                'phone2': '✓ Yes' if specs2.wireless_charging else '✗ No',
-                'winner': 1 if specs1.wireless_charging else 2 if specs2.wireless_charging else None
-            }
+        comparison['wireless_charging'] = {
+            'label': 'Wireless Charging',
+            'phone1': '✓ Yes' if specs1 and specs1.wireless_charging else '✗ No',
+            'phone2': '✓ Yes' if specs2 and specs2.wireless_charging else '✗ No',
+            'winner': 1 if specs1 and specs1.wireless_charging else 2 if specs2 and specs2.wireless_charging else None
+        }
 
-            # Connectivity comparisons
-            comparison['5g'] = {
-                'label': '5G Support',
-                'phone1': '✓ Yes' if specs1.has_5g else '✗ No',
-                'phone2': '✓ Yes' if specs2.has_5g else '✗ No',
-                'winner': 1 if specs1.has_5g else 2 if specs2.has_5g else None
-            }
+        # Connectivity comparisons
+        comparison['5g'] = {
+            'label': '5G Support',
+            'phone1': '✓ Yes' if specs1 and specs1.has_5g else '✗ No',
+            'phone2': '✓ Yes' if specs2 and specs2.has_5g else '✗ No',
+            'winner': 1 if specs1 and specs1.has_5g else 2 if specs2 and specs2.has_5g else None
+        }
 
-            comparison['nfc'] = {
-                'label': 'NFC',
-                'phone1': '✓ Yes' if specs1.nfc else '✗ No',
-                'phone2': '✓ Yes' if specs2.nfc else '✗ No',
-                'winner': 1 if specs1.nfc else 2 if specs2.nfc else None
-            }
+        comparison['nfc'] = {
+            'label': 'NFC',
+            'phone1': '✓ Yes' if specs1 and specs1.nfc else '✗ No',
+            'phone2': '✓ Yes' if specs2 and specs2.nfc else '✗ No',
+            'winner': 1 if specs1 and specs1.nfc else 2 if specs2 and specs2.nfc else None
+        }
 
-            # Additional features
-            comparison['os'] = {
-                'label': 'Operating System',
-                'phone1': specs1.operating_system or 'N/A',
-                'phone2': specs2.operating_system or 'N/A',
-                'winner': None
-            }
+        # Additional features
+        comparison['os'] = {
+            'label': 'Operating System',
+            'phone1': specs1.operating_system if specs1 and specs1.operating_system else 'N/A',
+            'phone2': specs2.operating_system if specs2 and specs2.operating_system else 'N/A',
+            'winner': None
+        }
 
-            comparison['fingerprint'] = {
-                'label': 'Fingerprint Sensor',
-                'phone1': '✓ Yes' if specs1.fingerprint_sensor else '✗ No',
-                'phone2': '✓ Yes' if specs2.fingerprint_sensor else '✗ No',
-                'winner': None
-            }
+        comparison['fingerprint'] = {
+            'label': 'Fingerprint Sensor',
+            'phone1': '✓ Yes' if specs1 and specs1.fingerprint_sensor else '✗ No',
+            'phone2': '✓ Yes' if specs2 and specs2.fingerprint_sensor else '✗ No',
+            'winner': None
+        }
 
-            comparison['water_resistance'] = {
-                'label': 'Water Resistance',
-                'phone1': specs1.water_resistance or 'N/A',
-                'phone2': specs2.water_resistance or 'N/A',
-                'winner': None
-            }
+        comparison['water_resistance'] = {
+            'label': 'Water Resistance',
+            'phone1': specs1.water_resistance if specs1 and specs1.water_resistance else 'N/A',
+            'phone2': specs2.water_resistance if specs2 and specs2.water_resistance else 'N/A',
+            'winner': None
+        }
 
-            comparison['weight'] = {
-                'label': 'Weight',
-                'phone1': f"{specs1.weight}g" if specs1.weight else 'N/A',
-                'phone2': f"{specs2.weight}g" if specs2.weight else 'N/A',
-                'winner': 1 if (specs1.weight or 999) < (specs2.weight or 999) else 2
-            }
+        comparison['weight'] = {
+            'label': 'Weight',
+            'phone1': f"{specs1.weight}g" if specs1 and specs1.weight else 'N/A',
+            'phone2': f"{specs2.weight}g" if specs2 and specs2.weight else 'N/A',
+            'winner': 1 if (specs1.weight if specs1 else 999) < (specs2.weight if specs2 else 999) else 2
+        }
 
         return comparison
 
@@ -224,36 +223,45 @@ class PhoneComparison:
         else:
             phone2_score += 1
 
-        if specs1 and specs2:
-            # Screen size
-            if (specs1.screen_size or 0) > (specs2.screen_size or 0):
-                phone1_score += 1
-            elif (specs2.screen_size or 0) > (specs1.screen_size or 0):
-                phone2_score += 1
+        # Screen size - check each phone's specs individually
+        screen1 = specs1.screen_size if specs1 and specs1.screen_size else 0
+        screen2 = specs2.screen_size if specs2 and specs2.screen_size else 0
+        if screen1 > screen2:
+            phone1_score += 1
+        elif screen2 > screen1:
+            phone2_score += 1
 
-            # Camera
-            if (specs1.rear_camera_main or 0) > (specs2.rear_camera_main or 0):
-                phone1_score += 1
-            elif (specs2.rear_camera_main or 0) > (specs1.rear_camera_main or 0):
-                phone2_score += 1
+        # Camera - check each phone's specs individually
+        camera1 = specs1.rear_camera_main if specs1 and specs1.rear_camera_main else 0
+        camera2 = specs2.rear_camera_main if specs2 and specs2.rear_camera_main else 0
+        if camera1 > camera2:
+            phone1_score += 1
+        elif camera2 > camera1:
+            phone2_score += 1
 
-            # Battery
-            if (specs1.battery_capacity or 0) > (specs2.battery_capacity or 0):
-                phone1_score += 1
-            elif (specs2.battery_capacity or 0) > (specs1.battery_capacity or 0):
-                phone2_score += 1
+        # Battery - check each phone's specs individually
+        battery1 = specs1.battery_capacity if specs1 and specs1.battery_capacity else 0
+        battery2 = specs2.battery_capacity if specs2 and specs2.battery_capacity else 0
+        if battery1 > battery2:
+            phone1_score += 1
+        elif battery2 > battery1:
+            phone2_score += 1
 
-            # 5G
-            if specs1.has_5g and not specs2.has_5g:
-                phone1_score += 1
-            elif specs2.has_5g and not specs1.has_5g:
-                phone2_score += 1
+        # 5G - check each phone's specs individually
+        has_5g1 = specs1.has_5g if specs1 else False
+        has_5g2 = specs2.has_5g if specs2 else False
+        if has_5g1 and not has_5g2:
+            phone1_score += 1
+        elif has_5g2 and not has_5g1:
+            phone2_score += 1
 
-            # Refresh rate
-            if (specs1.refresh_rate or 0) > (specs2.refresh_rate or 0):
-                phone1_score += 1
-            elif (specs2.refresh_rate or 0) > (specs1.refresh_rate or 0):
-                phone2_score += 1
+        # Refresh rate - check each phone's specs individually
+        refresh1 = specs1.refresh_rate if specs1 and specs1.refresh_rate else 0
+        refresh2 = specs2.refresh_rate if specs2 and specs2.refresh_rate else 0
+        if refresh1 > refresh2:
+            phone1_score += 1
+        elif refresh2 > refresh1:
+            phone2_score += 1
 
         if phone1_score > phone2_score:
             return {'phone': 1, 'name': phone1.model_name, 'score': phone1_score}

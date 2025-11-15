@@ -2,9 +2,10 @@
 Phone Routes
 Phone details, brand pages, and comparison functionality
 """
-from flask import Blueprint, render_template, request, flash, redirect, url_for
+from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
-from app.models import Phone, PhoneSpecification, Brand
+from app import db
+from app.models import Phone, PhoneSpecification, Brand, Comparison
 from app.modules import PhoneComparison, AIRecommendationEngine
 
 bp = Blueprint('phone', __name__, url_prefix='/phone')
@@ -133,6 +134,43 @@ def save_comparison(comparison_id):
         flash('Unable to save comparison.', 'danger')
 
     return redirect(url_for('phone.comparison_history'))
+
+@bp.route('/compare/save', methods=['POST'])
+@login_required
+def save_comparison_ajax():
+    """Save a comparison via AJAX"""
+    phone1_id = request.json.get('phone1_id')
+    phone2_id = request.json.get('phone2_id')
+
+    if not phone1_id or not phone2_id:
+        return jsonify({'success': False, 'message': 'Invalid phone IDs'}), 400
+
+    # Find existing comparison or create new one
+    comparison = Comparison.query.filter_by(
+        user_id=current_user.id,
+        phone1_id=phone1_id,
+        phone2_id=phone2_id
+    ).first()
+
+    if not comparison:
+        # Create new comparison
+        comparison = Comparison(
+            user_id=current_user.id,
+            phone1_id=phone1_id,
+            phone2_id=phone2_id,
+            is_saved=True
+        )
+        db.session.add(comparison)
+    else:
+        # Mark existing as saved
+        comparison.is_saved = True
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Comparison saved successfully! View it in your dashboard.'
+    })
 
 @bp.route('/search')
 def search():
