@@ -226,15 +226,15 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
             ram_values = parse_memory_values(phone_specs.ram_options)
             if ram_values:
                 max_ram = max(ram_values)
-                if max_ram >= user_prefs.min_ram:
+                if user_prefs.min_ram and max_ram >= user_prefs.min_ram:
                     reasons.append(f"Excellent performance with up to {max_ram}GB RAM")
 
         # Camera
-        if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= user_prefs.min_camera:
+        if phone_specs.rear_camera_main and user_prefs.min_camera and phone_specs.rear_camera_main >= user_prefs.min_camera:
             reasons.append(f"Great {phone_specs.rear_camera_main}MP camera for photography")
 
         # Battery
-        if phone_specs.battery_capacity and phone_specs.battery_capacity >= user_prefs.min_battery:
+        if phone_specs.battery_capacity and user_prefs.min_battery and phone_specs.battery_capacity >= user_prefs.min_battery:
             reasons.append(f"Long-lasting {phone_specs.battery_capacity}mAh battery")
 
         # 5G
