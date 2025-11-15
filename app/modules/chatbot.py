@@ -207,23 +207,32 @@ class ChatbotEngine:
                 }
 
         elif intent == 'usage_type':
-            # Detect usage type
+            # Detect usage type and use intelligent recommendation system
             usage = self._detect_usage_type(message)
             if usage:
-                budget = self._extract_budget(message)
-                phones = self.ai_engine.get_phones_by_usage(usage, budget, top_n=3)
+                # Build criteria with usage type
+                criteria = self._extract_criteria(message) or {}
+                criteria['primary_usage'] = usage
 
-                if phones:
+                # Use the intelligent recommendation system
+                recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=3)
+
+                if recommendations:
                     response = f"Great choice! Here are the best phones for {usage}:\n\n"
                     phone_list = []
 
-                    for item in phones:
-                        phone = item['phone']
-                        response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                    for rec in recommendations:
+                        phone = rec['phone']
+                        response += f"📱 {phone.model_name}\n"
+                        response += f"   💰 RM{phone.price:,.2f}\n"
+                        response += f"   ✨ {rec['match_score']}% match\n"
+                        response += f"   {rec['reasoning'][:100]}...\n\n"
+
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
                             'price': phone.price,
+                            'match_score': rec['match_score'],
                             'image': phone.main_image
                         })
 
@@ -382,6 +391,7 @@ Just ask me anything like:
     def _extract_criteria(self, message):
         """Extract phone criteria from message"""
         criteria = {}
+        message_lower = message.lower()
 
         # Extract budget
         budget = self._extract_budget(message)
@@ -389,7 +399,7 @@ Just ask me anything like:
             criteria['min_budget'], criteria['max_budget'] = budget
 
         # Check for 5G mention
-        if '5g' in message.lower():
+        if '5g' in message_lower:
             criteria['requires_5g'] = True
 
         # Extract brand preference
@@ -398,19 +408,54 @@ Just ask me anything like:
             criteria['preferred_brands'] = [brand_name]
 
         # Check for RAM mention
-        ram_match = re.search(r'(\d+)\s*gb\s*ram', message.lower())
+        ram_match = re.search(r'(\d+)\s*gb\s*ram', message_lower)
         if ram_match:
             criteria['min_ram'] = int(ram_match.group(1))
 
         # Check for storage mention
-        storage_match = re.search(r'(\d+)\s*gb\s*storage', message.lower())
+        storage_match = re.search(r'(\d+)\s*gb\s*storage', message_lower)
         if storage_match:
             criteria['min_storage'] = int(storage_match.group(1))
 
         # Check for camera mention
-        camera_match = re.search(r'(\d+)\s*mp', message.lower())
+        camera_match = re.search(r'(\d+)\s*mp', message_lower)
         if camera_match:
             criteria['min_camera'] = int(camera_match.group(1))
+
+        # Extract primary usage keywords
+        usage = self._detect_usage_type(message)
+        if usage:
+            criteria['primary_usage'] = usage
+
+        # Extract important features from keywords
+        important_features = []
+
+        # Battery keywords
+        if any(word in message_lower for word in ['battery', 'long battery', 'battery life', 'mah']):
+            important_features.append('Battery')
+
+        # Camera keywords
+        if any(word in message_lower for word in ['camera', 'photo', 'photography', 'picture', 'selfie', 'mp']):
+            important_features.append('Camera')
+
+        # Performance keywords
+        if any(word in message_lower for word in ['fast', 'performance', 'speed', 'processor', 'gaming', 'game', 'ram']):
+            important_features.append('Performance')
+
+        # Storage keywords
+        if any(word in message_lower for word in ['storage', 'memory', 'gb storage', 'large storage']):
+            important_features.append('Storage')
+
+        # 5G keywords
+        if '5g' in message_lower:
+            important_features.append('5G')
+
+        # Design keywords
+        if any(word in message_lower for word in ['design', 'premium', 'look', 'beautiful', 'stylish']):
+            important_features.append('Design')
+
+        if important_features:
+            criteria['important_features'] = important_features
 
         return criteria if criteria else None
 

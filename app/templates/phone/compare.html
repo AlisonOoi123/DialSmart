@@ -6,18 +6,48 @@
 <div class="container py-4">
     <h2><i class="bi bi-phone-compare"></i> Compare Smartphones</h2>
 
+    <!-- Brand Filter Section -->
+    <div class="card mt-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="bi bi-filter"></i> Filter by Brand (Optional)</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Brand for Phone 1</label>
+                    <select id="brand1_filter" class="form-select">
+                        <option value="">All Brands</option>
+                        {% for brand in brands %}
+                        <option value="{{ brand.id }}">{{ brand.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Brand for Phone 2</label>
+                    <select id="brand2_filter" class="form-select">
+                        <option value="">All Brands</option>
+                        {% for brand in brands %}
+                        <option value="{{ brand.id }}">{{ brand.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phone Selection Section -->
     <div class="card mt-4">
         <div class="card-body">
             <form method="POST">
                 <div class="row">
                     <div class="col-md-5">
                         <label class="form-label">Select First Phone</label>
-                        <select name="phone1_id" class="form-select" required>
+                        <select name="phone1_id" id="phone1_select" class="form-select" required>
                             <option value="">Choose Phone...</option>
                             {% for brand in brands %}
-                            <optgroup label="{{ brand.name }}">
+                            <optgroup label="{{ brand.name }}" data-brand-id="{{ brand.id }}">
                                 {% for phone in phones if phone.brand_id == brand.id %}
-                                <option value="{{ phone.id }}" {% if phone1_id == phone.id %}selected{% endif %}>
+                                <option value="{{ phone.id }}" data-brand-id="{{ brand.id }}" {% if phone1_id == phone.id %}selected{% endif %}>
                                     {{ phone.model_name }} - RM {{ "{:,.0f}".format(phone.price) }}
                                 </option>
                                 {% endfor %}
@@ -32,12 +62,12 @@
 
                     <div class="col-md-5">
                         <label class="form-label">Select Second Phone</label>
-                        <select name="phone2_id" class="form-select" required>
+                        <select name="phone2_id" id="phone2_select" class="form-select" required>
                             <option value="">Choose Phone...</option>
                             {% for brand in brands %}
-                            <optgroup label="{{ brand.name }}">
+                            <optgroup label="{{ brand.name }}" data-brand-id="{{ brand.id }}">
                                 {% for phone in phones if phone.brand_id == brand.id %}
-                                <option value="{{ phone.id }}" {% if phone2_id == phone.id %}selected{% endif %}>
+                                <option value="{{ phone.id }}" data-brand-id="{{ brand.id }}" {% if phone2_id == phone.id %}selected{% endif %}>
                                     {{ phone.model_name }} - RM {{ "{:,.0f}".format(phone.price) }}
                                 </option>
                                 {% endfor %}
@@ -55,5 +85,51 @@
             </form>
         </div>
     </div>
+
+    <script>
+    // Filter phone dropdowns based on brand selection
+    document.getElementById('brand1_filter').addEventListener('change', function() {
+        filterPhoneDropdown('phone1_select', this.value);
+    });
+
+    document.getElementById('brand2_filter').addEventListener('change', function() {
+        filterPhoneDropdown('phone2_select', this.value);
+    });
+
+    function filterPhoneDropdown(selectId, brandId) {
+        const select = document.getElementById(selectId);
+        const optgroups = select.querySelectorAll('optgroup');
+        const options = select.querySelectorAll('option[data-brand-id]');
+
+        if (!brandId) {
+            // Show all brands
+            optgroups.forEach(group => {
+                group.style.display = '';
+            });
+            options.forEach(option => {
+                option.style.display = '';
+            });
+        } else {
+            // Show only selected brand
+            optgroups.forEach(group => {
+                if (group.getAttribute('data-brand-id') === brandId) {
+                    group.style.display = '';
+                } else {
+                    group.style.display = 'none';
+                }
+            });
+            options.forEach(option => {
+                if (option.getAttribute('data-brand-id') === brandId) {
+                    option.style.display = '';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+        }
+
+        // Reset selection to ensure valid selection
+        select.value = '';
+    }
+    </script>
 </div>
 {% endblock %}
