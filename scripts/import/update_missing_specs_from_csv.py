@@ -49,13 +49,24 @@ def update_specs_from_csv(csv_path):
         skipped_count = 0
         error_count = 0
 
-        with open(csv_path, 'r', encoding='utf-8') as f:
+        with open(csv_path, 'r', encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
 
             for row in reader:
                 try:
+                    # Check if required fields exist
+                    if 'Brand' not in row or 'Model' not in row:
+                        print(f"⚠️  Row missing Brand or Model columns, skipping")
+                        skipped_count += 1
+                        continue
+
                     brand_name = row['Brand'].strip()
                     model_name = row['Model'].strip()
+
+                    # Skip rows with empty brand or model
+                    if not brand_name or not model_name:
+                        skipped_count += 1
+                        continue
 
                     # Find the brand
                     brand = Brand.query.filter_by(name=brand_name).first()
