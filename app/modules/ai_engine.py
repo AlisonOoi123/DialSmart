@@ -4,7 +4,7 @@ Machine learning-based phone recommendation system
 """
 from app import db
 from app.models import Phone, PhoneSpecification, UserPreference, Recommendation
-from app.utils.helpers import calculate_match_score, generate_recommendation_reasoning
+from app.utils.helpers import calculate_match_score, generate_recommendation_reasoning, parse_memory_values
 import json
 
 class AIRecommendationEngine:
@@ -181,7 +181,7 @@ class AIRecommendationEngine:
             # Score based on usage type
             if usage_type == 'Gaming':
                 # High RAM, good processor, high refresh rate
-                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                ram_values = parse_memory_values(specs.ram_options)
                 if ram_values:
                     score += max(ram_values) * 10
                 score += (specs.refresh_rate or 60) / 10
@@ -195,7 +195,7 @@ class AIRecommendationEngine:
             elif usage_type == 'Business' or usage_type == 'Work':
                 # Good battery, decent specs
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
-                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                ram_values = parse_memory_values(specs.ram_options)
                 if ram_values:
                     score += max(ram_values) * 5
 

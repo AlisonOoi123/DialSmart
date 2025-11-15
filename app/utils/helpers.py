@@ -177,6 +177,27 @@ def calculate_match_score(user_prefs, phone, phone_specs):
         return round((score / max_score) * 100, 2)
     return 0
 
+def parse_memory_values(memory_string):
+    """
+    Parse memory values from strings like '8GB', '3 / 4', '6GB / 8GB', '128, 256'
+    Returns list of integer values
+    """
+    if not memory_string:
+        return []
+
+    import re
+    # Extract all numbers from the string (handles "3 / 4", "8GB", "6GB / 8GB", etc.)
+    numbers = re.findall(r'\d+', str(memory_string))
+
+    values = []
+    for num in numbers:
+        try:
+            values.append(int(num))
+        except ValueError:
+            continue
+
+    return values
+
 def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_specs):
     """Generate human-readable reasoning for recommendation"""
     reasons = []
@@ -188,7 +209,7 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
     if phone_specs:
         # Performance
         if phone_specs.ram_options:
-            ram_values = [int(r.replace('GB', '')) for r in phone_specs.ram_options.split(',') if 'GB' in r]
+            ram_values = parse_memory_values(phone_specs.ram_options)
             if ram_values:
                 max_ram = max(ram_values)
                 if max_ram >= user_prefs.min_ram:

@@ -4,7 +4,7 @@ Advanced recommendation system considering user demographics and preferences
 """
 from app import db
 from app.models import Phone, PhoneSpecification, UserPreference, Recommendation, User
-from app.utils.helpers import calculate_match_score, generate_recommendation_reasoning
+from app.utils.helpers import calculate_match_score, generate_recommendation_reasoning, parse_memory_values
 import json
 
 class EnhancedAIRecommendationEngine:
@@ -271,14 +271,14 @@ class EnhancedAIRecommendationEngine:
         # RAM match
         max_score += 15
         if phone_specs.ram_options:
-            ram_values = [int(r.replace('GB', '').strip()) for r in phone_specs.ram_options.split(',') if 'GB' in r]
+            ram_values = parse_memory_values(phone_specs.ram_options)
             if ram_values and max(ram_values) >= user_prefs.min_ram:
                 score += 15
 
         # Storage match
         max_score += 15
         if phone_specs.storage_options:
-            storage_values = [int(s.replace('GB', '').strip()) for s in phone_specs.storage_options.split(',') if 'GB' in s]
+            storage_values = parse_memory_values(phone_specs.storage_options)
             if storage_values and max(storage_values) >= user_prefs.min_storage:
                 score += 15
 
