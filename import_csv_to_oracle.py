@@ -239,14 +239,17 @@ with app.app_context():
             price = parse_price(row.get('Price', '0'))
 
             # Parse RAM and Storage from combined field
-            ram_options, storage_options = parse_ram_storage(row.get('RAMStorage', ''))
+            ram_options, storage_options = parse_ram_storage(row.get('RAM', ''))
+            if not ram_options and not storage_options:
+                # Try Storage column separately
+                storage_options = row.get('Storage', '').strip() or None
 
             # Create phone
             phone = Phone(
                 brand_id=brand.id,
                 model_name=model_name,
                 price=price,
-                main_image=row.get('ImageURL', '').strip() or None,
+                main_image=row.get('Image URL', '').strip() or None,
                 availability_status=row.get('Status', 'Available').strip(),
                 release_date=parse_release_date(row.get('Date', '')),
                 is_active=True
@@ -274,15 +277,15 @@ with app.app_context():
                 processor_brand=extract_processor_brand(row.get('Chipset', '')),
                 ram_options=ram_options,
                 storage_options=storage_options,
-                card_slot=row.get('CardSlot', '').strip() or None,
-                expandable_storage='microSD' in row.get('CardSlot', '') if row.get('CardSlot') else False,
+                card_slot=row.get('Card Slot', '').strip() or None,
+                expandable_storage='microSD' in row.get('Card Slot', '') if row.get('Card Slot') else False,
 
                 # Camera
                 rear_camera=row.get('RearCamera', '').strip() or None,
                 rear_camera_main=parse_camera_mp(row.get('RearCamera', '')),
                 front_camera=row.get('FrontCamera', '').strip() or None,
                 front_camera_mp=parse_camera_mp(row.get('FrontCamera', '')),
-                camera_features=row.get('CameraFeatures', '').strip() or None,
+                camera_features=row.get('Camera Features', '').strip() or None,
                 flash=row.get('Flash', '').strip() or None,
                 video_recording=row.get('VideoRecording', '').strip() or None,
 

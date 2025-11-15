@@ -89,15 +89,28 @@ with app.app_context():
         db.session.commit()
         print("  ✓ Battery columns updated")
 
-        print("\n[9/9] Increasing additional columns...")
+        print("\n[9/10] Increasing additional columns...")
         db.session.execute(db.text("""
             ALTER TABLE phone_specifications MODIFY (
                 screen_type VARCHAR2(200),
-                display_type VARCHAR2(200)
+                display_type VARCHAR2(200),
+                multitouch VARCHAR2(150),
+                protection VARCHAR2(300)
             )
         """))
         db.session.commit()
         print("  ✓ Additional columns updated")
+
+        print("\n[10/10] Increasing more specification columns...")
+        db.session.execute(db.text("""
+            ALTER TABLE phone_specifications MODIFY (
+                dimensions VARCHAR2(200),
+                weight VARCHAR2(100),
+                charging_speed VARCHAR2(200)
+            )
+        """))
+        db.session.commit()
+        print("  ✓ Specification columns updated")
 
         print("\n" + "="*70)
         print("✓ COLUMN MIGRATION COMPLETE!")

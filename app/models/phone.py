@@ -62,8 +62,8 @@ class PhoneSpecification(db.Model):
     display_type = db.Column(db.String(200))  # Full display description
     refresh_rate = db.Column(db.Integer, default=60)  # Hz
     ppi = db.Column(db.Integer)  # Pixels per inch
-    multitouch = db.Column(db.String(50))  # Yes/No or specific info
-    protection = db.Column(db.String(200))  # Corning Gorilla Glass, etc. (increased for detailed protection specs)
+    multitouch = db.Column(db.String(150))  # Yes/No or specific info (increased for new dataset)
+    protection = db.Column(db.String(300))  # Corning Gorilla Glass, etc. (increased for new dataset)
 
     # Performance specifications
     processor = db.Column(db.String(100))  # Chipset name
@@ -88,7 +88,7 @@ class PhoneSpecification(db.Model):
     # Battery specifications
     battery_capacity = db.Column(db.Integer)  # in mAh
     battery = db.Column(db.String(100))  # Full battery description
-    charging_speed = db.Column(db.String(100))  # "33W Fast Charging"
+    charging_speed = db.Column(db.String(200))  # "33W Fast Charging" (increased for new dataset)
     fast_charging = db.Column(db.String(200))  # Detailed fast charging info
     wireless_charging = db.Column(db.String(150))  # Wireless charging details (increased for new dataset)
     removable_battery = db.Column(db.String(150))  # Removable/Non-Removable (increased for new dataset)
@@ -114,8 +114,8 @@ class PhoneSpecification(db.Model):
     operating_system = db.Column(db.String(200))  # "Android 13", "iOS 16", full OS details
 
     # Physical characteristics
-    weight = db.Column(db.String(50))  # Weight with unit
-    dimensions = db.Column(db.String(100))  # "160.5 x 74.8 x 8.4 mm"
+    weight = db.Column(db.String(100))  # Weight with unit (increased for new dataset)
+    dimensions = db.Column(db.String(200))  # "160.5 x 74.8 x 8.4 mm" (increased for new dataset)
     colors_available = db.Column(db.String(200))  # "Black, White, Blue"
     body_material = db.Column(db.String(300))  # Body material description (increased for detailed material specs)
 
