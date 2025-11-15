@@ -57,13 +57,13 @@ class PhoneSpecification(db.Model):
 
     # Display specifications
     screen_size = db.Column(db.Float)  # in inches
-    screen_resolution = db.Column(db.String(50))  # e.g., "1080x2400"
-    screen_type = db.Column(db.String(100))  # AMOLED, IPS LCD, etc.
+    screen_resolution = db.Column(db.String(150))  # e.g., "1080x2400" (increased for detailed resolutions)
+    screen_type = db.Column(db.String(200))  # AMOLED, IPS LCD, etc. (increased for detailed descriptions)
     display_type = db.Column(db.String(200))  # Full display description
     refresh_rate = db.Column(db.Integer, default=60)  # Hz
     ppi = db.Column(db.Integer)  # Pixels per inch
     multitouch = db.Column(db.String(50))  # Yes/No or specific info
-    protection = db.Column(db.String(100))  # Corning Gorilla Glass, etc.
+    protection = db.Column(db.String(200))  # Corning Gorilla Glass, etc. (increased for detailed protection specs)
 
     # Performance specifications
     processor = db.Column(db.String(100))  # Chipset name
@@ -94,10 +94,10 @@ class PhoneSpecification(db.Model):
     removable_battery = db.Column(db.String(50))  # Removable/Non-Removable
 
     # Network and Connectivity
-    sim = db.Column(db.String(100))  # SIM type details
+    sim = db.Column(db.String(150))  # SIM type details (increased for dual/eSIM descriptions)
     technology = db.Column(db.String(100))  # GSM / HSPA / LTE / 5G
     network_5g = db.Column(db.String(200))  # 5G bands
-    network_4g = db.Column(db.String(200))  # 4G bands
+    network_4g = db.Column(db.String(250))  # 4G bands (increased for multiple band listings)
     network_3g = db.Column(db.String(200))  # 3G bands
     network_2g = db.Column(db.String(200))  # 2G bands
     network_speed = db.Column(db.String(100))  # Network speed capabilities
@@ -117,7 +117,7 @@ class PhoneSpecification(db.Model):
     weight = db.Column(db.String(50))  # Weight with unit
     dimensions = db.Column(db.String(100))  # "160.5 x 74.8 x 8.4 mm"
     colors_available = db.Column(db.String(200))  # "Black, White, Blue"
-    body_material = db.Column(db.String(100))  # Body material description
+    body_material = db.Column(db.String(300))  # Body material description (increased for detailed material specs)
 
     # Additional features
     fingerprint_sensor = db.Column(db.Boolean, default=True)
