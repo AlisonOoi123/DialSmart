@@ -68,11 +68,11 @@ class PhoneSpecification(db.Model):
     # Performance specifications
     processor = db.Column(db.String(100))  # Chipset name
     chipset = db.Column(db.String(150))  # Full chipset details
-    cpu = db.Column(db.String(200))  # CPU architecture and cores
+    cpu = db.Column(db.String(250))  # CPU architecture and cores (increased for detailed specs)
     gpu = db.Column(db.String(100))  # GPU model
     processor_brand = db.Column(db.String(50))  # Qualcomm, MediaTek, Apple, etc.
-    ram_options = db.Column(db.String(50))  # "4GB, 6GB, 8GB"
-    storage_options = db.Column(db.String(50))  # "64GB, 128GB, 256GB"
+    ram_options = db.Column(db.String(100))  # RAM options (increased for expandable RAM descriptions)
+    storage_options = db.Column(db.String(100))  # Storage options (increased for detailed descriptions)
     expandable_storage = db.Column(db.Boolean, default=False)
     card_slot = db.Column(db.String(100))  # microSD details
 

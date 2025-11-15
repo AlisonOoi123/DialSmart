@@ -8,6 +8,11 @@ ALTER TABLE phone_specifications MODIFY screen_resolution VARCHAR2(150);
 ALTER TABLE phone_specifications MODIFY screen_type VARCHAR2(200);
 ALTER TABLE phone_specifications MODIFY protection VARCHAR2(200);
 
+-- Performance specifications
+ALTER TABLE phone_specifications MODIFY cpu VARCHAR2(250);
+ALTER TABLE phone_specifications MODIFY ram_options VARCHAR2(100);
+ALTER TABLE phone_specifications MODIFY storage_options VARCHAR2(100);
+
 -- Camera specifications
 ALTER TABLE phone_specifications MODIFY rear_camera VARCHAR2(500);
 ALTER TABLE phone_specifications MODIFY front_camera VARCHAR2(200);
@@ -28,6 +33,7 @@ SELECT column_name, data_type, data_length, nullable
 FROM user_tab_columns
 WHERE table_name = 'PHONE_SPECIFICATIONS'
 AND column_name IN ('SCREEN_RESOLUTION', 'SCREEN_TYPE', 'PROTECTION',
+                     'CPU', 'RAM_OPTIONS', 'STORAGE_OPTIONS',
                      'REAR_CAMERA', 'FRONT_CAMERA',
                      'SIM', 'NETWORK_4G', 'BLUETOOTH_VERSION', 'NFC', 'AUDIO_JACK', 'RADIO',
                      'BODY_MATERIAL')
