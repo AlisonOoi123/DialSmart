@@ -148,9 +148,9 @@ with app.app_context():
 
         print(f"\n[1/3] Reading CSV file: {csv_file}")
 
-        # Read CSV
+        # Read CSV (utf-8-sig strips BOM character automatically)
         phones_data = []
-        with open(csv_file, 'r', encoding='utf-8') as file:
+        with open(csv_file, 'r', encoding='utf-8-sig') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 phones_data.append(row)
