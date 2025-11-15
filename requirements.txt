@@ -33,6 +33,9 @@ beautifulsoup4==4.12.3
 # MySQL support (recommended for production)
 PyMySQL==1.1.0
 
-# PostgreSQL support (optional - alternative to MySQL)
-# Uncomment the line below if using PostgreSQL instead of MySQL
+# Oracle Database support (for Oracle SQL*Plus users)
+oracledb==2.0.1
+
+# PostgreSQL support (optional - alternative to MySQL/Oracle)
+# Uncomment the line below if using PostgreSQL instead of MySQL/Oracle
 # psycopg2-binary==2.9.9

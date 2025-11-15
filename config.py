@@ -11,10 +11,10 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dialsmart-secret-key-2024'
 
     # Database settings
-    # Options: SQLite (development), MySQL (recommended), PostgreSQL (advanced)
+    # Options: SQLite (development), MySQL (production), Oracle (enterprise)
     #
-    # For MySQL, set environment variable DATABASE_URL to:
-    # mysql+pymysql://username:password@localhost/dialsmart
+    # For MySQL: mysql+pymysql://username:password@localhost/dialsmart
+    # For Oracle: oracle+oracledb://username:password@localhost:1521/?service_name=XEPDB1
     #
     # Or edit the default below directly
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -27,10 +27,23 @@ class Config:
     MYSQL_PORT = os.environ.get('MYSQL_PORT', '3306')
     MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'dialsmart')
 
-    # Database URI - Change USE_MYSQL to switch databases
-    USE_MYSQL = os.environ.get('USE_MYSQL', 'false').lower() == 'true'
+    # Oracle Database connection (for Oracle SQL*Plus users)
+    # Change these values to match your Oracle setup:
+    ORACLE_USER = os.environ.get('ORACLE_USER', 'dialsmart_user')
+    ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD', 'dialsmart123')
+    ORACLE_HOST = os.environ.get('ORACLE_HOST', 'localhost')
+    ORACLE_PORT = os.environ.get('ORACLE_PORT', '1521')
+    ORACLE_SERVICE = os.environ.get('ORACLE_SERVICE', 'XEPDB1')  # For Oracle XE, use XEPDB1 or XE
 
-    if USE_MYSQL:
+    # Database URI - Change DB_TYPE to switch databases
+    # Options: 'sqlite', 'mysql', 'oracle'
+    DB_TYPE = os.environ.get('DB_TYPE', 'sqlite').lower()
+
+    if DB_TYPE == 'oracle':
+        # Oracle Database URI
+        SQLALCHEMY_DATABASE_URI = f'oracle+oracledb://{ORACLE_USER}:{ORACLE_PASSWORD}@{ORACLE_HOST}:{ORACLE_PORT}/?service_name={ORACLE_SERVICE}'
+    elif DB_TYPE == 'mysql':
+        # MySQL Database URI
         SQLALCHEMY_DATABASE_URI = f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4'
     else:
         # SQLite (development only)
