@@ -103,12 +103,12 @@ class PhoneSpecification(db.Model):
     network_speed = db.Column(db.String(100))  # Network speed capabilities
     has_5g = db.Column(db.Boolean, default=False, index=True)
     wifi_standard = db.Column(db.String(100))  # "WiFi 6", "WiFi 5"
-    bluetooth_version = db.Column(db.String(50))  # "5.2"
+    bluetooth_version = db.Column(db.String(100))  # Bluetooth version (increased for CSV data alignment issues)
     gps = db.Column(db.String(100))  # GPS capabilities
-    nfc = db.Column(db.String(50))  # NFC support
+    nfc = db.Column(db.String(100))  # NFC support (increased for CSV data alignment issues)
     usb = db.Column(db.String(100))  # USB type and version
-    audio_jack = db.Column(db.String(50))  # 3.5mm jack presence
-    radio = db.Column(db.String(50))  # FM radio support
+    audio_jack = db.Column(db.String(100))  # 3.5mm jack presence (increased for CSV data alignment issues)
+    radio = db.Column(db.String(100))  # FM radio support (increased for CSV data alignment issues)
 
     # Operating System
     operating_system = db.Column(db.String(200))  # "Android 13", "iOS 16", full OS details

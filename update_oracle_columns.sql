@@ -15,6 +15,10 @@ ALTER TABLE phone_specifications MODIFY front_camera VARCHAR2(200);
 -- Network and Connectivity
 ALTER TABLE phone_specifications MODIFY sim VARCHAR2(150);
 ALTER TABLE phone_specifications MODIFY network_4g VARCHAR2(250);
+ALTER TABLE phone_specifications MODIFY bluetooth_version VARCHAR2(100);
+ALTER TABLE phone_specifications MODIFY nfc VARCHAR2(100);
+ALTER TABLE phone_specifications MODIFY audio_jack VARCHAR2(100);
+ALTER TABLE phone_specifications MODIFY radio VARCHAR2(100);
 
 -- Physical characteristics
 ALTER TABLE phone_specifications MODIFY body_material VARCHAR2(300);
@@ -25,7 +29,8 @@ FROM user_tab_columns
 WHERE table_name = 'PHONE_SPECIFICATIONS'
 AND column_name IN ('SCREEN_RESOLUTION', 'SCREEN_TYPE', 'PROTECTION',
                      'REAR_CAMERA', 'FRONT_CAMERA',
-                     'SIM', 'NETWORK_4G', 'BODY_MATERIAL')
+                     'SIM', 'NETWORK_4G', 'BLUETOOTH_VERSION', 'NFC', 'AUDIO_JACK', 'RADIO',
+                     'BODY_MATERIAL')
 ORDER BY column_name;
 
 -- Success message
