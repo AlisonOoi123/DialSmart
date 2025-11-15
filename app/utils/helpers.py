@@ -303,9 +303,47 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
     """Generate human-readable reasoning for recommendation"""
     reasons = []
 
-    # Budget
-    if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
-        reasons.append(f"Within your budget of {format_price(user_prefs.min_budget)} - {format_price(user_prefs.max_budget)}")
+    # Budget - only if both min and max are specified
+    if (hasattr(user_prefs, 'min_budget') and user_prefs.min_budget is not None and
+        hasattr(user_prefs, 'max_budget') and user_prefs.max_budget is not None):
+        if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
+            reasons.append(f"Within your budget of {format_price(user_prefs.min_budget)} - {format_price(user_prefs.max_budget)}")
+
+    # Primary usage optimization
+    if hasattr(user_prefs, 'primary_usage') and user_prefs.primary_usage and phone_specs:
+        usage = user_prefs.primary_usage
+        if usage == 'Gaming':
+            ram_values = parse_memory_values(phone_specs.ram_options) if phone_specs.ram_options else []
+            if ram_values and max(ram_values) >= 8:
+                reasons.append(f"Optimized for gaming with {max(ram_values)}GB RAM")
+        elif usage == 'Photography':
+            if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= 48:
+                reasons.append(f"Perfect for photography with {phone_specs.rear_camera_main}MP camera")
+        elif usage == 'Entertainment':
+            if phone_specs.screen_size and phone_specs.screen_size >= 6.5:
+                reasons.append(f"Great for entertainment with {phone_specs.screen_size}\" display")
+
+    # Important features
+    if hasattr(user_prefs, 'important_features') and user_prefs.important_features and phone_specs:
+        features = user_prefs.important_features
+        if isinstance(features, str):
+            try:
+                import json
+                features = json.loads(features)
+            except:
+                features = []
+
+        if features:
+            if 'Battery' in features and phone_specs.battery_capacity and phone_specs.battery_capacity >= 4500:
+                reasons.append(f"Long {phone_specs.battery_capacity}mAh battery")
+            if 'Camera' in features and phone_specs.rear_camera_main and phone_specs.rear_camera_main >= 48:
+                reasons.append(f"{phone_specs.rear_camera_main}MP camera")
+            if 'Performance' in features:
+                ram_values = parse_memory_values(phone_specs.ram_options) if phone_specs.ram_options else []
+                if ram_values and max(ram_values) >= 8:
+                    reasons.append(f"Powerful {max(ram_values)}GB RAM")
+            if '5G' in features and phone_specs.has_5g:
+                reasons.append("5G enabled")
 
     if phone_specs:
         # Performance
@@ -313,16 +351,18 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
             ram_values = parse_memory_values(phone_specs.ram_options)
             if ram_values:
                 max_ram = max(ram_values)
-                if user_prefs.min_ram and max_ram >= user_prefs.min_ram:
+                if hasattr(user_prefs, 'min_ram') and user_prefs.min_ram and max_ram >= user_prefs.min_ram:
                     reasons.append(f"Excellent performance with up to {max_ram}GB RAM")
 
         # Camera
-        if phone_specs.rear_camera_main and user_prefs.min_camera and phone_specs.rear_camera_main >= user_prefs.min_camera:
-            reasons.append(f"Great {phone_specs.rear_camera_main}MP camera for photography")
+        if hasattr(user_prefs, 'min_camera') and user_prefs.min_camera:
+            if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= user_prefs.min_camera:
+                reasons.append(f"Great {phone_specs.rear_camera_main}MP camera for photography")
 
         # Battery
-        if phone_specs.battery_capacity and user_prefs.min_battery and phone_specs.battery_capacity >= user_prefs.min_battery:
-            reasons.append(f"Long-lasting {phone_specs.battery_capacity}mAh battery")
+        if hasattr(user_prefs, 'min_battery') and user_prefs.min_battery:
+            if phone_specs.battery_capacity and phone_specs.battery_capacity >= user_prefs.min_battery:
+                reasons.append(f"Long-lasting {phone_specs.battery_capacity}mAh battery")
 
         # 5G
         if phone_specs.has_5g:
