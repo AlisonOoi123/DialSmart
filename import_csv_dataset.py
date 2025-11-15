@@ -120,9 +120,13 @@ class CSVDatasetImporter:
                 print("="*70)
                 print(f"\nReading CSV file: {self.csv_file_path}")
 
-                # Read CSV file
-                with open(self.csv_file_path, 'r', encoding='utf-8') as csvfile:
+                # Read CSV file with UTF-8-sig encoding to handle BOM
+                with open(self.csv_file_path, 'r', encoding='utf-8-sig') as csvfile:
                     reader = csv.DictReader(csvfile)
+
+                    # Clean up fieldnames (remove BOM and whitespace)
+                    if reader.fieldnames:
+                        reader.fieldnames = [name.strip() for name in reader.fieldnames if name and name.strip()]
 
                     phones_data = list(reader)
                     total_phones = len(phones_data)
