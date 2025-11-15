@@ -60,21 +60,33 @@ class AIRecommendationEngine:
 
             # Only filter if brands are actually specified
             if preferred_brands and len(preferred_brands) > 0:
-                # Get brand IDs from brand names (case-insensitive)
                 from app.models import Brand
-                from sqlalchemy import func
                 brand_ids = []
-                for brand_name in preferred_brands:
-                    # Case-insensitive brand lookup
-                    brand = Brand.query.filter(
-                        func.upper(Brand.name) == func.upper(brand_name),
-                        Brand.is_active == True
-                    ).first()
-                    if brand:
-                        brand_ids.append(brand.id)
-                        print(f"DEBUG: Found brand '{brand_name}' with ID {brand.id}")
-                    else:
-                        print(f"DEBUG: Brand '{brand_name}' NOT FOUND in database")
+
+                for brand_value in preferred_brands:
+                    # Check if it's an ID (number/string of number) or a name
+                    try:
+                        # Try to convert to integer (it's a brand ID)
+                        brand_id = int(brand_value)
+                        # Verify the brand exists and is active
+                        brand = Brand.query.filter_by(id=brand_id, is_active=True).first()
+                        if brand:
+                            brand_ids.append(brand_id)
+                            print(f"DEBUG: Found brand ID {brand_id} -> '{brand.name}'")
+                        else:
+                            print(f"DEBUG: Brand ID {brand_id} NOT FOUND or inactive")
+                    except (ValueError, TypeError):
+                        # It's a brand name, do case-insensitive lookup
+                        from sqlalchemy import func
+                        brand = Brand.query.filter(
+                            func.upper(Brand.name) == func.upper(str(brand_value)),
+                            Brand.is_active == True
+                        ).first()
+                        if brand:
+                            brand_ids.append(brand.id)
+                            print(f"DEBUG: Found brand name '{brand_value}' with ID {brand.id}")
+                        else:
+                            print(f"DEBUG: Brand name '{brand_value}' NOT FOUND in database")
 
                 # Filter phones by brand IDs
                 if brand_ids:
