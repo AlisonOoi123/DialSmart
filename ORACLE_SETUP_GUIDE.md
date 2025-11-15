@@ -136,7 +136,7 @@ If you have Oracle Database Standard or Enterprise Edition installed:
 
 1. **Install oracledb (Modern Python Driver)**:
    ```powershell
-   pip install oracledb==2.0.1
+   pip install oracledb
    ```
 
    Or install all requirements:
@@ -150,6 +150,27 @@ If you have Oracle Database Standard or Enterprise Edition installed:
    ```
 
 **Note**: The new `oracledb` driver works in "Thin mode" by default, which means **you don't need Oracle Client libraries installed**! This makes setup much easier.
+
+### Troubleshooting Installation Issues (Python 3.14+)
+
+If you get an error about "Microsoft Visual C++ 14.0 or greater is required":
+
+**Option 1: Install Latest Version (Recommended)**
+```powershell
+# Install the latest version which has better compatibility
+pip install --upgrade oracledb
+```
+
+**Option 2: Install Microsoft C++ Build Tools**
+1. Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+2. Install "Desktop development with C++"
+3. Retry: `pip install oracledb`
+
+**Option 3: Use Pre-built Wheel (If available)**
+```powershell
+# Check available versions with wheels
+pip install oracledb --only-binary :all:
+```
 
 ---
 

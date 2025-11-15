@@ -34,7 +34,8 @@ beautifulsoup4==4.12.3
 PyMySQL==1.1.0
 
 # Oracle Database support (for Oracle SQL*Plus users)
-oracledb==2.0.1
+# Using latest version for better Python 3.14+ compatibility
+oracledb>=2.3.0
 
 # PostgreSQL support (optional - alternative to MySQL/Oracle)
 # Uncomment the line below if using PostgreSQL instead of MySQL/Oracle
