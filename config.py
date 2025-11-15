@@ -34,7 +34,7 @@ class Config:
     ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD', 'dialsmart123')
     ORACLE_HOST = os.environ.get('ORACLE_HOST', 'localhost')
     ORACLE_PORT = os.environ.get('ORACLE_PORT', '1521')
-    ORACLE_SERVICE = os.environ.get('ORACLE_SERVICE', 'XEPDB1')  # Oracle XE 21c pluggable database
+    ORACLE_SERVICE = os.environ.get('ORACLE_SERVICE', 'XE')  # Oracle 21c service (use XE or check with: SELECT name FROM v$pdbs)
 
     # Database URI - Change DB_TYPE to switch databases
     # Options: 'sqlite', 'mysql', 'oracle'
