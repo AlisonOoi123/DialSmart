@@ -53,26 +53,33 @@ def dashboard():
         .limit(5)\
         .all()
 
-    # Get popular phones (most recommended) - Oracle-compatible GROUP BY
+    # Get popular phones (most recommended) - Oracle-compatible (exclude CLOB columns)
     popular_phones = db.session.query(
-        Phone,
+        Phone.id,
+        Phone.brand_id,
+        Phone.model_name,
+        Phone.price,
+        Phone.main_image,
         db.func.count(Recommendation.id).label('recommendation_count')
     ).join(Recommendation).group_by(
         Phone.id,
         Phone.brand_id,
         Phone.model_name,
-        Phone.model_number,
         Phone.price,
-        Phone.main_image,
-        Phone.gallery_images,
-        Phone.is_active,
-        Phone.availability_status,
-        Phone.release_date,
-        Phone.created_at,
-        Phone.updated_at
+        Phone.main_image
     ).order_by(db.func.count(Recommendation.id).desc())\
      .limit(5)\
      .all()
+
+    # Convert to phone objects for template
+    popular_phones_list = []
+    for phone_data in popular_phones:
+        phone = Phone.query.get(phone_data[0])
+        if phone:
+            popular_phones_list.append({
+                'phone': phone,
+                'recommendation_count': phone_data[5]
+            })
 
     return render_template('admin/dashboard.html',
                          total_users=total_users,
@@ -82,7 +89,7 @@ def dashboard():
                          new_users=new_users,
                          recent_recommendations=recent_recommendations,
                          recent_users=recent_users_list,
-                         popular_phones=popular_phones)
+                         popular_phones=popular_phones_list)
 
 # Phone Management
 @bp.route('/phones')
