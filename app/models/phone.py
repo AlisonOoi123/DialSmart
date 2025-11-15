@@ -94,16 +94,16 @@ class PhoneSpecification(db.Model):
     removable_battery = db.Column(db.String(50))  # Removable/Non-Removable
 
     # Network and Connectivity
-    sim = db.Column(db.String(150))  # SIM type details (increased for dual/eSIM descriptions)
-    technology = db.Column(db.String(100))  # GSM / HSPA / LTE / 5G
-    network_5g = db.Column(db.String(200))  # 5G bands
-    network_4g = db.Column(db.String(250))  # 4G bands (increased for multiple band listings)
-    network_3g = db.Column(db.String(200))  # 3G bands
-    network_2g = db.Column(db.String(200))  # 2G bands
-    network_speed = db.Column(db.String(100))  # Network speed capabilities
+    sim = db.Column(db.String(300))  # SIM type details (increased for new dataset)
+    technology = db.Column(db.String(200))  # GSM / HSPA / LTE / 5G
+    network_5g = db.Column(db.String(500))  # 5G bands (increased for new dataset)
+    network_4g = db.Column(db.String(500))  # 4G bands (increased for new dataset)
+    network_3g = db.Column(db.String(300))  # 3G bands (increased for new dataset)
+    network_2g = db.Column(db.String(300))  # 2G bands (increased for new dataset)
+    network_speed = db.Column(db.String(200))  # Network speed capabilities
     has_5g = db.Column(db.Boolean, default=False, index=True)
-    wifi_standard = db.Column(db.String(100))  # "WiFi 6", "WiFi 5"
-    bluetooth_version = db.Column(db.String(100))  # Bluetooth version (increased for CSV data alignment issues)
+    wifi_standard = db.Column(db.String(200))  # WiFi standard (increased for new dataset)
+    bluetooth_version = db.Column(db.String(100))  # Bluetooth version
     gps = db.Column(db.String(100))  # GPS capabilities
     nfc = db.Column(db.String(100))  # NFC support (increased for CSV data alignment issues)
     usb = db.Column(db.String(100))  # USB type and version
