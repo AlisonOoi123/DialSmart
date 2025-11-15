@@ -11,13 +11,36 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dialsmart-secret-key-2024'
 
     # Database settings
-    # Default: SQLite (good for development)
-    # Production: Set DATABASE_URL environment variable to PostgreSQL
-    # Example: postgresql://user:password@localhost/dialsmart
+    # Options: SQLite (development), MySQL (recommended), PostgreSQL (advanced)
+    #
+    # For MySQL, set environment variable DATABASE_URL to:
+    # mysql+pymysql://username:password@localhost/dialsmart
+    #
+    # Or edit the default below directly
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(BASE_DIR, 'dialsmart.db')
+
+    # MySQL connection (recommended for production)
+    # Change these values to match your MySQL setup:
+    MYSQL_USER = os.environ.get('MYSQL_USER', 'dialsmart_user')
+    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'dialsmart123')
+    MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
+    MYSQL_PORT = os.environ.get('MYSQL_PORT', '3306')
+    MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'dialsmart')
+
+    # Database URI - Change USE_MYSQL to switch databases
+    USE_MYSQL = os.environ.get('USE_MYSQL', 'false').lower() == 'true'
+
+    if USE_MYSQL:
+        SQLALCHEMY_DATABASE_URI = f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4'
+    else:
+        # SQLite (development only)
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(BASE_DIR, 'dialsmart.db')
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_recycle': 280,
+        'pool_pre_ping': True,
+    }
 
     # Session settings
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)

@@ -29,6 +29,10 @@ schedule==1.2.0
 requests==2.31.0
 beautifulsoup4==4.12.3
 
-# PostgreSQL support (optional - for production databases)
-# Uncomment the line below if using PostgreSQL instead of SQLite
+# Database Drivers
+# MySQL support (recommended for production)
+PyMySQL==1.1.0
+
+# PostgreSQL support (optional - alternative to MySQL)
+# Uncomment the line below if using PostgreSQL instead of MySQL
 # psycopg2-binary==2.9.9
