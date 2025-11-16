@@ -1,0 +1,516 @@
+question,intent,category,short_form
+phone under 2000,budget_query,budget,no
+cheapest phone,budget_query,budget,no
+best phone under rm1000?,budget_query,budget,no
+phones below 1500,budget_query,budget,no
+budget phone recommendations,budget_query,budget,no
+affordable phones,budget_query,budget,no
+phone under 3k,budget_query,budget,yes
+what's the cheapest 5g phone,budget_5g,budget,no
+rm500 phone got or not,budget_query,budget,yes
+below rm1000 any good phone?,budget_query,budget,yes
+student budget phone,budget_student,budget,no
+cheap but good phone,budget_value,budget,no
+under 2k with good camera,budget_camera,budget,yes
+low price high quality,budget_value,budget,no
+economy phone,budget_query,budget,no
+how much is iphone 15,price_check,price,no
+samsung s24 price,price_check,price,no
+xiaomi vs samsung price,price_comparison,price,no
+is pixel cheaper than iphone,price_comparison,price,no
+honor phone price range,price_range,price,no
+which brand cheaper,price_comparison,price,no
+apple vs android price,price_comparison,price,no
+flagship phone prices,price_range,price,no
+mid range phone cost,price_range,price,no
+budget vs premium phones,price_comparison,price,no
+best value for money,value_query,value,no
+worth it or not,value_query,value,yes
+good deal phones,value_query,value,no
+bang for buck phone,value_query,value,no
+overpriced phones,value_query,value,no
+best phone for the price,value_query,value,no
+value flagship,value_query,value,no
+worth the money?,value_query,value,no
+good investment phone,value_query,value,no
+price vs performance,value_query,value,no
+good camera phone,camera_general,camera,no
+best camera under 2000,camera_budget,camera,no
+phone with triple camera,camera_specs,camera,no
+50mp camera phone,camera_specs,camera,yes
+camera quality phone,camera_general,camera,no
+photography phone,camera_general,camera,no
+best for taking pics,camera_general,camera,no
+good selfie camera,camera_selfie,camera,no
+front camera quality,camera_selfie,camera,no
+which has better camera,camera_comparison,camera,no
+night mode camera,camera_feature,camera,no
+zoom camera phone,camera_feature,camera,no
+wide angle camera,camera_feature,camera,no
+portrait mode phone,camera_feature,camera,no
+video recording phone,camera_video,camera,no
+4k video phone,camera_video,camera,yes
+slow motion camera,camera_video,camera,no
+good for instagram,camera_social,camera,no
+tiktok camera phone,camera_social,camera,no
+food photography phone,camera_photography,camera,no
+iphone vs samsung camera,camera_comparison,camera,no
+pixel camera better or not,camera_comparison,camera,yes
+xiaomi camera good?,camera_comparison,camera,no
+honor vs oppo camera,camera_comparison,camera,no
+which brand best camera,camera_comparison,camera,no
+flagship camera comparison,camera_comparison,camera,no
+mid range best camera,camera_budget,camera,no
+budget camera phone,camera_budget,camera,no
+apple camera vs android,camera_comparison,camera,no
+camera phone ranking,camera_comparison,camera,no
+gaming phone,gaming_general,gaming,no
+best for mobile legends,gaming_specific,gaming,no
+pubg phone,gaming_specific,gaming,yes
+genshin impact phone,gaming_specific,gaming,no
+cod mobile phone,gaming_specific,gaming,yes
+gaming phone under 2000,gaming_budget,gaming,no
+smooth gaming phone,gaming_performance,gaming,no
+no lag phone,gaming_performance,gaming,no
+high fps phone,gaming_performance,gaming,yes
+game performance phone,gaming_performance,gaming,no
+snapdragon for gaming,gaming_specs,gaming,no
+gaming processor phone,gaming_specs,gaming,no
+high refresh rate phone,gaming_specs,gaming,no
+120hz phone,gaming_specs,gaming,yes
+cooling system phone,gaming_specs,gaming,no
+gaming chipset,gaming_specs,gaming,no
+gpu performance,gaming_specs,gaming,yes
+ram for gaming,gaming_specs,gaming,no
+gaming phone specs,gaming_specs,gaming,no
+fastest processor phone,gaming_specs,gaming,no
+budget gaming phone,gaming_budget,gaming,no
+cheap gaming phone,gaming_budget,gaming,no
+gaming phone under 1500,gaming_budget,gaming,no
+affordable gaming,gaming_budget,gaming,no
+student gaming phone,gaming_budget,gaming,no
+entry level gaming phone,gaming_budget,gaming,no
+mid range gaming,gaming_budget,gaming,no
+flagship gaming phone,gaming_general,gaming,no
+best gaming value,gaming_value,gaming,no
+gaming phone deals,gaming_budget,gaming,no
+long battery life,battery_life,battery,no
+best battery phone,battery_life,battery,no
+5000mah phone,battery_capacity,battery,yes
+battery last whole day,battery_life,battery,no
+heavy usage battery,battery_life,battery,no
+battery life ranking,battery_comparison,battery,no
+longest battery,battery_life,battery,no
+battery phone under 2000,battery_budget,battery,no
+all day battery,battery_life,battery,no
+battery endurance phone,battery_life,battery,no
+fast charging phone,charging_speed,battery,no
+65w charging,charging_speed,battery,yes
+quick charge phone,charging_speed,battery,no
+wireless charging phone,charging_feature,battery,no
+charging speed,charging_speed,battery,no
+fastest charging phone,charging_speed,battery,no
+30min full charge,charging_speed,battery,yes
+super fast charge,charging_speed,battery,no
+charging time phone,charging_speed,battery,no
+wired vs wireless charging,charging_comparison,battery,no
+battery drain phone,battery_issue,battery,no
+battery replacement cost,battery_service,battery,no
+removable battery phone,battery_feature,battery,no
+battery health,battery_info,battery,no
+battery capacity,battery_info,battery,no
+battery vs performance,battery_comparison,battery,no
+battery degradation,battery_info,battery,no
+battery warranty,battery_service,battery,no
+power saving phone,battery_feature,battery,no
+battery optimization,battery_feature,battery,no
+5g phone,network_5g,network,yes
+5g under 2000,network_5g_budget,network,yes
+cheapest 5g,network_5g_budget,network,yes
+5g vs 4g,network_comparison,network,yes
+5g phones list,network_5g,network,yes
+need 5g or not,network_advice,network,yes
+5g worth it,network_advice,network,yes
+5g coverage malaysia,network_local,network,yes
+affordable 5g,network_5g_budget,network,yes
+5g phone recommendations,network_5g,network,yes
+dual sim phone,network_feature,network,no
+esim phone,network_feature,network,yes
+dual 5g phone,network_feature,network,yes
+network bands,network_specs,network,no
+malaysia network phone,network_local,network,no
+celcom compatible,network_carrier,network,no
+maxis phone,network_carrier,network,no
+digi phone,network_carrier,network,no
+umobile phone,network_carrier,network,no
+all network phone,network_feature,network,no
+wifi 6 phone,connectivity_feature,network,yes
+bluetooth 5.3,connectivity_feature,network,yes
+nfc phone,connectivity_feature,network,yes
+wireless features,connectivity_general,network,no
+connectivity options,connectivity_general,network,no
+hotspot phone,connectivity_feature,network,no
+network speed,connectivity_performance,network,no
+signal strength phone,connectivity_performance,network,no
+wifi calling phone,connectivity_feature,network,no
+volte phone,connectivity_feature,network,yes
+256gb phone,storage_capacity,storage,yes
+storage options,storage_general,storage,no
+expandable storage,storage_feature,storage,no
+sd card slot,storage_feature,storage,yes
+internal storage,storage_info,storage,no
+128gb enough or not,storage_advice,storage,yes
+storage under 2000,storage_budget,storage,no
+memory card phone,storage_feature,storage,no
+cloud storage phone,storage_feature,storage,no
+storage management,storage_feature,storage,no
+8gb ram phone,ram_capacity,memory,yes
+multitasking phone,ram_performance,memory,no
+ram options,ram_general,memory,yes
+memory performance,ram_performance,memory,no
+12gb ram phone,ram_capacity,memory,yes
+ram vs storage,ram_comparison,memory,yes
+enough ram gaming,ram_gaming,memory,yes
+ram under 2000,ram_budget,memory,yes
+best ram phone,ram_general,memory,yes
+ram speed phone,ram_specs,memory,yes
+amoled screen,display_type,display,yes
+big screen phone,display_size,display,no
+6.7 inch phone,display_size,display,yes
+small phone,display_size,display,no
+bezel less phone,display_design,display,no
+notch vs punch hole,display_design,display,no
+screen quality,display_general,display,no
+bright display,display_feature,display,no
+outdoor visibility,display_feature,display,no
+screen protection,display_feature,display,no
+120hz phone,display_refresh,display,yes
+refresh rate phone,display_refresh,display,no
+hdr display,display_feature,display,yes
+resolution phone,display_specs,display,no
+ppi phone,display_specs,display,yes
+color accuracy,display_feature,display,no
+screen brightness,display_feature,display,no
+always on display,display_feature,display,no
+adaptive refresh rate,display_feature,display,no
+display comparison,display_comparison,display,no
+samsung phones,brand_query,brand,no
+apple phones,brand_query,brand,no
+xiaomi phones,brand_query,brand,no
+oppo phones,brand_query,brand,no
+vivo phones,brand_query,brand,no
+honor phones,brand_query,brand,no
+realme phones,brand_query,brand,no
+google pixel,brand_query,brand,no
+asus phones,brand_query,brand,no
+huawei phones,brand_query,brand,no
+samsung vs apple,brand_comparison,brand,no
+xiaomi vs samsung,brand_comparison,brand,no
+oppo vs vivo,brand_comparison,brand,no
+honor vs xiaomi,brand_comparison,brand,no
+apple vs android,brand_comparison,brand,no
+chinese brands,brand_category,brand,no
+flagship brands,brand_category,brand,no
+budget brands,brand_category,brand,no
+which brand better,brand_comparison,brand,no
+brand reliability,brand_reputation,brand,no
+reliable brand,brand_reputation,brand,no
+best brand malaysia,brand_local,brand,no
+popular brand,brand_reputation,brand,no
+trusted brand,brand_reputation,brand,no
+brand warranty,brand_service,brand,no
+after sales service,brand_service,brand,no
+brand quality,brand_reputation,brand,no
+brand value,brand_reputation,brand,no
+korean vs chinese brand,brand_comparison,brand,no
+premium brands,brand_category,brand,no
+student phone,user_student,user_category,no
+uni student phone,user_student,user_category,no
+school phone,user_student,user_category,no
+affordable student,user_student,user_category,no
+student budget phone,user_student,user_category,no
+study phone,user_student,user_category,no
+college phone,user_student,user_category,no
+young people phone,user_student,user_category,no
+teen phone,user_student,user_category,no
+first phone,user_student,user_category,no
+work phone,user_worker,user_category,no
+business phone,user_worker,user_category,no
+professional phone,user_worker,user_category,no
+office use phone,user_worker,user_category,no
+productivity phone,user_worker,user_category,no
+email phone,user_worker,user_category,no
+corporate phone,user_worker,user_category,no
+work from home phone,user_worker,user_category,no
+multitasking work phone,user_worker,user_category,no
+executive phone,user_worker,user_category,no
+senior citizen phone,user_elder,user_category,no
+elderly phone,user_elder,user_category,no
+simple phone,user_elder,user_category,no
+easy to use phone,user_elder,user_category,no
+big screen easy,user_elder,user_category,no
+simple interface,user_elder,user_category,no
+parent phone,user_elder,user_category,no
+grandparent phone,user_elder,user_category,no
+older people phone,user_elder,user_category,no
+user friendly phone,user_elder,user_category,no
+content creator phone,usecase_creator,usecase,no
+youtube phone,usecase_creator,usecase,no
+instagram phone,usecase_social,usecase,no
+vlogging phone,usecase_creator,usecase,no
+photography phone,usecase_photography,usecase,no
+video phone,usecase_video,usecase,no
+social media phone,usecase_social,usecase,no
+influencer phone,usecase_creator,usecase,no
+streaming phone,usecase_entertainment,usecase,no
+editing phone,usecase_creator,usecase,no
+netflix phone,usecase_entertainment,usecase,no
+movie watching phone,usecase_entertainment,usecase,no
+music phone,usecase_entertainment,usecase,no
+spotify phone,usecase_entertainment,usecase,no
+entertainment phone,usecase_entertainment,usecase,no
+media consumption,usecase_entertainment,usecase,no
+streaming quality,usecase_entertainment,usecase,no
+speaker quality,usecase_entertainment,usecase,no
+audio phone,usecase_entertainment,usecase,no
+video playback,usecase_entertainment,usecase,no
+travel phone,usecase_travel,usecase,no
+international phone,usecase_travel,usecase,no
+roaming phone,usecase_travel,usecase,no
+navigation phone,usecase_travel,usecase,no
+gps phone,usecase_travel,usecase,yes
+dual sim travel,usecase_travel,usecase,no
+travel friendly,usecase_travel,usecase,no
+portable phone,usecase_travel,usecase,no
+lightweight phone,usecase_travel,usecase,no
+compact phone,usecase_travel,usecase,no
+iphone 15 vs s24,comparison_models,comparison,yes
+xiaomi 14 vs pixel 8,comparison_models,comparison,yes
+compare phones,comparison_general,comparison,no
+difference between,comparison_general,comparison,no
+which one better,comparison_general,comparison,no
+a vs b,comparison_general,comparison,yes
+pros and cons,comparison_general,comparison,no
+side by side,comparison_general,comparison,no
+spec comparison,comparison_specs,comparison,no
+feature comparison,comparison_features,comparison,no
+camera vs battery,comparison_features,comparison,no
+performance vs price,comparison_features,comparison,no
+5g vs 4g worth it,comparison_features,comparison,yes
+android vs ios,comparison_os,comparison,yes
+oled vs lcd,comparison_specs,comparison,yes
+fast charge vs wireless,comparison_features,comparison,no
+big screen vs compact,comparison_features,comparison,no
+flagship vs mid range,comparison_category,comparison,no
+new vs old model,comparison_models,comparison,no
+stock android vs custom,comparison_os,comparison,no
+recommend me a phone,recommendation_general,general,no
+what phone should i buy,recommendation_general,general,no
+best phone 2025,recommendation_best,general,no
+top phones,recommendation_best,general,no
+latest phones,recommendation_latest,general,no
+popular phones,recommendation_popular,general,no
+trending phones,recommendation_trending,general,no
+best seller,recommendation_popular,general,no
+most bought,recommendation_popular,general,no
+top rated,recommendation_best,general,no
+what is 5g,info_5g,general,yes
+what is amoled,info_display,general,yes
+what is nfc,info_feature,general,yes
+what is snapdragon,info_processor,general,no
+explain processor,info_processor,general,no
+what is refresh rate,info_display,general,no
+what is ip rating,info_feature,general,yes
+what is gorilla glass,info_display,general,no
+what is fast charging,info_battery,general,no
+what is wireless charging,info_battery,general,no
+hi,greeting,casual,no
+hello,greeting,casual,no
+hey,greeting,casual,no
+help me,help_request,casual,no
+need phone,help_request,casual,no
+suggest phone,recommendation_general,casual,no
+any recommendations,recommendation_general,casual,no
+show me phones,browse_request,casual,no
+find phone,search_request,casual,no
+looking for phone,search_request,casual,no
+u got cheap phone?,budget_query,shortform,yes
+can u recommend budget,recommendation_budget,shortform,yes
+u know good deals?,value_query,shortform,yes
+wht u suggest under 2k,recommendation_budget,shortform,yes
+u think worth it?,value_query,shortform,yes
+r u sure?,confirmation,shortform,yes
+y u recommend this,recommendation_reason,shortform,yes
+hw much?,price_check,shortform,yes
+any promo?,promotion_query,shortform,no
+gt discount?,promotion_query,shortform,yes
+thx,thanks,shortform,yes
+ty,thanks,shortform,yes
+np,acknowledgment,shortform,yes
+ok,acknowledgment,shortform,yes
+k,acknowledgment,shortform,yes
+yep,acknowledgment,shortform,yes
+nope,acknowledgment,shortform,yes
+idk,uncertainty,shortform,yes
+wht,question_what,shortform,yes
+hw,question_how,shortform,yes
+y,question_why,shortform,yes
+r,question_are,shortform,yes
+u,pronoun_you,shortform,yes
+ur,pronoun_your,shortform,yes
+pls,please,shortform,yes
+plz,please,shortform,yes
+gimme,give_me,shortform,yes
+lemme,let_me,shortform,yes
+gonna,going_to,shortform,yes
+wanna,want_to,shortform,yes
+wht phone shld i get,recommendation_general,shortform,yes
+hw to choose,help_choose,shortform,yes
+y this 1 better,comparison_reason,shortform,yes
+r u recommending,recommendation_confirm,shortform,yes
+shld i buy,purchase_advice,shortform,yes
+is it gd,quality_check,shortform,yes
+gt better option,alternative_request,shortform,yes
+whr to buy,purchase_location,shortform,yes
+wen release,release_date,shortform,yes
+hw long battery last,battery_life,shortform,yes
+wht the diff,comparison_general,shortform,yes
+y so exp,price_question,shortform,yes
+is it wrth,value_query,shortform,yes
+cn i afrd,budget_check,shortform,yes
+gt cheaper,price_alternative,shortform,yes
+tell me more,more_info,followup,no
+more details,more_info,followup,no
+other options,alternative_request,followup,no
+cheaper alternative,alternative_budget,followup,no
+better than this,alternative_better,followup,no
+compare with,comparison_request,followup,no
+what else,alternative_request,followup,no
+any other,alternative_request,followup,no
+show more,browse_more,followup,no
+next option,browse_next,followup,no
+what u mean,clarification,followup,yes
+explain,clarification,followup,no
+i dont understand,clarification,followup,no
+can u clarify,clarification,followup,yes
+repeat that,repeat_request,followup,no
+example,example_request,followup,no
+show me,visual_request,followup,no
+how,question_how,followup,no
+why,question_why,followup,no
+really,confirmation,followup,no
+find samsung phones,search_brand,action,no
+search under 2000,search_budget,action,no
+filter by brand,filter_brand,action,no
+show 5g only,filter_5g,action,yes
+list all cameras,filter_camera,action,no
+search gaming,search_gaming,action,no
+find budget,search_budget,action,no
+lookup iphone,search_brand,action,no
+check price,price_check,action,no
+view specs,specs_view,action,no
+compare these 2,comparison_action,action,no
+show difference,comparison_action,action,no
+side by side view,comparison_action,action,no
+put them together,comparison_action,action,no
+check vs,comparison_action,action,yes
+match up,comparison_action,action,no
+compare specs,comparison_specs,action,no
+which wins,comparison_winner,action,no
+better choice,comparison_better,action,no
+final verdict,comparison_conclusion,action,no
+processor speed,specs_processor,specs,no
+gpu name,specs_gpu,specs,yes
+screen size,specs_display,specs,no
+weight,specs_physical,specs,no
+dimensions,specs_physical,specs,no
+os version,specs_software,specs,yes
+android version,specs_software,specs,no
+camera megapixels,specs_camera,specs,yes
+battery mah,specs_battery,specs,yes
+charging watts,specs_charging,specs,yes
+ram type,specs_memory,specs,yes
+storage type,specs_storage,specs,no
+screen resolution,specs_display,specs,no
+ppi count,specs_display,specs,yes
+refresh rate hz,specs_display,specs,yes
+got fingerprint?,feature_check,specs,yes
+face unlock?,feature_check,specs,no
+water resistant?,feature_check,specs,no
+ip rating?,feature_check,specs,yes
+gorilla glass?,feature_check,specs,no
+stereo speakers?,feature_check,specs,no
+headphone jack?,feature_check,specs,no
+infrared?,feature_check,specs,no
+fm radio?,feature_check,specs,yes
+notification led?,feature_check,specs,yes
+always on display?,feature_check,specs,no
+reverse charging?,feature_check,specs,no
+dual sim?,feature_check,specs,yes
+esim support?,feature_check,specs,yes
+expandable storage?,feature_check,specs,no
+shopee price,local_shopping,local,no
+lazada deals,local_shopping,local,no
+senheng phone,local_retailer,local,no
+harvey norman,local_retailer,local,no
+machines phone,local_retailer,local,no
+switch phone,local_retailer,local,no
+authorized dealer,local_retailer,local,no
+warranty malaysia,local_warranty,local,no
+local stock,local_availability,local,no
+grey import,local_availability,local,no
+official malaysia,local_official,local,no
+rm pricing,local_price,local,yes
+malaysia release,local_release,local,no
+available malaysia,local_availability,local,no
+buy in malaysia,local_purchase,local,no
+celcom plan,carrier_plan,carrier,no
+maxis package,carrier_plan,carrier,no
+digi phone,carrier_plan,carrier,no
+umobile deal,carrier_plan,carrier,no
+yes 5g,carrier_plan,carrier,yes
+unifi mobile,carrier_plan,carrier,no
+telco bundle,carrier_bundle,carrier,no
+contract phone,carrier_contract,carrier,no
+prepaid phone,carrier_prepaid,carrier,no
+postpaid plan,carrier_postpaid,carrier,no
+where to buy,purchase_location,purchase,no
+best place buy,purchase_location,purchase,no
+online or store,purchase_channel,purchase,no
+delivery time,purchase_delivery,purchase,no
+installment plan,purchase_payment,purchase,no
+trade in value,purchase_tradein,purchase,no
+payment options,purchase_payment,purchase,no
+credit card promo,purchase_promo,purchase,no
+cash back deal,purchase_promo,purchase,no
+voucher code,purchase_promo,purchase,no
+should i wait,purchase_timing,purchase,no
+new model coming,purchase_timing,purchase,no
+price drop soon,purchase_timing,purchase,no
+better deal later,purchase_timing,purchase,no
+launch date,release_info,purchase,no
+pre order,purchase_preorder,purchase,no
+early bird,purchase_preorder,purchase,no
+first batch,purchase_preorder,purchase,no
+stock availability,purchase_stock,purchase,no
+coming soon,release_info,purchase,no
+battery draining fast,issue_battery,problem,no
+phone heating,issue_heat,problem,no
+camera blur,issue_camera,problem,no
+slow performance,issue_performance,problem,no
+storage full,issue_storage,problem,no
+app crashing,issue_software,problem,no
+screen crack,issue_physical,problem,no
+charging slow,issue_charging,problem,no
+wifi problem,issue_network,problem,yes
+network issue,issue_network,problem,no
+how to fix,solution_request,solution,no
+troubleshoot,solution_request,solution,no
+need repair,solution_repair,solution,no
+warranty claim,solution_warranty,solution,no
+service center,solution_service,solution,no
+reset phone,solution_reset,solution,no
+update software,solution_update,solution,no
+clear cache,solution_maintenance,solution,no
+backup data,solution_backup,solution,no
+factory reset,solution_reset,solution,no
