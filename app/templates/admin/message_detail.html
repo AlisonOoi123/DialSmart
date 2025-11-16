@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}View Message - Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+<div class="mb-3">
+    <a href="{{ url_for('admin.messages') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Messages
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">
+            <i class="bi bi-envelope-open"></i>
+            {{ message.subject or 'General Inquiry' }}
+            {% if message.is_replied %}
+            <span class="badge bg-success float-end">Replied</span>
+            {% elif message.is_read %}
+            <span class="badge bg-info float-end">Read</span>
+            {% else %}
+            <span class="badge bg-warning float-end">Unread</span>
+            {% endif %}
+        </h4>
+    </div>
+    <div class="card-body">
+        <!-- Sender Info -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h6 class="text-muted">From:</h6>
+                <p>
+                    <strong>{{ message.name }}</strong><br>
+                    <a href="mailto:{{ message.email }}">{{ message.email }}</a>
+                    {% if message.user_id %}
+                    <br><small class="text-muted">(Registered User)</small>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <h6 class="text-muted">Date:</h6>
+                <p>{{ message.created_at|local_time('%B %d, %Y at %I:%M %p') }}</p>
+            </div>
+        </div>
+
+        <!-- Message Content -->
+        <div class="mb-4">
+            <h6 class="text-muted">Message:</h6>
+            <div class="p-3 bg-light rounded">
+                {{ message.message|nl2br|safe }}
+            </div>
+        </div>
+
+        <!-- Admin Notes -->
+        {% if message.admin_notes %}
+        <div class="mb-4">
+            <h6 class="text-muted">Admin Notes:</h6>
+            <div class="p-3 bg-warning bg-opacity-10 rounded">
+                {{ message.admin_notes|nl2br|safe }}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Reply Section -->
+        {% if not message.is_replied %}
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6>Mark as Replied</h6>
+                <form method="POST" action="{{ url_for('admin.reply_message', message_id=message.id) }}">
+                    <div class="mb-3">
+                        <label class="form-label">Admin Notes (optional)</label>
+                        <textarea name="admin_notes" class="form-control" rows="3"
+                                  placeholder="Add internal notes about this message...">{{ message.admin_notes }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Mark as Replied
+                    </button>
+                    <a href="mailto:{{ message.email }}?subject=Re: {{ message.subject or 'Your inquiry' }}"
+                       class="btn btn-primary">
+                        <i class="bi bi-envelope"></i> Send Email Reply
+                    </a>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> This message was marked as replied on {{ message.replied_at|local_time('%B %d, %Y') }}.
+            <a href="mailto:{{ message.email }}?subject=Re: {{ message.subject or 'Your inquiry' }}"
+               class="btn btn-sm btn-outline-success ms-2">
+                Send Another Reply
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Delete Button -->
+        <div class="mt-3">
+            <form method="POST" action="{{ url_for('admin.delete_message', message_id=message.id) }}"
+                  onsubmit="return confirm('Are you sure you want to delete this message?');">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-trash"></i> Delete Message
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}
