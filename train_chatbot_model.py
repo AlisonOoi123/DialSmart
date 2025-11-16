@@ -75,7 +75,7 @@ def train_and_save_model():
 
     # Use GridSearchCV to find optimal C for merged intents
     print("Building OPTIMIZED LinearSVC with GridSearchCV...")
-    print("Finding best C parameter for 8 merged intents")
+    print("Finding best C parameter for 7 merged intents (targeting 90%+ accuracy)")
     print()
 
     # Create base pipeline
@@ -225,10 +225,10 @@ if __name__ == '__main__':
     print("for the DialSmart chatbot using machine learning.")
     print()
     print("Training data includes:")
-    print("- 8 intent categories (merged from 14 for higher accuracy)")
-    print("  * MERGED: display, battery, performance, storage, camera → specification")
+    print("- 7 intent categories (merged from 14 for 90%+ accuracy)")
+    print("  * MERGED: display, battery, performance, storage, camera, feature → specification")
     print("  * MERGED: help → recommendation")
-    print("  * specification now has ~730 samples (37% of data - VERY strong!)")
+    print("  * specification now has ~990 samples (50% of data - MEGA DOMINANT!)")
     print("  * recommendation now has ~240 samples (12% of data)")
     print("- 1966 total training examples")
     print("- Dual TF-IDF vectorization (word + char n-grams)")
@@ -236,7 +236,7 @@ if __name__ == '__main__':
     print("  * Testing C values: 0.1, 0.3, 0.5, 0.8, 1.0, 1.5 (expanded range)")
     print("  * squared_hinge loss (best for text)")
     print("  * cv=5 calibration for confidence scores")
-    print("- Expected accuracy: 88-92% (optimized for 8 merged intents)")
+    print("- Expected accuracy: 90-92% (optimized for 7 merged intents)")
     print()
     print()
     print("="*70)

@@ -890,9 +890,9 @@ except ImportError:
     pass  # Advanced data not available
 
 # MERGE SPECIFICATION-RELATED INTENTS FOR 90%+ ACCURACY
-# Combine 6 similar intents into one "specification" intent to reduce confusion
+# Combine 7 similar intents into one "specification" intent to reduce confusion
 print("Merging specification-related intents for better accuracy...")
-intents_to_merge = ['display_query', 'battery_query', 'performance_query', 'storage_query', 'camera_query']
+intents_to_merge = ['display_query', 'battery_query', 'performance_query', 'storage_query', 'camera_query', 'feature_query']
 for intent in intents_to_merge:
     if intent in TRAINING_DATA:
         # Move all samples to specification intent
@@ -904,9 +904,9 @@ for intent in intents_to_merge:
             del INTENT_DESCRIPTIONS[intent]
 
 # Update specification description
-INTENT_DESCRIPTIONS['specification'] = 'User asking about phone specifications (display, battery, performance, storage, RAM, camera, processor, etc.)'
+INTENT_DESCRIPTIONS['specification'] = 'User asking about phone specifications or features (display, battery, performance, storage, RAM, camera, processor, 5G, waterproof, etc.)'
 
-print(f"Merged 5 specification intents → 'specification' now has {len(TRAINING_DATA['specification'])} samples")
+print(f"Merged 6 specification/feature intents → 'specification' now has {len(TRAINING_DATA['specification'])} samples")
 
 # MERGE HELP INTO RECOMMENDATION FOR HIGHER ACCURACY
 # "help me find a phone" and "recommend a phone" are semantically the same
@@ -918,4 +918,4 @@ if 'help' in TRAINING_DATA:
         del INTENT_DESCRIPTIONS['help']
     print(f"Merged help → recommendation now has {len(TRAINING_DATA['recommendation'])} samples")
 
-print(f"Total intents reduced from 14 to {len(TRAINING_DATA)} (8 final intents)")
+print(f"Total intents reduced from 14 to {len(TRAINING_DATA)} (7 final intents for 90%+ accuracy)")

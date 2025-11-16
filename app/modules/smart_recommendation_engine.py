@@ -436,7 +436,7 @@ class SmartRecommendationEngine:
                 score += min(specs.battery_capacity / 500, 10)
 
             # Display score
-            if specs.refresh_rate and specs.refresh_rate >= 90:
+            if specs.refresh_rate is not None and specs.refresh_rate >= 90:
                 score += 10
 
             # 5G bonus
@@ -459,37 +459,37 @@ class SmartRecommendationEngine:
         usage_lower = usage_type.lower()
 
         if usage_lower == 'gaming':
-            if specs.refresh_rate and specs.refresh_rate >= 120:
+            if specs.refresh_rate is not None and specs.refresh_rate >= 120:
                 score += 30
-            elif specs.refresh_rate and specs.refresh_rate >= 90:
+            elif specs.refresh_rate is not None and specs.refresh_rate >= 90:
                 score += 20
             if specs.ram_options and ('8GB' in specs.ram_options or '12GB' in specs.ram_options):
                 score += 25
             if specs.processor_brand and specs.processor_brand in ['Qualcomm', 'Apple']:
                 score += 25
-            if specs.battery_capacity and specs.battery_capacity >= 4500:
+            if specs.battery_capacity is not None and specs.battery_capacity >= 4500:
                 score += 20
 
         elif usage_lower == 'photography':
-            if specs.rear_camera_main and specs.rear_camera_main >= 108:
+            if specs.rear_camera_main is not None and specs.rear_camera_main >= 108:
                 score += 40
-            elif specs.rear_camera_main and specs.rear_camera_main >= 64:
+            elif specs.rear_camera_main is not None and specs.rear_camera_main >= 64:
                 score += 30
-            elif specs.rear_camera_main and specs.rear_camera_main >= 48:
+            elif specs.rear_camera_main is not None and specs.rear_camera_main >= 48:
                 score += 20
             if specs.rear_camera and '+' in specs.rear_camera:  # Multiple cameras
                 score += 15
             if specs.screen_type and 'AMOLED' in specs.screen_type:
                 score += 15
-            if specs.front_camera_mp and specs.front_camera_mp >= 32:
+            if specs.front_camera_mp is not None and specs.front_camera_mp >= 32:
                 score += 15
 
         elif usage_lower == 'business':
             if specs.has_5g:
                 score += 25
-            if specs.battery_capacity and specs.battery_capacity >= 5000:
+            if specs.battery_capacity is not None and specs.battery_capacity >= 5000:
                 score += 30
-            elif specs.battery_capacity and specs.battery_capacity >= 4500:
+            elif specs.battery_capacity is not None and specs.battery_capacity >= 4500:
                 score += 20
             if specs.processor_brand and specs.processor_brand in ['Qualcomm', 'Apple']:
                 score += 15
@@ -497,36 +497,36 @@ class SmartRecommendationEngine:
                 score += 10
 
         elif usage_lower == 'entertainment':
-            if specs.screen_size and specs.screen_size >= 6.7:
+            if specs.screen_size is not None and specs.screen_size >= 6.7:
                 score += 25
-            elif specs.screen_size and specs.screen_size >= 6.5:
+            elif specs.screen_size is not None and specs.screen_size >= 6.5:
                 score += 15
             if specs.screen_type and 'AMOLED' in specs.screen_type:
                 score += 25
-            if specs.battery_capacity and specs.battery_capacity >= 5000:
+            if specs.battery_capacity is not None and specs.battery_capacity >= 5000:
                 score += 25
-            if specs.refresh_rate and specs.refresh_rate >= 90:
+            if specs.refresh_rate is not None and specs.refresh_rate >= 90:
                 score += 15
 
         elif usage_lower == 'social media':
-            if specs.front_camera_mp and specs.front_camera_mp >= 32:
+            if specs.front_camera_mp is not None and specs.front_camera_mp >= 32:
                 score += 30
-            elif specs.front_camera_mp and specs.front_camera_mp >= 16:
+            elif specs.front_camera_mp is not None and specs.front_camera_mp >= 16:
                 score += 20
-            if specs.rear_camera_main and specs.rear_camera_main >= 48:
+            if specs.rear_camera_main is not None and specs.rear_camera_main >= 48:
                 score += 20
             if specs.screen_type and 'AMOLED' in specs.screen_type:
                 score += 15
-            if specs.battery_capacity and specs.battery_capacity >= 4500:
+            if specs.battery_capacity is not None and specs.battery_capacity >= 4500:
                 score += 15
 
         elif usage_lower == 'basic':
             # For senior citizens and basic users - prioritize ease of use, battery, durability
-            if specs.battery_capacity and specs.battery_capacity >= 5000:
+            if specs.battery_capacity is not None and specs.battery_capacity >= 5000:
                 score += 40  # Long battery life is critical
-            elif specs.battery_capacity and specs.battery_capacity >= 4000:
+            elif specs.battery_capacity is not None and specs.battery_capacity >= 4000:
                 score += 25
-            if specs.screen_size and specs.screen_size >= 6.0:  # Bigger screen for readability
+            if specs.screen_size is not None and specs.screen_size >= 6.0:  # Bigger screen for readability
                 score += 20
             if phone.price <= 1500:  # Budget-friendly
                 score += 30
@@ -544,10 +544,10 @@ class SmartRecommendationEngine:
         specs = phone.specifications
         score = 0
 
-        if specs.rear_camera_main:
+        if specs.rear_camera_main is not None:
             score += min(specs.rear_camera_main, 50)
 
-        if specs.front_camera_mp:
+        if specs.front_camera_mp is not None:
             score += min(specs.front_camera_mp, 20)
 
         if '+' in specs.rear_camera:  # Multiple cameras
@@ -573,9 +573,9 @@ class SmartRecommendationEngine:
         elif '8GB' in specs.ram_options:
             score += 20
 
-        if specs.refresh_rate >= 120:
+        if specs.refresh_rate is not None and specs.refresh_rate >= 120:
             score += 20
-        elif specs.refresh_rate >= 90:
+        elif specs.refresh_rate is not None and specs.refresh_rate >= 90:
             score += 10
 
         return score
@@ -598,14 +598,14 @@ class SmartRecommendationEngine:
         if 'AMOLED' in specs.screen_type:
             score += 30
 
-        if specs.refresh_rate >= 120:
+        if specs.refresh_rate is not None and specs.refresh_rate >= 120:
             score += 30
-        elif specs.refresh_rate >= 90:
+        elif specs.refresh_rate is not None and specs.refresh_rate >= 90:
             score += 20
 
-        if specs.screen_size >= 6.7:
+        if specs.screen_size is not None and specs.screen_size >= 6.7:
             score += 20
-        elif specs.screen_size >= 6.5:
+        elif specs.screen_size is not None and specs.screen_size >= 6.5:
             score += 10
 
         return score
