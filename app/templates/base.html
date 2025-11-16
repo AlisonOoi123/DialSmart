@@ -118,8 +118,7 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Chatbot Widget -->
-    {% if current_user.is_authenticated %}
+    <!-- Chatbot Widget - Available to all users -->
     <div id="chatbot-widget">
         <button id="chatbot-toggle" class="btn btn-primary rounded-circle">
             <i class="bi bi-chat-dots-fill"></i>
@@ -158,7 +157,6 @@
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Footer -->
     <footer class="bg-dark text-white mt-5 py-4">

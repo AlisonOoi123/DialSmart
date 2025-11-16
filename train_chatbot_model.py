@@ -10,6 +10,7 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import LinearSVC
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import VotingClassifier, RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
@@ -40,46 +41,40 @@ def train_and_save_model():
     # Create improved TF-IDF vectorizer
     print("\nCreating optimized feature extractor...")
     vectorizer = TfidfVectorizer(
-        ngram_range=(1, 4),  # Use up to 4-grams for better context
-        max_features=10000,   # More features for better discrimination
+        ngram_range=(1, 3),  # Use up to 3-grams for better context
+        max_features=8000,   # Features for better discrimination
         min_df=1,
-        max_df=0.85,
+        max_df=0.90,
         lowercase=True,
         strip_accents='unicode',
         stop_words='english',
         sublinear_tf=True,   # Use sublinear TF scaling
-        use_idf=True
+        use_idf=True,
+        norm='l2'
     )
 
-    # Create ensemble of classifiers for better accuracy
-    print("Building ensemble classifier...")
+    # Use Linear SVC which typically performs better for text classification
+    print("Building Linear SVM classifier (best for text)...")
 
-    # Naive Bayes - good for text classification
-    nb_clf = MultinomialNB(alpha=0.01)
-
-    # Linear SVC - very good for text classification
-    svc_clf = LinearSVC(C=1.0, max_iter=3000, random_state=42)
-
-    # Random Forest - good for complex patterns
-    rf_clf = RandomForestClassifier(n_estimators=100, max_depth=50, random_state=42)
-
-    # Ensemble voting classifier
-    ensemble_clf = VotingClassifier(
-        estimators=[
-            ('nb', nb_clf),
-            ('rf', rf_clf)
-        ],
-        voting='soft',  # Soft voting for probability estimates
-        n_jobs=-1
+    # Linear SVC - very good for text classification with better accuracy
+    base_classifier = LinearSVC(
+        C=1.0,
+        max_iter=5000,
+        random_state=42,
+        class_weight='balanced',  # Handle class imbalance
+        dual=False  # Better for n_samples > n_features
     )
 
-    # Create pipeline with ensemble
+    # Calibrate to get probability estimates
+    classifier = CalibratedClassifierCV(base_classifier, cv=3)
+
+    # Create pipeline
     pipeline = Pipeline([
         ('tfidf', vectorizer),
-        ('classifier', ensemble_clf)
+        ('classifier', classifier)
     ])
 
-    print("Training ensemble model (this may take a minute)...")
+    print("Training and calibrating Linear SVM model (this may take a minute)...")
     pipeline.fit(X_train, y_train)
 
     # Evaluate
