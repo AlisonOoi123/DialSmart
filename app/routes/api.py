@@ -2,21 +2,18 @@
 API Routes
 RESTful API endpoints for AJAX requests and chatbot
 """
-from flask import Blueprint, jsonify, request, send_file, Response
+from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from app.models import Phone, PhoneSpecification, Brand
 from app.modules import ChatbotEngine, AIRecommendationEngine
 import uuid
-import requests
-from io import BytesIO
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Chatbot endpoints
 @bp.route('/chat', methods=['POST'])
-@login_required
 def chat():
-    """Process chatbot message"""
+    """Process chatbot message - available to all users"""
     try:
         data = request.get_json()
         message = data.get('message', '')
@@ -25,9 +22,12 @@ def chat():
         if not message:
             return jsonify({'error': 'Message is required'}), 400
 
+        # Get user ID if authenticated, otherwise use session ID
+        user_id = current_user.id if current_user.is_authenticated else session_id
+
         # Process with chatbot engine
         chatbot = ChatbotEngine()
-        response = chatbot.process_message(current_user.id, message, session_id)
+        response = chatbot.process_message(user_id, message, session_id)
 
         return jsonify({
             'success': True,
@@ -38,18 +38,14 @@ def chat():
             'session_id': session_id
         })
     except Exception as e:
-        print(f"Chatbot error: {str(e)}")  # Log error
+        print(f"Chatbot error: {e}")
         import traceback
         traceback.print_exc()
-
-        # Return a friendly error message instead of failing
         return jsonify({
-            'success': True,
-            'response': "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
-            'type': 'text',
-            'quick_replies': ['Find a phone', 'Budget options', 'Popular brands'],
-            'session_id': session_id
-        })
+            'success': False,
+            'error': str(e),
+            'response': "I'm having trouble processing your request. Please try asking in a different way."
+        }), 500
 
 @bp.route('/chat/history', methods=['GET'])
 @login_required
@@ -282,55 +278,3 @@ def get_stats():
             'max_price': max(prices) if prices else 0
         }
     })
-
-# Image proxy endpoint to fix CORS issues
-@bp.route('/image-proxy', methods=['GET'])
-def image_proxy():
-    """
-    Proxy external images to bypass CORS restrictions
-    Usage: /api/image-proxy?url=https://example.com/image.webp
-    """
-    image_url = request.args.get('url')
-
-    if not image_url:
-        return jsonify({'error': 'Image URL is required'}), 400
-
-    # Validate URL is from allowed domains
-    allowed_domains = ['www.mobile57.com', 'mobile57.com', 'via.placeholder.com']
-    from urllib.parse import urlparse
-    parsed_url = urlparse(image_url)
-
-    if not any(domain in parsed_url.netloc for domain in allowed_domains):
-        return jsonify({'error': 'Domain not allowed'}), 403
-
-    try:
-        # Fetch the image from external URL
-        response = requests.get(
-            image_url,
-            timeout=10,
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        )
-
-        if response.status_code == 200:
-            # Determine content type from response headers
-            content_type = response.headers.get('Content-Type', 'image/webp')
-
-            # Return the image with appropriate headers
-            return Response(
-                response.content,
-                mimetype=content_type,
-                headers={
-                    'Cache-Control': 'public, max-age=86400',  # Cache for 24 hours
-                    'Access-Control-Allow-Origin': '*'
-                }
-            )
-        else:
-            # Return placeholder if fetch fails
-            return jsonify({'error': 'Failed to fetch image'}), response.status_code
-
-    except requests.exceptions.Timeout:
-        return jsonify({'error': 'Request timeout'}), 504
-    except requests.exceptions.RequestException as e:
-        return jsonify({'error': f'Failed to fetch image: {str(e)}'}), 500
