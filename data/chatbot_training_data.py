@@ -890,9 +890,9 @@ except ImportError:
     pass  # Advanced data not available
 
 # MERGE SPECIFICATION-RELATED INTENTS FOR 90%+ ACCURACY
-# Combine 5 similar intents into one "specification" intent to reduce confusion
+# Combine 6 similar intents into one "specification" intent to reduce confusion
 print("Merging specification-related intents for better accuracy...")
-intents_to_merge = ['display_query', 'battery_query', 'performance_query', 'storage_query']
+intents_to_merge = ['display_query', 'battery_query', 'performance_query', 'storage_query', 'camera_query']
 for intent in intents_to_merge:
     if intent in TRAINING_DATA:
         # Move all samples to specification intent
@@ -906,5 +906,5 @@ for intent in intents_to_merge:
 # Update specification description
 INTENT_DESCRIPTIONS['specification'] = 'User asking about phone specifications (display, battery, performance, storage, RAM, camera, processor, etc.)'
 
-print(f"Merged 4 specification intents → 'specification' now has {len(TRAINING_DATA['specification'])} samples")
-print(f"Total intents reduced from 14 to {len(TRAINING_DATA)}")
+print(f"Merged 5 specification intents → 'specification' now has {len(TRAINING_DATA['specification'])} samples")
+print(f"Total intents reduced from 14 to {len(TRAINING_DATA)} (9 final intents)")
