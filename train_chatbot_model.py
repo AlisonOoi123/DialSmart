@@ -87,13 +87,11 @@ def train_and_save_model():
         tol=1e-4
     )
 
-    # Calibrate with more folds for better probability estimates
-    classifier = CalibratedClassifierCV(base_classifier, cv=5, method='sigmoid')
-
-    # Create pipeline
+    # Create pipeline - using base LinearSVC without calibration to handle small classes
+    # Note: LinearSVC doesn't provide predict_proba, but we can add it with decision_function
     pipeline = Pipeline([
         ('tfidf', vectorizer),
-        ('classifier', classifier)
+        ('classifier', base_classifier)
     ])
 
     print("Training and calibrating Linear SVM model (this may take a minute)...")
@@ -140,13 +138,18 @@ def train_and_save_model():
     print("="*60)
 
     for text in test_texts:
-        proba = pipeline.predict_proba([text])[0]
         predicted_intent = pipeline.predict([text])[0]
-        confidence = max(proba)
+        # LinearSVC uses decision_function instead of predict_proba
+        try:
+            decision = pipeline.decision_function([text])[0]
+            # Normalize decision scores to pseudo-probabilities
+            confidence = max(decision) / (sum(abs(decision)) + 1e-10)
+        except:
+            confidence = 1.0  # Fallback if decision_function fails
 
         print(f"\nInput: '{text}'")
         print(f"Predicted Intent: {predicted_intent}")
-        print(f"Confidence: {confidence:.4f} ({confidence*100:.2f}%)")
+        print(f"Confidence Score: {confidence:.4f}")
 
     return accuracy
 
