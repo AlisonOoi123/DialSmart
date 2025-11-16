@@ -297,6 +297,175 @@ class ChatbotEngine:
                 'action': 'redirect_compare'
             }
 
+        elif intent == 'specification':
+            # Handle merged specification intent (battery, camera, display, storage, performance, features)
+            budget = self._extract_budget(message)
+            message_lower = message.lower()
+
+            # Detect which type of specification the user is asking about
+            if any(word in message_lower for word in ['battery', 'mah', 'long lasting', 'battery life', 'charge', 'power']):
+                # Battery query
+                phones = self.smart_engine.get_phones_by_battery(budget, limit=5)
+                if phones:
+                    phone_list_text = ""
+                    phone_list = []
+                    for item in phones:
+                        phone = item['phone']
+                        phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"   {item['reason']}\n\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price,
+                            'image': phone.main_image
+                        })
+                    return {
+                        'response': self.response_templates.get_battery_response(phone_list_text),
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+                return {
+                    'response': self.response_templates.get_battery_response(),
+                    'type': 'text'
+                }
+
+            elif any(word in message_lower for word in ['camera', 'photo', 'picture', 'mp', 'megapixel', 'selfie', 'front camera', 'rear camera']):
+                # Camera query
+                camera_spec = message_lower
+                phones = self.smart_engine.get_phones_by_camera(camera_spec, budget, limit=5)
+                if phones:
+                    phone_list_text = ""
+                    phone_list = []
+                    for item in phones:
+                        phone = item['phone']
+                        phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"   {item['reason']}\n\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price,
+                            'image': phone.main_image
+                        })
+                    return {
+                        'response': self.response_templates.get_camera_response(phone_list=phone_list_text),
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+                return {
+                    'response': self.response_templates.get_camera_response(),
+                    'type': 'text'
+                }
+
+            elif any(word in message_lower for word in ['display', 'screen', 'amoled', 'oled', 'lcd', 'refresh rate', 'hz', 'inch']):
+                # Display query
+                display_spec = message_lower
+                phones = self.smart_engine.get_phones_by_display(display_spec, budget, limit=5)
+                if phones:
+                    phone_list_text = ""
+                    phone_list = []
+                    for item in phones:
+                        phone = item['phone']
+                        phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"   {item['reason']}\n\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price,
+                            'image': phone.main_image
+                        })
+                    return {
+                        'response': self.response_templates.get_display_response(phone_list_text),
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+                return {
+                    'response': self.response_templates.get_display_response(),
+                    'type': 'text'
+                }
+
+            elif any(word in message_lower for word in ['storage', 'gb', 'rom', 'memory', 'space']):
+                # Storage query
+                storage_spec = message_lower
+                phones = self.smart_engine.get_phones_by_storage(storage_spec, budget, limit=5)
+                if phones:
+                    phone_list_text = ""
+                    phone_list = []
+                    for item in phones:
+                        phone = item['phone']
+                        phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"   {item['reason']}\n\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price,
+                            'image': phone.main_image
+                        })
+                    return {
+                        'response': self.response_templates.get_storage_response(phone_list=phone_list_text),
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+                return {
+                    'response': self.response_templates.get_storage_response(),
+                    'type': 'text'
+                }
+
+            elif any(word in message_lower for word in ['performance', 'processor', 'cpu', 'chipset', 'snapdragon', 'ram', 'speed', 'fast']):
+                # Performance query
+                phones = self.smart_engine.get_phones_by_performance(budget, limit=5)
+                if phones:
+                    phone_list_text = ""
+                    phone_list = []
+                    for item in phones:
+                        phone = item['phone']
+                        phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"   {item['reason']}\n\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price,
+                            'image': phone.main_image
+                        })
+                    return {
+                        'response': self.response_templates.get_performance_response(phone_list_text),
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+                return {
+                    'response': self.response_templates.get_performance_response(),
+                    'type': 'text'
+                }
+
+            else:
+                # Feature query (5G, waterproof, NFC, etc.) or general specs
+                feature = self._extract_feature(message)
+                if feature:
+                    phones = self.smart_engine.get_phones_by_feature(feature, budget, limit=5)
+                    if phones:
+                        phone_list_text = ""
+                        phone_list = []
+                        for item in phones:
+                            phone = item['phone']
+                            phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                            phone_list_text += f"   {item['reason']}\n\n"
+                            phone_list.append({
+                                'id': phone.id,
+                                'name': phone.model_name,
+                                'price': phone.price,
+                                'image': phone.main_image
+                            })
+                        return {
+                            'response': self.response_templates.get_feature_response(feature, phone_list_text),
+                            'type': 'recommendation',
+                            'metadata': {'phones': phone_list, 'feature': feature}
+                        }
+
+                # Fallback for general specification queries
+                return {
+                    'response': "I'd be happy to help you find phones with specific features! Could you tell me more about what you're looking for? For example:\n• Battery life\n• Camera quality\n• Display type\n• Storage capacity\n• Performance/processor\n• Features like 5G, waterproofing, etc.",
+                    'type': 'text'
+                }
+
         elif intent == 'camera_query':
             # Handle camera-specific queries
             budget = self._extract_budget(message)
