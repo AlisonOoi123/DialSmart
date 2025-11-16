@@ -9,8 +9,10 @@ import pickle
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import VotingClassifier, RandomForestClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
 # Add the app directory to the Python path
@@ -35,21 +37,49 @@ def train_and_save_model():
     print(f"Training set: {len(X_train)} samples")
     print(f"Test set: {len(X_test)} samples")
 
-    # Create pipeline
-    print("\nTraining the model...")
+    # Create improved TF-IDF vectorizer
+    print("\nCreating optimized feature extractor...")
+    vectorizer = TfidfVectorizer(
+        ngram_range=(1, 4),  # Use up to 4-grams for better context
+        max_features=10000,   # More features for better discrimination
+        min_df=1,
+        max_df=0.85,
+        lowercase=True,
+        strip_accents='unicode',
+        stop_words='english',
+        sublinear_tf=True,   # Use sublinear TF scaling
+        use_idf=True
+    )
+
+    # Create ensemble of classifiers for better accuracy
+    print("Building ensemble classifier...")
+
+    # Naive Bayes - good for text classification
+    nb_clf = MultinomialNB(alpha=0.01)
+
+    # Linear SVC - very good for text classification
+    svc_clf = LinearSVC(C=1.0, max_iter=3000, random_state=42)
+
+    # Random Forest - good for complex patterns
+    rf_clf = RandomForestClassifier(n_estimators=100, max_depth=50, random_state=42)
+
+    # Ensemble voting classifier
+    ensemble_clf = VotingClassifier(
+        estimators=[
+            ('nb', nb_clf),
+            ('rf', rf_clf)
+        ],
+        voting='soft',  # Soft voting for probability estimates
+        n_jobs=-1
+    )
+
+    # Create pipeline with ensemble
     pipeline = Pipeline([
-        ('tfidf', TfidfVectorizer(
-            ngram_range=(1, 3),
-            max_features=5000,
-            min_df=1,
-            max_df=0.8,
-            lowercase=True,
-            strip_accents='unicode',
-            stop_words='english'
-        )),
-        ('classifier', MultinomialNB(alpha=0.1))
+        ('tfidf', vectorizer),
+        ('classifier', ensemble_clf)
     ])
 
+    print("Training ensemble model (this may take a minute)...")
     pipeline.fit(X_train, y_train)
 
     # Evaluate

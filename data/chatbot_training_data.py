@@ -20,7 +20,27 @@ TRAINING_DATA = {
         "howdy",
         "hi bot",
         "hello assistant",
-        "hey assistant"
+        "hey assistant",
+        "hello dialsmart",
+        "hi dialsmart",
+        "good day",
+        "morning",
+        "afternoon",
+        "evening",
+        "hey bot",
+        "yo",
+        "sup",
+        "hiya",
+        "hey friend",
+        "hello there bot",
+        "greetings bot",
+        "hi assistant bot",
+        "good to see you",
+        "nice to meet you",
+        "hey how are you",
+        "hello how are you doing",
+        "hi there bot",
+        "hey there assistant"
     ],
 
     'budget_query': [
@@ -43,7 +63,36 @@ TRAINING_DATA = {
         "phones around rm1500",
         "mid-range price phones",
         "expensive phones",
-        "premium phones under rm5000"
+        "premium phones under rm5000",
+        "my budget is rm2500",
+        "can you show me phones for less than rm1800",
+        "what's available under rm2200",
+        "phones that cost less than rm3500",
+        "affordable options under rm1200",
+        "i want to spend around rm2000",
+        "my price limit is rm3000",
+        "phones in the rm1500 to rm2500 range",
+        "what do you have for rm1000",
+        "cheapest phones available",
+        "most affordable smartphones",
+        "low cost phones",
+        "budget friendly options",
+        "economical phones",
+        "inexpensive smartphones",
+        "phones under 1500 ringgit",
+        "below rm2000 options",
+        "price range rm1200 to rm1800",
+        "i can spend up to rm2800",
+        "maximum budget rm3500",
+        "phones costing between 1000 and 1500",
+        "what phones can i get for rm1300",
+        "show me rm2000 range phones",
+        "phones worth rm1700",
+        "looking for phones under rm2600",
+        "budget is tight around rm1400",
+        "can afford up to rm2300",
+        "phones priced at rm1900",
+        "around rm1600 phones"
     ],
 
     'recommendation': [
@@ -66,7 +115,37 @@ TRAINING_DATA = {
         "show me some phones",
         "i want a good phone",
         "looking for phone suggestions",
-        "recommend something"
+        "recommend something",
+        "suggest me the best phone",
+        "what would you recommend",
+        "i'm searching for a phone",
+        "help me pick a phone",
+        "can you recommend a smartphone",
+        "need help choosing a phone",
+        "what's the best phone to get",
+        "which smartphone should i choose",
+        "give me phone recommendations",
+        "suggest a suitable phone",
+        "i'm in the market for a phone",
+        "what phone would be good for me",
+        "looking to buy a new phone",
+        "need suggestions for a phone",
+        "show me good phones",
+        "what are good phone options",
+        "help me select a phone",
+        "which one should i buy",
+        "recommendations please",
+        "suggest a device for me",
+        "what smartphones are good",
+        "need phone advice",
+        "phone recommendations needed",
+        "help choosing a smartphone",
+        "what should i get",
+        "i want recommendations",
+        "show recommendations",
+        "what do you suggest",
+        "best phone suggestions",
+        "looking for the right phone"
     ],
 
     'comparison': [
@@ -89,7 +168,35 @@ TRAINING_DATA = {
         "show comparison",
         "versus",
         "what's better between these",
-        "compare features"
+        "compare features",
+        "compare two phones",
+        "xiaomi vs samsung",
+        "which has better specs",
+        "oppo vs vivo comparison",
+        "compare iphone 13 and iphone 14",
+        "galaxy s24 versus xiaomi 14",
+        "what's the difference between these phones",
+        "which is superior",
+        "compare these models",
+        "phone comparison",
+        "how do they compare",
+        "which one should i choose between these",
+        "side by side comparison",
+        "differences between phones",
+        "compare camera quality",
+        "compare performance",
+        "which has better battery",
+        "spec comparison",
+        "compare prices",
+        "which is more value for money",
+        "realme vs redmi",
+        "honor vs huawei",
+        "compare display quality",
+        "which is faster",
+        "compare processors",
+        "which phone is superior",
+        "make a comparison",
+        "help me decide between two phones"
     ],
 
     'specification': [
@@ -362,3 +469,15 @@ def get_samples_for_intent(intent):
     Get all training samples for a specific intent
     """
     return TRAINING_DATA.get(intent, [])
+
+# Merge with expanded training data to improve accuracy
+try:
+    from data.expanded_training_data import ADDITIONAL_TRAINING_DATA
+    for intent, samples in ADDITIONAL_TRAINING_DATA.items():
+        if intent in TRAINING_DATA:
+            TRAINING_DATA[intent].extend(samples)
+        else:
+            TRAINING_DATA[intent] = samples
+    print(f"Loaded {len(ADDITIONAL_TRAINING_DATA)} expanded intent categories")
+except ImportError:
+    pass  # Expanded data not available, use base data only
