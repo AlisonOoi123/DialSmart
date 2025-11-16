@@ -218,15 +218,16 @@ class ChatbotEngine:
                 }
 
         elif intent == 'usage_type':
-            # Detect usage type and persona
+            # Detect usage type, persona, brand (for multi-criteria like "gaming xiaomi under 3000")
             persona = self._detect_persona(message)
             usage = self._detect_usage_type(message)
+            brand_name = self._extract_brand(message)
             if usage:
                 # Check for explicit budget first, then persona budget, then None
                 budget = self._extract_budget(message)
                 if not budget and persona:
                     budget = persona['budget']  # Use persona-inferred budget
-                phones = self.smart_engine.get_phones_by_usage(usage, budget, limit=5)
+                phones = self.smart_engine.get_phones_by_usage(usage, budget, brand_name, limit=5)
 
                 if phones:
                     phone_list_text = ""
@@ -258,11 +259,17 @@ class ChatbotEngine:
             }
 
         elif intent == 'brand_query':
-            # Extract brand name and budget (for compound queries like "iphone within 3000")
+            # Extract brand, budget, AND usage (for multi-criteria like "redmi business within 2000")
             brand_name = self._extract_brand(message)
             budget = self._extract_budget(message)
+            usage = self._detect_usage_type(message)
+
             if brand_name:
-                phones = self.smart_engine.get_phones_by_brand(brand_name, budget, limit=5)
+                # If usage detected, use usage-based recommendations with brand filter
+                if usage:
+                    phones = self.smart_engine.get_phones_by_usage(usage, budget, brand_name, limit=5)
+                else:
+                    phones = self.smart_engine.get_phones_by_brand(brand_name, budget, limit=5)
 
                 if phones:
                     phone_list_text = ""
@@ -300,13 +307,15 @@ class ChatbotEngine:
 
         elif intent == 'specification':
             # Handle merged specification intent (battery, camera, display, storage, performance, features)
+            # Extract ALL criteria for multi-criteria queries like "long lasting redmi phone within 2000 for student"
             budget = self._extract_budget(message)
+            brand_name = self._extract_brand(message)
             message_lower = message.lower()
 
             # Detect which type of specification the user is asking about
             if any(word in message_lower for word in ['battery', 'mah', 'long lasting', 'battery life', 'charge', 'power']):
                 # Battery query
-                phones = self.smart_engine.get_phones_by_battery(budget, limit=5)
+                phones = self.smart_engine.get_phones_by_battery(budget, brand_name, limit=5)
                 if phones:
                     phone_list_text = ""
                     phone_list = []
@@ -333,7 +342,7 @@ class ChatbotEngine:
             elif any(word in message_lower for word in ['camera', 'photo', 'picture', 'mp', 'megapixel', 'selfie', 'front camera', 'rear camera']):
                 # Camera query
                 camera_spec = message_lower
-                phones = self.smart_engine.get_phones_by_camera(camera_spec, budget, limit=5)
+                phones = self.smart_engine.get_phones_by_camera(camera_spec, budget, brand_name, limit=5)
                 if phones:
                     phone_list_text = ""
                     phone_list = []
@@ -360,7 +369,7 @@ class ChatbotEngine:
             elif any(word in message_lower for word in ['display', 'screen', 'amoled', 'oled', 'lcd', 'refresh rate', 'hz', 'inch']):
                 # Display query
                 display_spec = message_lower
-                phones = self.smart_engine.get_phones_by_display(display_spec, budget, limit=5)
+                phones = self.smart_engine.get_phones_by_display(display_spec, budget, brand_name, limit=5)
                 if phones:
                     phone_list_text = ""
                     phone_list = []
@@ -387,7 +396,7 @@ class ChatbotEngine:
             elif any(word in message_lower for word in ['storage', 'gb', 'rom', 'memory', 'space']):
                 # Storage query
                 storage_spec = message_lower
-                phones = self.smart_engine.get_phones_by_storage(storage_spec, budget, limit=5)
+                phones = self.smart_engine.get_phones_by_storage(storage_spec, budget, brand_name, limit=5)
                 if phones:
                     phone_list_text = ""
                     phone_list = []
@@ -413,7 +422,7 @@ class ChatbotEngine:
 
             elif any(word in message_lower for word in ['performance', 'processor', 'cpu', 'chipset', 'snapdragon', 'ram', 'speed', 'fast']):
                 # Performance query
-                phones = self.smart_engine.get_phones_by_performance(budget, limit=5)
+                phones = self.smart_engine.get_phones_by_performance(budget, brand_name, limit=5)
                 if phones:
                     phone_list_text = ""
                     phone_list = []
@@ -441,7 +450,7 @@ class ChatbotEngine:
                 # Feature query (5G, waterproof, NFC, etc.) or general specs
                 feature = self._extract_feature(message)
                 if feature:
-                    phones = self.smart_engine.get_phones_by_feature(feature, budget, limit=5)
+                    phones = self.smart_engine.get_phones_by_feature(feature, budget, brand_name, limit=5)
                     if phones:
                         phone_list_text = ""
                         phone_list = []
