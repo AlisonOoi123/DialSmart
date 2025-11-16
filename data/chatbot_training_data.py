@@ -907,4 +907,15 @@ for intent in intents_to_merge:
 INTENT_DESCRIPTIONS['specification'] = 'User asking about phone specifications (display, battery, performance, storage, RAM, camera, processor, etc.)'
 
 print(f"Merged 5 specification intents → 'specification' now has {len(TRAINING_DATA['specification'])} samples")
-print(f"Total intents reduced from 14 to {len(TRAINING_DATA)} (9 final intents)")
+
+# MERGE HELP INTO RECOMMENDATION FOR HIGHER ACCURACY
+# "help me find a phone" and "recommend a phone" are semantically the same
+print("Merging help into recommendation...")
+if 'help' in TRAINING_DATA:
+    TRAINING_DATA['recommendation'].extend(TRAINING_DATA['help'])
+    del TRAINING_DATA['help']
+    if 'help' in INTENT_DESCRIPTIONS:
+        del INTENT_DESCRIPTIONS['help']
+    print(f"Merged help → recommendation now has {len(TRAINING_DATA['recommendation'])} samples")
+
+print(f"Total intents reduced from 14 to {len(TRAINING_DATA)} (8 final intents)")
