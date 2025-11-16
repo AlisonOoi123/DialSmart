@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from functools import wraps
 from app import db
-from app.models import User, Phone, PhoneSpecification, Brand, Recommendation, Comparison
+from app.models import User, Phone, PhoneSpecification, Brand, Recommendation
 from app.utils.helpers import save_uploaded_file
 from datetime import datetime, timedelta
 import json
@@ -34,10 +34,10 @@ def dashboard():
     total_phones = Phone.query.filter_by(is_active=True).count()
     total_brands = Brand.query.filter_by(is_active=True).count()
 
-    # Today's recommendations (Oracle-compatible using TRUNC)
+    # Today's recommendations
     today = datetime.utcnow().date()
     today_recommendations = Recommendation.query.filter(
-        db.func.trunc(Recommendation.created_at) == today
+        db.func.date(Recommendation.created_at) == today
     ).count()
 
     # Recent activity (last 7 days)
@@ -53,49 +53,14 @@ def dashboard():
         .limit(5)\
         .all()
 
-    # Get popular phones (most recommended) - Oracle-compatible (exclude CLOB columns)
+    # Get popular phones (most recommended)
     popular_phones = db.session.query(
-        Phone.id,
-        Phone.brand_id,
-        Phone.model_name,
-        Phone.price,
-        Phone.main_image,
+        Phone,
         db.func.count(Recommendation.id).label('recommendation_count')
-    ).join(Recommendation).group_by(
-        Phone.id,
-        Phone.brand_id,
-        Phone.model_name,
-        Phone.price,
-        Phone.main_image
-    ).order_by(db.func.count(Recommendation.id).desc())\
+    ).join(Recommendation).group_by(Phone.id)\
+     .order_by(db.func.count(Recommendation.id).desc())\
      .limit(5)\
      .all()
-
-    # Convert to phone objects for template
-    popular_phones_list = []
-    for phone_data in popular_phones:
-        phone = Phone.query.get(phone_data[0])
-        if phone:
-            popular_phones_list.append({
-                'phone': phone,
-                'recommendation_count': phone_data[5]
-            })
-
-    # Get latest recommendations (from wizard, chatbot, or any source)
-    latest_recommendations = Recommendation.query\
-        .order_by(Recommendation.created_at.desc())\
-        .limit(5)\
-        .all()
-
-    # Get latest comparisons
-    latest_comparisons = Comparison.query\
-        .order_by(Comparison.created_at.desc())\
-        .limit(5)\
-        .all()
-
-    # Get unread contact messages count
-    from app.models.contact import ContactMessage
-    unread_messages = ContactMessage.query.filter_by(is_read=False).count()
 
     return render_template('admin/dashboard.html',
                          total_users=total_users,
@@ -105,10 +70,7 @@ def dashboard():
                          new_users=new_users,
                          recent_recommendations=recent_recommendations,
                          recent_users=recent_users_list,
-                         popular_phones=popular_phones_list,
-                         latest_recommendations=latest_recommendations,
-                         latest_comparisons=latest_comparisons,
-                         unread_messages=unread_messages)
+                         popular_phones=popular_phones)
 
 # Phone Management
 @bp.route('/phones')
@@ -128,7 +90,7 @@ def phones():
     if brand_id:
         query = query.filter_by(brand_id=brand_id)
 
-    phones = query.order_by(Phone.id.desc())\
+    phones = query.order_by(Phone.created_at.desc())\
         .paginate(page=page, per_page=20, error_out=False)
 
     brands = Brand.query.filter_by(is_active=True).all()
@@ -166,8 +128,13 @@ def add_phone():
             availability_status=availability_status
         )
 
-        # Handle image upload
-        if 'main_image' in request.files:
+        # Handle image - URL has priority over file upload
+        image_url = request.form.get('main_image_url', '').strip()
+        if image_url:
+            # Use the provided URL directly
+            phone.main_image = image_url
+        elif 'main_image' in request.files:
+            # Fallback to file upload if no URL provided
             file = request.files['main_image']
             if file.filename:
                 filename = save_uploaded_file(file, 'phones')
@@ -178,11 +145,6 @@ def add_phone():
         db.session.flush()  # Get phone ID
 
         # Create specifications
-        # Handle product_url - allow empty, 'None', or valid URL
-        product_url = request.form.get('product_url', '').strip()
-        if product_url.lower() == 'none' or not product_url:
-            product_url = None
-
         specs = PhoneSpecification(
             phone_id=phone.id,
             screen_size=request.form.get('screen_size', type=float),
@@ -212,8 +174,7 @@ def add_phone():
             dual_sim=bool(request.form.get('dual_sim')),
             weight=request.form.get('weight', type=int),
             dimensions=request.form.get('dimensions'),
-            colors_available=request.form.get('colors_available'),
-            product_url=product_url
+            colors_available=request.form.get('colors_available')
         )
 
         db.session.add(specs)
@@ -242,8 +203,13 @@ def edit_phone(phone_id):
         phone.availability_status = request.form.get('availability_status', 'Available')
         phone.is_active = bool(request.form.get('is_active', True))
 
-        # Handle image upload
-        if 'main_image' in request.files:
+        # Handle image - URL has priority over file upload
+        image_url = request.form.get('main_image_url', '').strip()
+        if image_url:
+            # Use the provided URL directly
+            phone.main_image = image_url
+        elif 'main_image' in request.files:
+            # Fallback to file upload if no URL provided
             file = request.files['main_image']
             if file.filename:
                 filename = save_uploaded_file(file, 'phones')
@@ -284,13 +250,6 @@ def edit_phone(phone_id):
         specs.dimensions = request.form.get('dimensions')
         specs.colors_available = request.form.get('colors_available')
 
-        # Handle product_url - allow empty, 'None', or valid URL
-        product_url = request.form.get('product_url', '').strip()
-        if product_url.lower() == 'none' or not product_url:
-            specs.product_url = None
-        else:
-            specs.product_url = product_url
-
         db.session.commit()
         flash(f'Phone "{phone.model_name}" updated successfully.', 'success')
         return redirect(url_for('admin.phones'))
@@ -322,7 +281,7 @@ def delete_phone(phone_id):
 def brands():
     """List all brands"""
     page = request.args.get('page', 1, type=int)
-    brands = Brand.query.order_by(Brand.id.desc())\
+    brands = Brand.query.order_by(Brand.name)\
         .paginate(page=page, per_page=20, error_out=False)
 
     return render_template('admin/brands.html', brands=brands)
@@ -382,8 +341,8 @@ def edit_brand(brand_id):
         brand.name = request.form.get('name', brand.name)
         brand.description = request.form.get('description')
         brand.tagline = request.form.get('tagline')
-        brand.is_featured = 'is_featured' in request.form
-        brand.is_active = 'is_active' in request.form
+        brand.is_featured = bool(request.form.get('is_featured'))
+        brand.is_active = bool(request.form.get('is_active', True))
 
         # Handle logo upload
         if 'logo' in request.files:
@@ -494,78 +453,3 @@ def settings():
         return redirect(url_for('admin.settings'))
 
     return render_template('admin/settings.html')
-
-# Contact Messages
-@bp.route('/messages')
-@login_required
-@admin_required
-def messages():
-    """View contact messages"""
-    from app.models.contact import ContactMessage
-    page = request.args.get('page', 1, type=int)
-    status_filter = request.args.get('status', 'all')  # all, unread, read
-
-    query = ContactMessage.query
-
-    if status_filter == 'unread':
-        query = query.filter_by(is_read=False)
-    elif status_filter == 'read':
-        query = query.filter_by(is_read=True)
-
-    messages = query.order_by(ContactMessage.created_at.desc())\
-        .paginate(page=page, per_page=20, error_out=False)
-
-    # Count unread messages
-    unread_count = ContactMessage.query.filter_by(is_read=False).count()
-
-    return render_template('admin/messages.html',
-                         messages=messages,
-                         unread_count=unread_count,
-                         status_filter=status_filter)
-
-@bp.route('/messages/<int:message_id>')
-@login_required
-@admin_required
-def view_message(message_id):
-    """View single message"""
-    from app.models.contact import ContactMessage
-    message = ContactMessage.query.get_or_404(message_id)
-
-    # Mark as read
-    if not message.is_read:
-        message.mark_as_read()
-        db.session.commit()
-
-    return render_template('admin/message_detail.html', message=message)
-
-@bp.route('/messages/<int:message_id>/reply', methods=['POST'])
-@login_required
-@admin_required
-def reply_message(message_id):
-    """Mark message as replied and add admin notes"""
-    from app.models.contact import ContactMessage
-    message = ContactMessage.query.get_or_404(message_id)
-
-    admin_notes = request.form.get('admin_notes')
-    if admin_notes:
-        message.admin_notes = admin_notes
-
-    message.mark_as_replied()
-    db.session.commit()
-
-    flash('Message marked as replied.', 'success')
-    return redirect(url_for('admin.view_message', message_id=message_id))
-
-@bp.route('/messages/<int:message_id>/delete', methods=['POST'])
-@login_required
-@admin_required
-def delete_message(message_id):
-    """Delete contact message"""
-    from app.models.contact import ContactMessage
-    message = ContactMessage.query.get_or_404(message_id)
-
-    db.session.delete(message)
-    db.session.commit()
-
-    flash('Message deleted successfully.', 'success')
-    return redirect(url_for('admin.messages'))
