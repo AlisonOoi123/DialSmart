@@ -3,6 +3,7 @@ Recommendation Models
 Handles AI recommendations, comparisons, and chat history
 """
 from app import db
+from sqlalchemy.orm import backref
 from datetime import datetime
 
 class Recommendation(db.Model):
@@ -29,7 +30,7 @@ class Recommendation(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     # Relationships
-    phone = db.relationship('Phone', backref='recommendations', passive_deletes=True)
+    phone = db.relationship('Phone', backref=backref('recommendations', passive_deletes=True), passive_deletes=True)
 
     def __repr__(self):
         return f'<Recommendation {self.id} for User {self.user_id}>'
@@ -54,8 +55,8 @@ class Comparison(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     # Relationships
-    phone1 = db.relationship('Phone', foreign_keys=[phone1_id], backref='comparisons_as_phone1', passive_deletes=True)
-    phone2 = db.relationship('Phone', foreign_keys=[phone2_id], backref='comparisons_as_phone2', passive_deletes=True)
+    phone1 = db.relationship('Phone', foreign_keys=[phone1_id], backref=backref('comparisons_as_phone1', passive_deletes=True), passive_deletes=True)
+    phone2 = db.relationship('Phone', foreign_keys=[phone2_id], backref=backref('comparisons_as_phone2', passive_deletes=True), passive_deletes=True)
 
     def __repr__(self):
         return f'<Comparison {self.id}: Phone {self.phone1_id} vs Phone {self.phone2_id}>'
