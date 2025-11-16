@@ -26,7 +26,11 @@
         {% for phone in phones.items %}
         <div class="col-md-3 mb-4">
             <div class="card h-100">
-                <img src="{{ phone.main_image|proxy_image }}" class="card-img-top" alt="{{ phone.model_name }}" onerror="this.src='https://via.placeholder.com/300x400?text=Phone'">
+                {% if phone.main_image and phone.main_image != 'None' and phone.main_image != '' %}
+                <img src="{{ phone.main_image }}" class="card-img-top" alt="{{ phone.model_name }}" style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200/e0e0e0/666666?text={{ phone.model_name | urlencode }}'">
+                {% else %}
+                <img src="https://via.placeholder.com/300x200/e0e0e0/666666?text={{ phone.model_name | urlencode }}" class="card-img-top" alt="{{ phone.model_name }}" style="height: 200px; object-fit: cover;">
+                {% endif %}
                 <div class="card-body">
                     <h6>{{ phone.model_name }}</h6>
                     <h5 class="text-primary">RM {{ "{:,.0f}".format(phone.price) }}</h5>
