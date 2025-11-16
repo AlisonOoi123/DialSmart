@@ -54,27 +54,20 @@ def dashboard():
         .all()
 
     # Get popular phones (most recommended) - Oracle compatible version
-    # Must include all non-aggregated columns in GROUP BY for Oracle
-    popular_phones = db.session.query(
-        Phone,
+    # Use subquery to avoid CLOB columns in GROUP BY (Oracle doesn't support CLOB in GROUP BY)
+    phone_counts = db.session.query(
+        Recommendation.phone_id,
         db.func.count(Recommendation.id).label('recommendation_count')
-    ).join(Recommendation)\
-     .group_by(
-         Phone.id,
-         Phone.brand_id,
-         Phone.model_name,
-         Phone.model_number,
-         Phone.price,
-         Phone.main_image,
-         Phone.gallery_images,
-         Phone.is_active,
-         Phone.availability_status,
-         Phone.release_date,
-         Phone.created_at,
-         Phone.updated_at
-     )\
+    ).group_by(Recommendation.phone_id)\
      .order_by(db.func.count(Recommendation.id).desc())\
      .limit(5)\
+     .subquery()
+
+    # Join with Phone table to get full phone details
+    popular_phones = db.session.query(
+        Phone,
+        phone_counts.c.recommendation_count
+    ).join(phone_counts, Phone.id == phone_counts.c.phone_id)\
      .all()
 
     return render_template('admin/dashboard.html',
