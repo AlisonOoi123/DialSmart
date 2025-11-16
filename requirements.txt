@@ -5,7 +5,7 @@ Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 
 # Database
-SQLAlchemy==2.0.23
+SQLAlchemy>=2.0.35
 
 # Security
 Werkzeug==3.0.1
