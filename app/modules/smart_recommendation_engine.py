@@ -3,7 +3,7 @@ Smart Phone Recommendation Engine
 Intelligent phone filtering and recommendation based on specifications
 """
 from app.models import Phone, PhoneSpecification, Brand
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 import re
 
 
@@ -61,10 +61,13 @@ class SmartRecommendationEngine:
         Returns:
             List of phones
         """
-        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+        brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
 
         if not brand:
+            print(f"WARNING: Brand '{brand_name}' not found in database.")
             return []
+
+        print(f"DEBUG: get_phones_by_brand - Brand filter applied: {brand.name} (ID: {brand.id})")
 
         query = Phone.query.filter(
             Phone.brand_id == brand.id,
@@ -105,9 +108,13 @@ class SmartRecommendationEngine:
 
         # Apply brand filter if provided
         if brand_name:
-            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            # Try exact match first (case-insensitive)
+            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
             if brand:
+                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
                 query = query.filter(Phone.brand_id == brand.id)
+            else:
+                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
 
         # Apply budget filter if provided
         if budget:
@@ -194,9 +201,12 @@ class SmartRecommendationEngine:
 
         # Apply brand filter
         if brand_name:
-            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
             if brand:
+                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
                 query = query.filter(Phone.brand_id == brand.id)
+            else:
+                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
 
         # Apply budget filter
         if budget:
@@ -255,9 +265,12 @@ class SmartRecommendationEngine:
 
         # Apply brand filter
         if brand_name:
-            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
             if brand:
+                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
                 query = query.filter(Phone.brand_id == brand.id)
+            else:
+                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
 
         # Apply budget filter
         if budget:
@@ -303,9 +316,12 @@ class SmartRecommendationEngine:
 
         # Apply brand filter
         if brand_name:
-            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
             if brand:
+                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
                 query = query.filter(Phone.brand_id == brand.id)
+            else:
+                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
 
         # Apply budget filter
         if budget:
@@ -352,9 +368,12 @@ class SmartRecommendationEngine:
 
         # Apply brand filter
         if brand_name:
-            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
             if brand:
+                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
                 query = query.filter(Phone.brand_id == brand.id)
+            else:
+                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
 
         # Apply budget filter
         if budget:
@@ -393,9 +412,12 @@ class SmartRecommendationEngine:
 
         # Apply brand filter
         if brand_name:
-            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
             if brand:
+                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
                 query = query.filter(Phone.brand_id == brand.id)
+            else:
+                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
 
         # Apply budget filter
         if budget:
@@ -444,9 +466,12 @@ class SmartRecommendationEngine:
 
         # Apply brand filter
         if brand_name:
-            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
             if brand:
+                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
                 query = query.filter(Phone.brand_id == brand.id)
+            else:
+                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
 
         # Apply budget filter
         if budget:
