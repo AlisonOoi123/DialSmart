@@ -113,12 +113,17 @@ $(document).ready(function() {
         var cardsHtml = '<div class="phone-recommendations mt-2">';
 
         phones.forEach(function(phone) {
-            var imageUrl = phone.image || '/static/images/phone-placeholder.png';
+            // Handle missing or invalid image URLs
+            var imageUrl = phone.image;
+            if (!imageUrl || imageUrl === 'None' || imageUrl === '' || imageUrl === 'null') {
+                imageUrl = 'https://via.placeholder.com/300x300/e0e0e0/666666?text=' + encodeURIComponent(phone.name);
+            }
+
             cardsHtml += `
                 <div class="card mb-2" style="max-width: 100%;">
                     <div class="row g-0">
                         <div class="col-4">
-                            <img src="${imageUrl}" class="img-fluid rounded-start" alt="${escapeHtml(phone.name)}" style="object-fit: cover; height: 120px; width: 100%;">
+                            <img src="${imageUrl}" class="img-fluid rounded-start" alt="${escapeHtml(phone.name)}" style="object-fit: cover; height: 120px; width: 100%;" onerror="this.src='https://via.placeholder.com/300x300/e0e0e0/666666?text=${encodeURIComponent(phone.name)}'">
                         </div>
                         <div class="col-8">
                             <div class="card-body p-2">
