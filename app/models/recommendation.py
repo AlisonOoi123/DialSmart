@@ -29,7 +29,7 @@ class Recommendation(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     # Relationships
-    phone = db.relationship('Phone', backref='recommendations')
+    phone = db.relationship('Phone', backref='recommendations', passive_deletes=True)
 
     def __repr__(self):
         return f'<Recommendation {self.id} for User {self.user_id}>'
@@ -54,8 +54,8 @@ class Comparison(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     # Relationships
-    phone1 = db.relationship('Phone', foreign_keys=[phone1_id], backref='comparisons_as_phone1')
-    phone2 = db.relationship('Phone', foreign_keys=[phone2_id], backref='comparisons_as_phone2')
+    phone1 = db.relationship('Phone', foreign_keys=[phone1_id], backref='comparisons_as_phone1', passive_deletes=True)
+    phone2 = db.relationship('Phone', foreign_keys=[phone2_id], backref='comparisons_as_phone2', passive_deletes=True)
 
     def __repr__(self):
         return f'<Comparison {self.id}: Phone {self.phone1_id} vs Phone {self.phone2_id}>'
