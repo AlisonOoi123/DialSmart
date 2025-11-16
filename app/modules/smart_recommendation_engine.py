@@ -88,19 +88,26 @@ class SmartRecommendationEngine:
 
         return results
 
-    def get_phones_by_usage(self, usage_type, budget=None, limit=10):
+    def get_phones_by_usage(self, usage_type, budget=None, brand_name=None, limit=10):
         """
         Get phones optimized for specific usage
 
         Args:
             usage_type: Usage type (Gaming, Photography, Business, etc.)
             budget: Optional budget tuple (min, max)
+            brand_name: Optional brand name filter
             limit: Maximum results
 
         Returns:
             List of phones optimized for the usage
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
+
+        # Apply brand filter if provided
+        if brand_name:
+            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            if brand:
+                query = query.filter(Phone.brand_id == brand.id)
 
         # Apply budget filter if provided
         if budget:
@@ -170,19 +177,26 @@ class SmartRecommendationEngine:
         results.sort(key=lambda x: x['score'], reverse=True)
         return results[:limit]
 
-    def get_phones_by_feature(self, feature, budget=None, limit=10):
+    def get_phones_by_feature(self, feature, budget=None, brand_name=None, limit=10):
         """
         Get phones by specific feature
 
         Args:
             feature: Feature to filter by
             budget: Optional budget tuple
+            brand_name: Optional brand name filter
             limit: Maximum results
 
         Returns:
             List of phones with the feature
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
+
+        # Apply brand filter
+        if brand_name:
+            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            if brand:
+                query = query.filter(Phone.brand_id == brand.id)
 
         # Apply budget filter
         if budget:
@@ -224,19 +238,26 @@ class SmartRecommendationEngine:
 
         return results
 
-    def get_phones_by_camera(self, camera_spec, budget=None, limit=10):
+    def get_phones_by_camera(self, camera_spec, budget=None, brand_name=None, limit=10):
         """
         Get phones by camera specifications
 
         Args:
             camera_spec: Camera specification to filter by
             budget: Optional budget tuple
+            brand_name: Optional brand name filter
             limit: Maximum results
 
         Returns:
             List of phones with good cameras
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
+
+        # Apply brand filter
+        if brand_name:
+            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            if brand:
+                query = query.filter(Phone.brand_id == brand.id)
 
         # Apply budget filter
         if budget:
@@ -266,18 +287,25 @@ class SmartRecommendationEngine:
         results.sort(key=lambda x: x['score'], reverse=True)
         return results
 
-    def get_phones_by_performance(self, budget=None, limit=10):
+    def get_phones_by_performance(self, budget=None, brand_name=None, limit=10):
         """
         Get high-performance phones
 
         Args:
             budget: Optional budget tuple
+            brand_name: Optional brand name filter
             limit: Maximum results
 
         Returns:
             List of high-performance phones
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
+
+        # Apply brand filter
+        if brand_name:
+            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            if brand:
+                query = query.filter(Phone.brand_id == brand.id)
 
         # Apply budget filter
         if budget:
@@ -308,18 +336,25 @@ class SmartRecommendationEngine:
         results.sort(key=lambda x: x['score'], reverse=True)
         return results
 
-    def get_phones_by_battery(self, budget=None, limit=10):
+    def get_phones_by_battery(self, budget=None, brand_name=None, limit=10):
         """
         Get phones with good battery life
 
         Args:
             budget: Optional budget tuple
+            brand_name: Optional brand name filter
             limit: Maximum results
 
         Returns:
             List of phones with good battery
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
+
+        # Apply brand filter
+        if brand_name:
+            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            if brand:
+                query = query.filter(Phone.brand_id == brand.id)
 
         # Apply budget filter
         if budget:
@@ -341,19 +376,26 @@ class SmartRecommendationEngine:
 
         return results
 
-    def get_phones_by_display(self, display_spec, budget=None, limit=10):
+    def get_phones_by_display(self, display_spec, budget=None, brand_name=None, limit=10):
         """
         Get phones by display specifications
 
         Args:
             display_spec: Display specification to filter by
             budget: Optional budget tuple
+            brand_name: Optional brand name filter
             limit: Maximum results
 
         Returns:
             List of phones with good displays
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
+
+        # Apply brand filter
+        if brand_name:
+            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            if brand:
+                query = query.filter(Phone.brand_id == brand.id)
 
         # Apply budget filter
         if budget:
@@ -385,19 +427,26 @@ class SmartRecommendationEngine:
         results.sort(key=lambda x: x['score'], reverse=True)
         return results
 
-    def get_phones_by_storage(self, storage_spec, budget=None, limit=10):
+    def get_phones_by_storage(self, storage_spec, budget=None, brand_name=None, limit=10):
         """
         Get phones by storage requirements
 
         Args:
             storage_spec: Storage specification
             budget: Optional budget tuple
+            brand_name: Optional brand name filter
             limit: Maximum results
 
         Returns:
             List of phones with adequate storage
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
+
+        # Apply brand filter
+        if brand_name:
+            brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+            if brand:
+                query = query.filter(Phone.brand_id == brand.id)
 
         # Apply budget filter
         if budget:
