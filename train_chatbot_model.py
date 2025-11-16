@@ -73,26 +73,57 @@ def train_and_save_model():
         ('char', char_vectorizer)
     ])
 
-    # SIMPLIFIED: Use single optimized LinearSVC (proven best approach)
-    # Ensemble was making accuracy WORSE (83% vs 84.64% single model)
-    print("Building SINGLE OPTIMIZED LinearSVC classifier...")
-    print("(Ensemble removed - added complexity without improving accuracy)")
+    # Use GridSearchCV to find optimal C for merged intents
+    print("Building OPTIMIZED LinearSVC with GridSearchCV...")
+    print("Finding best C parameter for 10 merged intents")
     print()
 
-    # Best single model: LinearSVC with optimal hyperparameters
-    best_classifier = LinearSVC(
-        C=0.8,  # Sweet spot between 0.5 and 1.0
-        loss='squared_hinge',
-        random_state=42,
-        class_weight='balanced',
-        dual=True,  # Required for both loss functions
-        max_iter=25000,
-        tol=1e-5
+    # Create base pipeline
+    pipeline = Pipeline([
+        ('tfidf', vectorizer),
+        ('classifier', LinearSVC(random_state=42, class_weight='balanced', dual=True, max_iter=25000, loss='squared_hinge', tol=1e-5))
+    ])
+
+    # Test different C values
+    param_grid = {
+        'classifier__C': [0.5, 0.8, 1.0, 1.2, 1.5],
+    }
+
+    print("Testing 5 C values with 5-fold CV (25 fits total)...")
+    grid_search = GridSearchCV(
+        pipeline,
+        param_grid,
+        cv=5,
+        scoring='accuracy',
+        n_jobs=-1,
+        verbose=1
     )
 
-    # Add calibration for confidence scores
+    grid_search.fit(X_train, y_train)
+
+    print(f"\n{'='*70}")
+    print("GRIDSEARCH RESULTS FOR C PARAMETER")
+    print(f"{'='*70}")
+    print(f"Best C: {grid_search.best_params_['classifier__C']}")
+    print(f"Best CV accuracy: {grid_search.best_score_:.4f} ({grid_search.best_score_*100:.2f}%)")
+    print()
+
+    # Show all results
+    results = grid_search.cv_results_
+    print("All C values tested:")
+    for i in range(len(param_grid['classifier__C'])):
+        C = param_grid['classifier__C'][i]
+        score = results['mean_test_score'][i]
+        std = results['std_test_score'][i]
+        print(f"  C={C:4.1f}: {score:.4f} (+/- {std*2:.4f}) = {score*100:.2f}% accuracy")
+    print()
+
+    # Use best estimator and add calibration
+    print("Adding probability calibration to best model...")
+    best_svc = grid_search.best_estimator_.named_steps['classifier']
+
     calibrated_classifier = CalibratedClassifierCV(
-        best_classifier,
+        best_svc,
         cv=5,
         method='sigmoid'
     )
@@ -102,17 +133,13 @@ def train_and_save_model():
         ('classifier', calibrated_classifier)
     ])
 
-    print("Training single optimized LinearSVC on", len(X_train), "samples...")
-    print("Parameters: C=0.8, squared_hinge loss, cv=5 calibration")
-    print()
-
     pipeline.fit(X_train, y_train)
 
     print("="*70)
     print("MODEL TRAINED")
     print("="*70)
-    print("Single LinearSVC with calibration for confidence scores")
-    print("Optimized parameters based on previous GridSearchCV results")
+    print(f"LinearSVC with optimal C={grid_search.best_params_['classifier__C']}")
+    print("Calibrated with sigmoid method (cv=5) for confidence scores")
     print()
 
     # Evaluate
@@ -203,11 +230,11 @@ if __name__ == '__main__':
     print("  * specification now has ~550 samples (very strong!)")
     print("- 1966 total training examples")
     print("- Dual TF-IDF vectorization (word + char n-grams)")
-    print("- SINGLE OPTIMIZED LinearSVC")
-    print("  * C=0.8 (optimal balance)")
-    print("  * squared_hinge loss")
+    print("- GridSearchCV to find optimal C parameter")
+    print("  * Testing C values: 0.5, 0.8, 1.0, 1.2, 1.5")
+    print("  * squared_hinge loss (best for text)")
     print("  * cv=5 calibration for confidence scores")
-    print("- Expected accuracy: 90-93% (fewer, clearer intents)")
+    print("- Expected accuracy: 90-93% (optimized for merged intents)")
     print()
     print()
     print("="*70)
