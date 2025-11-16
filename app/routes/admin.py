@@ -53,11 +53,26 @@ def dashboard():
         .limit(5)\
         .all()
 
-    # Get popular phones (most recommended)
+    # Get popular phones (most recommended) - Oracle compatible version
+    # Must include all non-aggregated columns in GROUP BY for Oracle
     popular_phones = db.session.query(
         Phone,
         db.func.count(Recommendation.id).label('recommendation_count')
-    ).join(Recommendation).group_by(Phone.id)\
+    ).join(Recommendation)\
+     .group_by(
+         Phone.id,
+         Phone.brand_id,
+         Phone.model_name,
+         Phone.model_number,
+         Phone.price,
+         Phone.main_image,
+         Phone.gallery_images,
+         Phone.is_active,
+         Phone.availability_status,
+         Phone.release_date,
+         Phone.created_at,
+         Phone.updated_at
+     )\
      .order_by(db.func.count(Recommendation.id).desc())\
      .limit(5)\
      .all()
