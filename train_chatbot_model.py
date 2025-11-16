@@ -74,35 +74,50 @@ def train_and_save_model():
     ])
 
     # Use GridSearchCV to find optimal hyperparameters
-    print("Building optimized Linear SVM classifier with GridSearchCV...")
+    print("Building optimized classifier with GridSearchCV...")
 
-    # Create base pipeline
+    # Create base pipeline - dual=True allows both loss functions without errors
     pipeline = Pipeline([
         ('tfidf', vectorizer),
-        ('classifier', LinearSVC(random_state=42, class_weight='balanced', dual=False, max_iter=20000))
+        ('classifier', LinearSVC(random_state=42, class_weight='balanced', dual=True, max_iter=20000))
     ])
 
-    # Parameter grid for optimization
+    # Expanded parameter grid for higher accuracy
+    # Note: dual=True allows both 'hinge' and 'squared_hinge' loss functions
     param_grid = {
-        'classifier__C': [0.1, 0.3, 0.5, 1.0],  # Regularization strength
-        'classifier__loss': ['hinge', 'squared_hinge'],  # Loss function
+        'classifier__C': [0.05, 0.1, 0.3, 0.5, 0.8, 1.0, 1.5],  # 7 regularization values
+        'classifier__loss': ['hinge', 'squared_hinge'],  # Both work with dual=True
         'classifier__tol': [1e-4, 1e-5],  # Convergence tolerance
     }
 
-    print("Performing GridSearchCV to find optimal hyperparameters (this may take 2-3 minutes)...")
+    print("Performing GridSearchCV to find optimal hyperparameters (this may take 4-6 minutes)...")
+    print("Testing 28 parameter combinations with stratified 5-fold cross-validation...")
     grid_search = GridSearchCV(
         pipeline,
         param_grid,
-        cv=3,  # 3-fold CV for speed
+        cv=5,  # 5-fold CV for better accuracy estimation
         scoring='accuracy',
         n_jobs=-1,  # Use all CPU cores
-        verbose=1
+        verbose=2,  # More verbose output
+        error_score='raise'  # Raise errors instead of silently failing
     )
 
     grid_search.fit(X_train, y_train)
 
-    print(f"\nBest parameters found: {grid_search.best_params_}")
+    print(f"\n{'='*70}")
+    print("GRIDSEARCH RESULTS")
+    print(f"{'='*70}")
+    print(f"Best parameters found: {grid_search.best_params_}")
     print(f"Best cross-validation accuracy: {grid_search.best_score_:.4f} ({grid_search.best_score_*100:.2f}%)")
+    print()
+
+    # Show top 5 parameter combinations
+    results = grid_search.cv_results_
+    indices = np.argsort(results['mean_test_score'])[::-1][:5]
+    print("Top 5 parameter combinations:")
+    for i, idx in enumerate(indices, 1):
+        print(f"{i}. Score: {results['mean_test_score'][idx]:.4f} ({results['mean_test_score'][idx]*100:.2f}%) - {results['params'][idx]}")
+    print()
 
     # Use the best estimator
     pipeline = grid_search.best_estimator_
@@ -186,10 +201,11 @@ if __name__ == '__main__':
     print()
     print("Training data includes:")
     print("- 14 intent categories")
-    print("- 1600+ balanced training examples")
+    print("- 1656 balanced training examples (+40 feature_query)")
     print("- Dual TF-IDF vectorization (word + char n-grams)")
-    print("- LinearSVC classifier with GridSearchCV optimization")
+    print("- LinearSVC classifier with GridSearchCV (28 combinations)")
     print("- Stratified 5-fold cross-validation")
+    print("- Fixed: dual=True to avoid loss='hinge' errors")
     print()
     print("="*70)
     print()
