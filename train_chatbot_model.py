@@ -73,29 +73,39 @@ def train_and_save_model():
         ('char', char_vectorizer)
     ])
 
-    # Use Linear SVC with optimized parameters
-    print("Building optimized Linear SVM classifier...")
+    # Use GridSearchCV to find optimal hyperparameters
+    print("Building optimized Linear SVM classifier with GridSearchCV...")
 
-    # Linear SVC - tuned for 90%+ accuracy with strong regularization
-    base_classifier = LinearSVC(
-        C=0.5,  # Stronger regularization (reduced from 2.0) to prevent overfitting
-        max_iter=15000,  # Increased iterations for convergence
-        random_state=42,
-        class_weight='balanced',  # Handle class imbalance
-        dual=False,
-        loss='squared_hinge',  # Better for text
-        tol=1e-5  # Tighter tolerance for better convergence
-    )
-
-    # Create pipeline - using base LinearSVC without calibration to handle small classes
-    # Note: LinearSVC doesn't provide predict_proba, but we can add it with decision_function
+    # Create base pipeline
     pipeline = Pipeline([
         ('tfidf', vectorizer),
-        ('classifier', base_classifier)
+        ('classifier', LinearSVC(random_state=42, class_weight='balanced', dual=False, max_iter=20000))
     ])
 
-    print("Training and calibrating Linear SVM model (this may take a minute)...")
-    pipeline.fit(X_train, y_train)
+    # Parameter grid for optimization
+    param_grid = {
+        'classifier__C': [0.1, 0.3, 0.5, 1.0],  # Regularization strength
+        'classifier__loss': ['hinge', 'squared_hinge'],  # Loss function
+        'classifier__tol': [1e-4, 1e-5],  # Convergence tolerance
+    }
+
+    print("Performing GridSearchCV to find optimal hyperparameters (this may take 2-3 minutes)...")
+    grid_search = GridSearchCV(
+        pipeline,
+        param_grid,
+        cv=3,  # 3-fold CV for speed
+        scoring='accuracy',
+        n_jobs=-1,  # Use all CPU cores
+        verbose=1
+    )
+
+    grid_search.fit(X_train, y_train)
+
+    print(f"\nBest parameters found: {grid_search.best_params_}")
+    print(f"Best cross-validation accuracy: {grid_search.best_score_:.4f} ({grid_search.best_score_*100:.2f}%)")
+
+    # Use the best estimator
+    pipeline = grid_search.best_estimator_
 
     # Evaluate
     print("\nEvaluating model performance...")
@@ -104,11 +114,21 @@ def train_and_save_model():
 
     print(f"\nTest Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
 
+    # Detailed classification report
+    print("\n" + "="*70)
+    print("DETAILED CLASSIFICATION REPORT (Per-Intent Performance)")
+    print("="*70)
+    print(classification_report(y_test, y_pred, zero_division=0))
+
     # Cross-validation
     print("\nPerforming 5-fold cross-validation...")
     cv_scores = cross_val_score(pipeline, X, y, cv=5)
     print(f"Cross-validation scores: {cv_scores}")
     print(f"Average CV accuracy: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+
+    # Show min/max CV scores
+    print(f"Min CV score: {cv_scores.min():.4f} ({cv_scores.min()*100:.2f}%)")
+    print(f"Max CV score: {cv_scores.max():.4f} ({cv_scores.max()*100:.2f}%)")
 
     # Save model
     model_path = 'models/chatbot_intent_classifier.pkl'
