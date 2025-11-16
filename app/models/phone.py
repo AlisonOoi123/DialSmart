@@ -10,7 +10,7 @@ class Phone(db.Model):
     __tablename__ = 'phones'
 
     id = db.Column(db.Integer, primary_key=True)
-    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id'), nullable=False)
+    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id', ondelete='CASCADE'), nullable=False)
 
     # Basic information
     model_name = db.Column(db.String(150), nullable=False, index=True)
@@ -49,7 +49,7 @@ class Phone(db.Model):
 
 
 class PhoneSpecification(db.Model):
-    """Detailed phone specifications - Enhanced for comprehensive CSV dataset"""
+    """Detailed phone specifications"""
     __tablename__ = 'phone_specifications'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -57,77 +57,46 @@ class PhoneSpecification(db.Model):
 
     # Display specifications
     screen_size = db.Column(db.Float)  # in inches
-    screen_resolution = db.Column(db.String(350))  # e.g., "1080x2400"
-    screen_type = db.Column(db.String(350))  # AMOLED, IPS LCD, etc.
-    display_type = db.Column(db.String(350))  # Full display description
+    screen_resolution = db.Column(db.String(50))  # e.g., "1080x2400"
+    screen_type = db.Column(db.String(50))  # AMOLED, IPS LCD, etc.
     refresh_rate = db.Column(db.Integer, default=60)  # Hz
-    ppi = db.Column(db.Integer)  # Pixels per inch
-    multitouch = db.Column(db.String(350))  # Yes/No or specific info
-    protection = db.Column(db.String(350))  # Corning Gorilla Glass, etc.
 
     # Performance specifications
-    processor = db.Column(db.String(350))  # Chipset name
-    chipset = db.Column(db.String(350))  # Full chipset details
-    cpu = db.Column(db.String(350))  # CPU architecture and cores
-    gpu = db.Column(db.String(350))  # GPU model
-    processor_brand = db.Column(db.String(350))  # Qualcomm, MediaTek, Apple, etc.
-    ram_options = db.Column(db.String(350))  # RAM options
-    storage_options = db.Column(db.String(350))  # Storage options
+    processor = db.Column(db.String(100))
+    processor_brand = db.Column(db.String(50))  # Qualcomm, MediaTek, Apple, etc.
+    ram_options = db.Column(db.String(50))  # "4GB, 6GB, 8GB"
+    storage_options = db.Column(db.String(50))  # "64GB, 128GB, 256GB"
     expandable_storage = db.Column(db.Boolean, default=False)
-    card_slot = db.Column(db.String(350))  # microSD details
 
     # Camera specifications
-    rear_camera = db.Column(db.String(500))  # Full rear camera specs (keep 500 for multi-camera)
+    rear_camera = db.Column(db.String(100))  # "48MP + 8MP + 2MP"
     rear_camera_main = db.Column(db.Integer)  # Main camera MP
-    front_camera = db.Column(db.String(350))  # Front camera specs
+    front_camera = db.Column(db.String(50))  # "16MP"
     front_camera_mp = db.Column(db.Integer)  # Front camera MP
-    camera_features = db.Column(db.Text)  # Camera features
-    flash = db.Column(db.String(350))  # Flash type
-    video_recording = db.Column(db.String(350))  # Video capabilities
+    camera_features = db.Column(db.Text)  # JSON string of features
 
     # Battery specifications
     battery_capacity = db.Column(db.Integer)  # in mAh
-    battery = db.Column(db.String(350))  # Full battery description
-    charging_speed = db.Column(db.String(350))  # Fast charging details
-    fast_charging = db.Column(db.String(350))  # Detailed fast charging info
-    wireless_charging = db.Column(db.String(350))  # Wireless charging details
-    removable_battery = db.Column(db.String(350))  # Removable/Non-Removable
+    charging_speed = db.Column(db.String(50))  # "33W Fast Charging"
+    wireless_charging = db.Column(db.Boolean, default=False)
 
-    # Network and Connectivity
-    sim = db.Column(db.String(350))  # SIM type details
-    technology = db.Column(db.String(350))  # GSM / HSPA / LTE / 5G
-    network_5g = db.Column(db.String(500))  # 5G bands (keep 500 for band lists)
-    network_4g = db.Column(db.String(500))  # 4G bands (keep 500 for band lists)
-    network_3g = db.Column(db.String(350))  # 3G bands
-    network_2g = db.Column(db.String(350))  # 2G bands
-    network_speed = db.Column(db.String(350))  # Network speed capabilities
+    # Connectivity
     has_5g = db.Column(db.Boolean, default=False, index=True)
-    wifi_standard = db.Column(db.String(350))  # WiFi standard
-    bluetooth_version = db.Column(db.String(350))  # Bluetooth version
-    gps = db.Column(db.String(350))  # GPS capabilities
-    nfc = db.Column(db.String(350))  # NFC support
-    usb = db.Column(db.String(350))  # USB type and version
-    audio_jack = db.Column(db.String(350))  # 3.5mm jack presence
-    radio = db.Column(db.String(350))  # FM radio support
-
-    # Operating System
-    operating_system = db.Column(db.String(350))  # "Android 13", "iOS 16", full OS details
-
-    # Physical characteristics
-    weight = db.Column(db.String(350))  # Weight with unit
-    dimensions = db.Column(db.String(350))  # "160.5 x 74.8 x 8.4 mm"
-    colors_available = db.Column(db.String(350))  # "Black, White, Blue"
-    body_material = db.Column(db.String(350))  # Body material description
+    wifi_standard = db.Column(db.String(50))  # "WiFi 6", "WiFi 5"
+    bluetooth_version = db.Column(db.String(20))  # "5.2"
+    nfc = db.Column(db.Boolean, default=False)
 
     # Additional features
+    operating_system = db.Column(db.String(50))  # "Android 13", "iOS 16"
     fingerprint_sensor = db.Column(db.Boolean, default=True)
     face_unlock = db.Column(db.Boolean, default=False)
-    water_resistance = db.Column(db.String(350))  # "IP68"
+    water_resistance = db.Column(db.String(20))  # "IP68"
     dual_sim = db.Column(db.Boolean, default=True)
-    sensors = db.Column(db.Text)  # All sensors
 
-    # Reference
-    product_url = db.Column(db.String(500))  # Original product page URL
+    # Physical characteristics
+    weight = db.Column(db.Integer)  # in grams
+    dimensions = db.Column(db.String(50))  # "160.5 x 74.8 x 8.4 mm"
+    colors_available = db.Column(db.String(200))  # "Black, White, Blue"
 
     def __repr__(self):
         return f'<PhoneSpecification for Phone {self.phone_id}>'
