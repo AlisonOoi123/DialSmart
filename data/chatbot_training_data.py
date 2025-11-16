@@ -876,3 +876,15 @@ try:
     print(f"Loaded {len(BALANCED_TRAINING_DATA)} balanced training intent categories to fix class imbalance")
 except ImportError:
     pass  # Balanced data not available
+
+# Merge with advanced training data to achieve 95%+ accuracy
+try:
+    from data.advanced_training_supplement import ADVANCED_TRAINING_DATA
+    for intent, samples in ADVANCED_TRAINING_DATA.items():
+        if intent in TRAINING_DATA:
+            TRAINING_DATA[intent].extend(samples)
+        else:
+            TRAINING_DATA[intent] = samples
+    print(f"Loaded {len(ADVANCED_TRAINING_DATA)} advanced training categories for 95%+ accuracy (specification, feature_query)")
+except ImportError:
+    pass  # Advanced data not available
