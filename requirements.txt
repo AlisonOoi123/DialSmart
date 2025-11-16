@@ -5,7 +5,7 @@ Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 
 # Database
-SQLAlchemy==2.0.23
+SQLAlchemy>=2.0.35
 
 # Security
 Werkzeug==3.0.1
@@ -18,6 +18,10 @@ python-dateutil==2.8.2
 
 # Utilities
 python-dotenv==1.0.0
+
+# Machine Learning
+scikit-learn>=1.5.0
+numpy>=1.26.0
 
 # Development Tools
 flask-shell-ipython==0.4.1

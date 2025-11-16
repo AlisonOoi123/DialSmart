@@ -8,7 +8,7 @@
         {% for phone in phones.items %}
         <div class="col-md-3 mb-4">
             <div class="card">
-                <img src="{{ phone.main_image or 'https://via.placeholder.com/300x400?text=Phone' }}" class="card-img-top" alt="{{ phone.model_name }}">
+                <img src="{{ phone.main_image|proxy_image }}" class="card-img-top" alt="{{ phone.model_name }}" onerror="this.src='https://via.placeholder.com/300x400?text=Phone'">
                 <div class="card-body">
                     <h6>{{ phone.model_name }}</h6>
                     <p class="text-primary">RM {{ "{:,.0f}".format(phone.price) }}</p>

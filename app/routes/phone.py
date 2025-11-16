@@ -32,9 +32,17 @@ def brand_page(brand_id):
     # Get filter parameters
     sort_by = request.args.get('sort_by', 'created_at')
     page = request.args.get('page', 1, type=int)
+    min_price = request.args.get('min_price', type=float)
+    max_price = request.args.get('max_price', type=float)
 
     # Build query
     query = Phone.query.filter_by(brand_id=brand_id, is_active=True)
+
+    # Apply price filters
+    if min_price is not None:
+        query = query.filter(Phone.price >= min_price)
+    if max_price is not None:
+        query = query.filter(Phone.price <= max_price)
 
     # Apply sorting
     if sort_by == 'price_asc':

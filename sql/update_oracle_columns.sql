@@ -1,0 +1,43 @@
+-- Update Oracle Column Sizes for Phone Specifications
+-- Run this in SQL*Plus as ds_user to fix CSV import errors
+--
+-- Connect: sqlplus ds_user/dsuser123@localhost:1521/orclpdb
+
+-- Display specifications
+ALTER TABLE phone_specifications MODIFY screen_resolution VARCHAR2(150);
+ALTER TABLE phone_specifications MODIFY screen_type VARCHAR2(200);
+ALTER TABLE phone_specifications MODIFY protection VARCHAR2(200);
+
+-- Performance specifications
+ALTER TABLE phone_specifications MODIFY cpu VARCHAR2(250);
+ALTER TABLE phone_specifications MODIFY ram_options VARCHAR2(100);
+ALTER TABLE phone_specifications MODIFY storage_options VARCHAR2(100);
+
+-- Camera specifications
+ALTER TABLE phone_specifications MODIFY rear_camera VARCHAR2(500);
+ALTER TABLE phone_specifications MODIFY front_camera VARCHAR2(200);
+
+-- Network and Connectivity
+ALTER TABLE phone_specifications MODIFY sim VARCHAR2(150);
+ALTER TABLE phone_specifications MODIFY network_4g VARCHAR2(250);
+ALTER TABLE phone_specifications MODIFY bluetooth_version VARCHAR2(100);
+ALTER TABLE phone_specifications MODIFY nfc VARCHAR2(100);
+ALTER TABLE phone_specifications MODIFY audio_jack VARCHAR2(100);
+ALTER TABLE phone_specifications MODIFY radio VARCHAR2(100);
+
+-- Physical characteristics
+ALTER TABLE phone_specifications MODIFY body_material VARCHAR2(300);
+
+-- Verify all column changes
+SELECT column_name, data_type, data_length, nullable
+FROM user_tab_columns
+WHERE table_name = 'PHONE_SPECIFICATIONS'
+AND column_name IN ('SCREEN_RESOLUTION', 'SCREEN_TYPE', 'PROTECTION',
+                     'CPU', 'RAM_OPTIONS', 'STORAGE_OPTIONS',
+                     'REAR_CAMERA', 'FRONT_CAMERA',
+                     'SIM', 'NETWORK_4G', 'BLUETOOTH_VERSION', 'NFC', 'AUDIO_JACK', 'RADIO',
+                     'BODY_MATERIAL')
+ORDER BY column_name;
+
+-- Success message
+SELECT 'All column sizes updated successfully!' AS status FROM dual;
