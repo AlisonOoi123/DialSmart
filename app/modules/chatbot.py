@@ -778,14 +778,38 @@ class ChatbotEngine:
 
     def _extract_brand(self, message):
         """Extract brand name from message"""
-        brands = ['Samsung', 'Apple', 'iPhone', 'Xiaomi', 'Huawei', 'Nokia', 'Lenovo', 'Honor', 'Oppo', 'Realme', 'Vivo']
+        # Brand mapping: search_term → database_brand_name
+        brand_map = {
+            'samsung': 'Samsung',
+            'galaxy': 'Samsung',
+            'apple': 'Apple',
+            'iphone': 'Apple',
+            'xiaomi': 'Xiaomi',
+            'redmi': 'Xiaomi',  # Redmi is Xiaomi sub-brand
+            'poco': 'Xiaomi',   # POCO is Xiaomi sub-brand
+            'mi': 'Xiaomi',
+            'huawei': 'Huawei',
+            'honor': 'Honor',
+            'nokia': 'Nokia',
+            'lenovo': 'Lenovo',
+            'oppo': 'Oppo',
+            'realme': 'Realme',
+            'vivo': 'Vivo',
+            'oneplus': 'OnePlus',
+            'google': 'Google',
+            'pixel': 'Google',
+            'sony': 'Sony',
+            'asus': 'Asus',
+            'motorola': 'Motorola',
+            'moto': 'Motorola'
+        }
 
         message_lower = message.lower()
-        for brand in brands:
-            if brand.lower() in message_lower:
-                if brand.lower() == 'iphone':
-                    return 'Apple'
-                return brand
+
+        # Check each brand term
+        for search_term, brand_name in brand_map.items():
+            if search_term in message_lower:
+                return brand_name
 
         return None
 
