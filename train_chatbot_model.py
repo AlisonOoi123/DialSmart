@@ -41,13 +41,13 @@ def train_and_save_model():
     # Create dual vectorizer (word + character n-grams)
     print("\nCreating optimized feature extractors...")
 
-    # Word-level TF-IDF
+    # Word-level TF-IDF - optimized
     word_vectorizer = TfidfVectorizer(
         analyzer='word',
-        ngram_range=(1, 3),  # Word unigrams, bigrams, trigrams
-        max_features=10000,
-        min_df=1,
-        max_df=0.85,
+        ngram_range=(1, 2),  # Reduced from (1,3) to avoid overfitting
+        max_features=5000,  # Reduced from 10000 to focus on most important features
+        min_df=2,  # Increased from 1 to reduce noise
+        max_df=0.8,  # Reduced from 0.85 to filter common words
         lowercase=True,
         strip_accents='unicode',
         stop_words='english',
@@ -56,11 +56,11 @@ def train_and_save_model():
         norm='l2'
     )
 
-    # Character-level TF-IDF (helps with typos and variations)
+    # Character-level TF-IDF - optimized
     char_vectorizer = TfidfVectorizer(
         analyzer='char',
-        ngram_range=(2, 5),  # Character 2-5 grams
-        max_features=5000,
+        ngram_range=(3, 4),  # Adjusted from (2,5) for better patterns
+        max_features=3000,  # Reduced from 5000
         lowercase=True,
         sublinear_tf=True,
         use_idf=True,
@@ -76,15 +76,15 @@ def train_and_save_model():
     # Use Linear SVC with optimized parameters
     print("Building optimized Linear SVM classifier...")
 
-    # Linear SVC - tuned for 85-90% accuracy
+    # Linear SVC - tuned for 90%+ accuracy with strong regularization
     base_classifier = LinearSVC(
-        C=2.0,  # Increased for better margin
-        max_iter=10000,
+        C=0.5,  # Stronger regularization (reduced from 2.0) to prevent overfitting
+        max_iter=15000,  # Increased iterations for convergence
         random_state=42,
-        class_weight='balanced',
+        class_weight='balanced',  # Handle class imbalance
         dual=False,
         loss='squared_hinge',  # Better for text
-        tol=1e-4
+        tol=1e-5  # Tighter tolerance for better convergence
     )
 
     # Create pipeline - using base LinearSVC without calibration to handle small classes
@@ -119,11 +119,14 @@ def train_and_save_model():
 
     print(f"\nModel saved to {model_path}")
 
-    # Test predictions
+    # Test predictions - including critical test cases
     test_texts = [
         "hello there",
         "show me phones under rm2000",
         "i need a gaming phone",
+        "gaming phone within rm3000",  # Critical test case
+        "for senior citizen",  # Persona test
+        "student gaming phone",  # Persona + usage test
         "compare iphone and samsung",
         "what phones have good cameras",
         "show me xiaomi phones",
