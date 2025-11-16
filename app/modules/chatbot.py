@@ -96,12 +96,19 @@ class ChatbotEngine:
             try:
                 predicted_intent = self.ml_model.predict([message_lower])[0]
 
-                # Get confidence scores
-                proba = self.ml_model.predict_proba([message_lower])[0]
-                max_confidence = max(proba)
+                # Get confidence scores - LinearSVC uses decision_function instead of predict_proba
+                try:
+                    # Try predict_proba first (for calibrated classifiers)
+                    proba = self.ml_model.predict_proba([message_lower])[0]
+                    max_confidence = max(proba)
+                except AttributeError:
+                    # Fallback to decision_function (for LinearSVC)
+                    decision = self.ml_model.decision_function([message_lower])[0]
+                    # Normalize decision scores
+                    max_confidence = max(decision) / (sum(abs(decision)) + 1e-10)
 
-                # Only use ML prediction if confidence is high enough (>30%)
-                if max_confidence > 0.3:
+                # Only use ML prediction if confidence is reasonable (lower threshold for decision_function)
+                if max_confidence > 0.05:  # Lowered from 0.3 for decision_function compatibility
                     return predicted_intent
             except Exception as e:
                 print(f"Error in ML intent detection: {e}")
@@ -211,10 +218,14 @@ class ChatbotEngine:
                 }
 
         elif intent == 'usage_type':
-            # Detect usage type
+            # Detect usage type and persona
+            persona = self._detect_persona(message)
             usage = self._detect_usage_type(message)
             if usage:
+                # Check for explicit budget first, then persona budget, then None
                 budget = self._extract_budget(message)
+                if not budget and persona:
+                    budget = persona['budget']  # Use persona-inferred budget
                 phones = self.smart_engine.get_phones_by_usage(usage, budget, limit=5)
 
                 if phones:
@@ -485,23 +496,24 @@ class ChatbotEngine:
             }
 
     def _extract_budget(self, message):
-        """Extract budget range from message"""
-        # Look for patterns like "RM1000", "1000", "under 2000", "between 1000 and 2000"
+        """Extract budget range from message - Enhanced to handle 'within', ranges, and standalone numbers"""
+        # Look for patterns like "RM1000", "1000", "under 2000", "between 1000 and 2000", "within 3000", "2000-3000"
         patterns = [
+            r'between\s*rm?\s*(\d+)\s*(?:to|-|and)\s*rm?\s*(\d+)',  # between RM1000 and RM2000
             r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)',  # RM1000 to RM2000
-            r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000
-            r'under\s*rm?\s*(\d+)',  # under RM2000
-            r'below\s*rm?\s*(\d+)',  # below 2000
+            r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000 or 2000-3000
+            r'(?:under|below|within)\s*rm?\s*(\d+)',  # under/below/within RM2000 or within 3000
             r'rm\s*(\d+)',  # RM2000
+            r'(?:^|\s)(\d{3,5})(?:\s|$)',  # standalone number like "3000" (3-5 digits)
         ]
 
         for pattern in patterns:
             match = re.search(pattern, message.lower())
             if match:
-                if 'under' in message.lower() or 'below' in message.lower():
+                if 'under' in message.lower() or 'below' in message.lower() or 'within' in message.lower():
                     max_budget = int(match.group(1))
                     return (500, max_budget)
-                elif len(match.groups()) == 2:
+                elif len(match.groups()) >= 2 and match.group(2):
                     return (int(match.group(1)), int(match.group(2)))
                 else:
                     # Single value mentioned
@@ -541,10 +553,35 @@ class ChatbotEngine:
 
         return criteria if criteria else None
 
-    def _detect_usage_type(self, message):
-        """Detect usage type from message"""
+    def _detect_persona(self, message):
+        """Detect user persona from message to infer usage and budget needs"""
         message_lower = message.lower()
 
+        # Persona patterns: (persona_name, usage_type, budget_range)
+        personas = {
+            'senior': (['senior', 'elderly', 'old age', 'retired'], 'Basic', (500, 1500)),
+            'student': (['student', 'university', 'college'], 'Gaming', (1000, 3000)),
+            'professional': (['professional', 'businessman', 'working', 'executive'], 'Business', (2500, 5000)),
+            'photographer': (['photographer', 'content creator', 'vlogger'], 'Photography', (2000, 6000)),
+            'gamer': (['gamer', 'gaming enthusiast'], 'Gaming', (2000, 5000)),
+        }
+
+        for persona_key, (keywords, usage, budget) in personas.items():
+            if any(keyword in message_lower for keyword in keywords):
+                return {'persona': persona_key, 'usage': usage, 'budget': budget}
+
+        return None
+
+    def _detect_usage_type(self, message):
+        """Detect usage type from message - Enhanced with persona detection"""
+        message_lower = message.lower()
+
+        # First check for persona
+        persona = self._detect_persona(message)
+        if persona:
+            return persona['usage']  # Return usage from persona mapping
+
+        # Fallback to keyword-based detection
         if 'gam' in message_lower:
             return 'Gaming'
         elif 'photo' in message_lower or 'camera' in message_lower:
@@ -555,6 +592,8 @@ class ChatbotEngine:
             return 'Social Media'
         elif 'entertainment' in message_lower or 'video' in message_lower or 'movie' in message_lower:
             return 'Entertainment'
+        elif 'basic' in message_lower or 'simple' in message_lower or 'call' in message_lower:
+            return 'Basic'  # For senior citizens and basic users
 
         return None
 
@@ -613,13 +652,16 @@ class ChatbotEngine:
             if hasattr(intent, 'item'):
                 intent = intent.item()
 
+            # Convert metadata to JSON string for Oracle compatibility
+            metadata_json = json.dumps(metadata) if metadata else None
+
             chat = ChatHistory(
                 user_id=user_id,
                 message=message,
                 response=response,
                 intent=str(intent),
                 session_id=session_id or datetime.utcnow().strftime('%Y%m%d%H%M%S'),
-                chat_metadata=metadata  # Use chat_metadata instead of metadata
+                chat_metadata=metadata_json  # Store as JSON string for Oracle
             )
             db.session.add(chat)
             db.session.commit()
