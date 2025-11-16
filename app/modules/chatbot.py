@@ -96,12 +96,19 @@ class ChatbotEngine:
             try:
                 predicted_intent = self.ml_model.predict([message_lower])[0]
 
-                # Get confidence scores
-                proba = self.ml_model.predict_proba([message_lower])[0]
-                max_confidence = max(proba)
+                # Get confidence scores - LinearSVC uses decision_function instead of predict_proba
+                try:
+                    # Try predict_proba first (for calibrated classifiers)
+                    proba = self.ml_model.predict_proba([message_lower])[0]
+                    max_confidence = max(proba)
+                except AttributeError:
+                    # Fallback to decision_function (for LinearSVC)
+                    decision = self.ml_model.decision_function([message_lower])[0]
+                    # Normalize decision scores
+                    max_confidence = max(decision) / (sum(abs(decision)) + 1e-10)
 
-                # Only use ML prediction if confidence is high enough (>30%)
-                if max_confidence > 0.3:
+                # Only use ML prediction if confidence is reasonable (lower threshold for decision_function)
+                if max_confidence > 0.05:  # Lowered from 0.3 for decision_function compatibility
                     return predicted_intent
             except Exception as e:
                 print(f"Error in ML intent detection: {e}")

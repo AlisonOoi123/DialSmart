@@ -92,7 +92,21 @@ TRAINING_DATA = {
         "budget is tight around rm1400",
         "can afford up to rm2300",
         "phones priced at rm1900",
-        "around rm1600 phones"
+        "around rm1600 phones",
+        # "within" patterns
+        "within rm3000",
+        "within 3000",
+        "within rm2500",
+        "phone within 2000",
+        "within my budget of 3000",
+        "something within 2500",
+        "within rm1800",
+        "phones within 3500",
+        # Range patterns
+        "2000-3000",
+        "between 1500 and 2500",
+        "1000 to 2000",
+        "from 2000 to 3500"
     ],
 
     'recommendation': [
@@ -265,7 +279,40 @@ TRAINING_DATA = {
         "professional photography phone",
         "phone for video calls",
         "best for multitasking",
-        "phone for students"
+        "phone for students",
+        # Persona-based queries
+        "for senior citizen",
+        "phone for elderly person",
+        "for a student gaming phone",
+        "student phone",
+        "for professional use",
+        "for businessman",
+        "for photographer",
+        "for content creator",
+        "for gamer",
+        "phone for retired person",
+        "for university student",
+        "for college student",
+        "for working professional",
+        "for executive",
+        "for vlogger",
+        "for gaming enthusiast",
+        # Budget + Usage combined patterns
+        "gaming phone within rm3000",
+        "gaming phone rm3000",
+        "gaming phone under 3000",
+        "photography phone within 5000",
+        "student gaming phone within 2000-3000",
+        "gaming phone between 2000 and 3000",
+        "business phone under rm4000",
+        "camera phone within 4000",
+        "phone for senior citizen budget 1500",
+        "student phone under 2500",
+        # Standalone number patterns
+        "gaming phone 3000",
+        "photography phone 5000",
+        "business phone 4000",
+        "camera phone 2500"
     ],
 
     'feature_query': [
