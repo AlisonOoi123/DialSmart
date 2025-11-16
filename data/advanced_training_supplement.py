@@ -6,7 +6,7 @@ Massive expansion for weak intents to achieve 95% accuracy target
 # Focus on specification (59% recall) and feature_query (53% recall)
 ADVANCED_TRAINING_DATA = {
     'specification': [
-        # Adding 60 examples to boost from 83 to 143+ (target: equal to recommendation)
+        # Adding 110+ examples to massively boost specification (was VERY WEAK at 53% recall)
         # General spec queries
         "tell me the specifications",
         "what are the full specs",
@@ -18,6 +18,14 @@ ADVANCED_TRAINING_DATA = {
         "i want to see specs",
         "specs of this phone",
         "phone specification details",
+        "full specification sheet",
+        "hardware specifications",
+        "device specifications",
+        "model specifications",
+        "technical details",
+        "tech specs",
+        "specification list",
+        "phone technical data",
 
         # RAM queries
         "how much ram",
@@ -28,8 +36,16 @@ ADVANCED_TRAINING_DATA = {
         "how many gb ram",
         "6gb ram",
         "8gb ram",
+        "12gb ram",
         "ram specifications",
         "working memory",
+        "system memory",
+        "ram details",
+        "memory specs",
+        "how much memory",
+        "ram amount",
+        "internal ram",
+        "ram configuration",
 
         # Battery queries
         "battery size",
@@ -42,6 +58,13 @@ ADVANCED_TRAINING_DATA = {
         "mah battery",
         "battery details",
         "power capacity",
+        "battery power",
+        "battery rating",
+        "battery strength",
+        "how many mah",
+        "4000mah battery",
+        "5000mah battery",
+        "battery cell capacity",
 
         # Camera specs
         "camera specs",
@@ -54,6 +77,18 @@ ADVANCED_TRAINING_DATA = {
         "camera sensor",
         "camera megapixels",
         "how many mp",
+        "48mp camera",
+        "64mp camera",
+        "108mp camera",
+        "camera sensor size",
+        "camera aperture",
+        "camera configuration",
+        "triple camera specs",
+        "quad camera specs",
+        "main camera mp",
+        "selfie camera mp",
+        "front camera resolution",
+        "back camera resolution",
 
         # Display specs
         "screen size",
@@ -66,6 +101,17 @@ ADVANCED_TRAINING_DATA = {
         "screen dimensions",
         "display dimensions",
         "screen details",
+        "display type",
+        "screen type",
+        "display panel",
+        "6.5 inch screen",
+        "6.7 inch display",
+        "screen resolution",
+        "1080p display",
+        "full hd screen",
+        "quad hd display",
+        "screen ppi",
+        "pixel density",
 
         # Processor specs
         "what processor",
@@ -78,6 +124,28 @@ ADVANCED_TRAINING_DATA = {
         "chipset details",
         "processor info",
         "what chip",
+        "processor model",
+        "snapdragon 888",
+        "mediatek dimensity",
+        "apple a15 chip",
+        "exynos processor",
+        "processor speed",
+        "cpu frequency",
+        "core configuration",
+        "octa core processor",
+        "processor architecture",
+
+        # Storage specs
+        "storage size",
+        "internal storage",
+        "storage capacity",
+        "rom size",
+        "128gb storage",
+        "256gb storage",
+        "512gb storage",
+        "how much storage",
+        "storage specs",
+        "storage type",
 
         # Connectivity specs
         "network specs",
@@ -87,7 +155,21 @@ ADVANCED_TRAINING_DATA = {
         "wifi specs",
         "bluetooth version",
         "network bands",
-        "connectivity details"
+        "connectivity details",
+        "wifi standard",
+        "bluetooth specs",
+        "usb type",
+        "charging port type",
+        "nfc specs",
+
+        # OS/Software specs
+        "operating system",
+        "os version",
+        "android version",
+        "ios version",
+        "software version",
+        "what android",
+        "which os"
     ],
 
     'feature_query': [

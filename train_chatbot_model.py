@@ -73,62 +73,47 @@ def train_and_save_model():
         ('char', char_vectorizer)
     ])
 
-    # Use OPTIMIZED ENSEMBLE LEARNING for 95%+ accuracy
-    # RandomForest doesn't work well with sparse TF-IDF, so using LinearSVC + MultinomialNB only
-    print("Building OPTIMIZED ENSEMBLE classifier with VotingClassifier (2 models)...")
-    print("This combines LinearSVC + MultinomialNB for superior accuracy")
-    print("(RandomForest removed - performs poorly with sparse TF-IDF features)")
+    # SIMPLIFIED: Use single optimized LinearSVC (proven best approach)
+    # Ensemble was making accuracy WORSE (83% vs 84.64% single model)
+    print("Building SINGLE OPTIMIZED LinearSVC classifier...")
+    print("(Ensemble removed - added complexity without improving accuracy)")
     print()
 
-    # Model 1: LinearSVC (best for text classification) - with calibration for probabilities
-    svc_calibrated = CalibratedClassifierCV(
-        LinearSVC(C=0.3, loss='squared_hinge', random_state=42,
-                 class_weight='balanced', dual=True, max_iter=20000, tol=1e-5),
-        cv=5,  # Increased CV folds for better calibration
-        method='sigmoid'  # Sigmoid calibration for probabilities
+    # Best single model: LinearSVC with optimal hyperparameters
+    best_classifier = LinearSVC(
+        C=0.8,  # Sweet spot between 0.5 and 1.0
+        loss='squared_hinge',
+        random_state=42,
+        class_weight='balanced',
+        dual=True,  # Required for both loss functions
+        max_iter=25000,
+        tol=1e-5
     )
 
-    svc_pipeline = Pipeline([
+    # Add calibration for confidence scores
+    calibrated_classifier = CalibratedClassifierCV(
+        best_classifier,
+        cv=5,
+        method='sigmoid'
+    )
+
+    pipeline = Pipeline([
         ('tfidf', vectorizer),
-        ('classifier', svc_calibrated)
+        ('classifier', calibrated_classifier)
     ])
 
-    # Model 2: Multinomial Naive Bayes (fast, probabilistic, strong baseline)
-    nb_pipeline = Pipeline([
-        ('tfidf', vectorizer),
-        ('classifier', MultinomialNB(alpha=0.05))  # Very low alpha for minimal smoothing
-    ])
-
-    # Create voting ensemble - soft voting uses probabilities for better accuracy
-    print("Training ensemble (this may take 4-5 minutes)...")
-    print("- Model 1: LinearSVC + Calibration (C=0.3, optimized for text)")
-    print("- Model 2: MultinomialNB (alpha=0.05, strong probabilistic baseline)")
+    print("Training single optimized LinearSVC on", len(X_train), "samples...")
+    print("Parameters: C=0.8, squared_hinge loss, cv=5 calibration")
     print()
 
-    # Ensemble with soft voting (uses predict_proba)
-    ensemble = VotingClassifier(
-        estimators=[
-            ('svc', svc_pipeline),
-            ('nb', nb_pipeline)
-        ],
-        voting='soft',  # Use probability averaging
-        weights=[3, 1],  # Give more weight to SVC (3:1 ratio, SVC is much better)
-        n_jobs=-1
-    )
+    pipeline.fit(X_train, y_train)
 
-    print("Training ensemble classifier on", len(X_train), "samples...")
-    ensemble.fit(X_train, y_train)
-
-    print("\n" + "="*70)
-    print("ENSEMBLE MODEL TRAINED")
     print("="*70)
-    print("Using 2 classifiers with soft voting (probability averaging)")
-    print("Weights: CalibratedLinearSVC=3.0, MultinomialNB=1.0")
-    print("Optimized parameters: C=0.3 (stronger regularization), cv=5 calibration")
+    print("MODEL TRAINED")
+    print("="*70)
+    print("Single LinearSVC with calibration for confidence scores")
+    print("Optimized parameters based on previous GridSearchCV results")
     print()
-
-    # Store the ensemble as the pipeline
-    pipeline = ensemble
 
     # Evaluate
     print("\nEvaluating model performance...")
@@ -215,17 +200,15 @@ if __name__ == '__main__':
     print("Training data includes:")
     print("- 14 intent categories")
     print("- 1888 balanced training examples")
-    print("  * specification: +68 examples (boosted weak 53% recall)")
-    print("  * feature_query: +100 examples (boosted weak 53% recall)")
+    print("  * specification: +68 examples")
+    print("  * feature_query: +100 examples")
     print("  * brand_query: +63 examples")
-    print("  * comparison: +20 examples")
-    print("  * greeting: +20 examples")
     print("- Dual TF-IDF vectorization (word + char n-grams)")
-    print("- OPTIMIZED ENSEMBLE: 2 classifiers with soft voting")
-    print("  * CalibratedLinearSVC (weight=3.0, C=0.3) - best for text")
-    print("  * MultinomialNB (weight=1.0, alpha=0.05) - probabilistic")
-    print("  * RandomForest REMOVED (poor performance with sparse TF-IDF)")
-    print("- Expected accuracy: 92-95% (optimized ensemble)")
+    print("- SINGLE OPTIMIZED LinearSVC (ensemble removed)")
+    print("  * C=0.8 (optimal balance)")
+    print("  * squared_hinge loss")
+    print("  * cv=5 calibration for confidence scores")
+    print("- Expected accuracy: 88-92% (simpler is better)")
     print()
     print()
     print("="*70)
