@@ -31,6 +31,7 @@
                     <td><span class="badge {% if brand.is_active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Active' if brand.is_active else 'Inactive' }}</span></td>
                     <td>
                         <a href="{{ url_for('admin.edit_brand', brand_id=brand.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        <button class="btn btn-sm btn-danger" onclick="deleteBrand({{ brand.id }}, '{{ brand.name }}')">Delete</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -38,4 +39,17 @@
         </table>
     </div>
 </div>
+
+<script>
+function deleteBrand(brandId, brandName) {
+    if (confirm(`Are you sure you want to delete "${brandName}"? This will also delete all phones associated with this brand. This action cannot be undone.`)) {
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/brands/delete/${brandId}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
 {% endblock %}
