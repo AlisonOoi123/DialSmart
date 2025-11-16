@@ -49,12 +49,13 @@ class SmartRecommendationEngine:
 
         return results
 
-    def get_phones_by_brand(self, brand_name, limit=10):
+    def get_phones_by_brand(self, brand_name, budget=None, limit=10):
         """
         Get phones by brand
 
         Args:
             brand_name: Brand name
+            budget: Optional budget tuple (min, max)
             limit: Maximum results
 
         Returns:
@@ -65,10 +66,17 @@ class SmartRecommendationEngine:
         if not brand:
             return []
 
-        phones = Phone.query.filter(
+        query = Phone.query.filter(
             Phone.brand_id == brand.id,
             Phone.is_active == True
-        ).order_by(Phone.price.desc()).limit(limit).all()
+        )
+
+        # Apply budget filter if provided
+        if budget:
+            min_budget, max_budget = budget
+            query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+        phones = query.order_by(Phone.price.desc()).limit(limit).all()
 
         results = []
         for phone in phones:

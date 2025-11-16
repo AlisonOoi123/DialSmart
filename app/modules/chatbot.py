@@ -258,10 +258,11 @@ class ChatbotEngine:
             }
 
         elif intent == 'brand_query':
-            # Extract brand name
+            # Extract brand name and budget (for compound queries like "iphone within 3000")
             brand_name = self._extract_brand(message)
+            budget = self._extract_budget(message)
             if brand_name:
-                phones = self.smart_engine.get_phones_by_brand(brand_name, limit=5)
+                phones = self.smart_engine.get_phones_by_brand(brand_name, budget, limit=5)
 
                 if phones:
                     phone_list_text = ""

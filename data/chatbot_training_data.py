@@ -220,7 +220,18 @@ TRAINING_DATA = {
         "phone models",
         "smartphone models",
         "latest phones",
-        "new phones"
+        "new phones",
+        # Compound queries: recommendation + budget/usage
+        "recommend a phone under 2000",
+        "suggest a phone within 3000",
+        "best phone under rm2500",
+        "recommend gaming phone within 4000",
+        "suggest camera phone under 3500",
+        "good phone within my budget",
+        "recommend affordable phone",
+        "suggest budget friendly phone",
+        "best phone for rm2000",
+        "recommend phone within rm3000"
     ],
 
     'comparison': [
@@ -366,7 +377,26 @@ TRAINING_DATA = {
         "headphone jack",
         "bluetooth version",
         "wifi standard",
-        "usb type"
+        "usb type",
+        # Compound queries: specification + budget
+        "long lasting battery phone under 2000",
+        "good camera phone within 3000",
+        "amoled display phone under 2500",
+        "fast processor phone within 4000",
+        "5g phone under 2000",
+        "large storage phone within 3000",
+        "high refresh rate phone under 3500",
+        "waterproof phone within 4000",
+        "wireless charging phone under 3000",
+        "dual sim phone within 2000",
+        "phones with good battery under rm2500",
+        "phones with best camera under rm4000",
+        "phones with amoled screen under rm3000",
+        "phones with 5g within rm2500",
+        "affordable good camera phone",
+        "budget long battery phone",
+        "cheap 5g phone",
+        "economical fast charging phone"
     ],
 
     'brand_query': [
@@ -427,7 +457,33 @@ TRAINING_DATA = {
         "phones from apple",
         "phones from xiaomi",
         "samsung smartphone options",
-        "apple smartphone options"
+        "apple smartphone options",
+        # Compound queries: brand + budget
+        "iphone within 3000",
+        "samsung under rm2000",
+        "xiaomi within my budget",
+        "apple phones under 5000",
+        "affordable samsung phones",
+        "cheap xiaomi phones",
+        "budget samsung options",
+        "iphone under 4000",
+        "samsung within 3000",
+        "xiaomi within 2000",
+        "oppo under 1500",
+        "vivo within 2500",
+        "realme under 1000",
+        "honor within 3500",
+        "huawei under 4000",
+        "samsung galaxy under 3000",
+        "iphone within rm5000",
+        "xiaomi redmi within 1500",
+        "affordable iphone",
+        "budget samsung",
+        "cheap apple phones",
+        "economical xiaomi",
+        "samsung below 2000",
+        "apple below 6000",
+        "xiaomi below 2000"
     ],
 
     'usage_type': [
