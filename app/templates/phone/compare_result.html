@@ -95,13 +95,31 @@
 
 <script>
 function saveComparison() {
-    // You can implement AJAX call to save comparison
-    alert('Comparison saved to your account!');
-    // Example:
-    // $.post('/api/save-comparison', {
-    //     phone1_id: {{ comparison.phone1.info.id }},
-    //     phone2_id: {{ comparison.phone2.info.id }}
-    // });
+    {% if current_user.is_authenticated %}
+    // Save comparison via AJAX
+    $.ajax({
+        url: '/api/comparison/save',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            phone1_id: {{ comparison.phone1.info.id }},
+            phone2_id: {{ comparison.phone2.info.id }}
+        }),
+        success: function(response) {
+            if (response.success) {
+                alert(response.message);
+            } else {
+                alert('Failed to save comparison: ' + response.error);
+            }
+        },
+        error: function() {
+            alert('An error occurred while saving the comparison.');
+        }
+    });
+    {% else %}
+    alert('Please login to save comparisons.');
+    window.location.href = '/auth/login';
+    {% endif %}
 }
 </script>
 {% endblock %}
