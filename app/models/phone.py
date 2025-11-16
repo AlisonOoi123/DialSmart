@@ -10,7 +10,7 @@ class Phone(db.Model):
     __tablename__ = 'phones'
 
     id = db.Column(db.Integer, primary_key=True)
-    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id'), nullable=False)
+    brand_id = db.Column(db.Integer, db.ForeignKey('brands.id', ondelete='CASCADE'), nullable=False)
 
     # Basic information
     model_name = db.Column(db.String(150), nullable=False, index=True)
