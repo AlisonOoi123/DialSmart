@@ -864,3 +864,15 @@ try:
     print(f"Loaded {len(MEGA_TRAINING_DATA)} mega training intent categories")
 except ImportError:
     pass  # Mega data not available
+
+# Merge with balanced training data to achieve 90%+ accuracy
+try:
+    from data.balanced_training_data import BALANCED_TRAINING_DATA
+    for intent, samples in BALANCED_TRAINING_DATA.items():
+        if intent in TRAINING_DATA:
+            TRAINING_DATA[intent].extend(samples)
+        else:
+            TRAINING_DATA[intent] = samples
+    print(f"Loaded {len(BALANCED_TRAINING_DATA)} balanced training intent categories to fix class imbalance")
+except ImportError:
+    pass  # Balanced data not available
