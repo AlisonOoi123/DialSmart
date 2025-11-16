@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}{{ brand.name }} - DialSmart{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <!-- Brand Header -->
+    <div class="text-center mb-5">
+        {% if brand.logo_url %}
+        <img src="{{ brand.logo_url }}" alt="{{ brand.name }}" style="max-height: 100px;" class="mb-3">
+        {% endif %}
+        <h1>{{ brand.name }}</h1>
+        {% if brand.tagline %}
+        <p class="lead text-muted">{{ brand.tagline }}</p>
+        {% endif %}
+        {% if brand.description %}
+        <p>{{ brand.description }}</p>
+        {% endif %}
+
+        <div class="mt-3">
+            <span class="badge bg-primary">{{ phone_count }} Models</span>
+            <span class="badge bg-success">RM {{ "{:,.0f}".format(price_range[0]) }} - RM {{ "{:,.0f}".format(price_range[1]) }}</span>
+        </div>
+    </div>
+
+    <!-- Sorting and Filters -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('phone.brand_page', brand_id=brand.id) }}" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="sort_by" class="form-label">Sort By</label>
+                            <select name="sort_by" id="sort_by" class="form-select" onchange="this.form.submit()">
+                                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Newest First</option>
+                                <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+                                <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+                                <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="min_price" class="form-label">Min Price (RM)</label>
+                            <input type="number" name="min_price" id="min_price" class="form-control" placeholder="Min" value="{{ request.args.get('min_price', '') }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="max_price" class="form-label">Max Price (RM)</label>
+                            <input type="number" name="max_price" id="max_price" class="form-control" placeholder="Max" value="{{ request.args.get('max_price', '') }}">
+                        </div>
+                        <div class="col-md-12 text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Apply Filters
+                            </button>
+                            <a href="{{ url_for('phone.brand_page', brand_id=brand.id) }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Clear Filters
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phones Grid -->
+    <div class="row">
+        {% for phone in phones.items %}
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                {% if phone.main_image and phone.main_image != 'None' and phone.main_image != '' %}
+                <img src="{{ phone.main_image }}" class="card-img-top" alt="{{ phone.model_name }}" style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200/e0e0e0/666666?text={{ phone.model_name | urlencode }}'">
+                {% else %}
+                <img src="https://via.placeholder.com/300x200/e0e0e0/666666?text={{ phone.model_name | urlencode }}" class="card-img-top" alt="{{ phone.model_name }}" style="height: 200px; object-fit: cover;">
+                {% endif %}
+                <div class="card-body">
+                    <h6>{{ phone.model_name }}</h6>
+                    <h5 class="text-primary">RM {{ "{:,.0f}".format(phone.price) }}</h5>
+                    <a href="{{ url_for('phone.details', phone_id=phone.id) }}" class="btn btn-sm btn-primary">View Details</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if phones.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% for page_num in phones.iter_pages() %}
+            {% if page_num %}
+            <li class="page-item {% if page_num == phones.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('phone.brand_page', brand_id=brand.id, page=page_num) }}">{{ page_num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
