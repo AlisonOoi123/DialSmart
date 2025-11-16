@@ -4,7 +4,8 @@ RESTful API endpoints for AJAX requests and chatbot
 """
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
-from app.models import Phone, PhoneSpecification, Brand
+from app import db
+from app.models import Phone, PhoneSpecification, Brand, Comparison
 from app.modules import ChatbotEngine, AIRecommendationEngine
 import uuid
 
@@ -278,3 +279,67 @@ def get_stats():
             'max_price': max(prices) if prices else 0
         }
     })
+
+# Comparison endpoints
+@bp.route('/comparison/save', methods=['POST'])
+@login_required
+def save_comparison():
+    """Save a phone comparison"""
+    try:
+        data = request.get_json()
+        phone1_id = data.get('phone1_id')
+        phone2_id = data.get('phone2_id')
+
+        if not phone1_id or not phone2_id:
+            return jsonify({
+                'success': False,
+                'error': 'Both phone IDs are required'
+            }), 400
+
+        # Check if phones exist
+        phone1 = Phone.query.get(phone1_id)
+        phone2 = Phone.query.get(phone2_id)
+
+        if not phone1 or not phone2:
+            return jsonify({
+                'success': False,
+                'error': 'One or both phones not found'
+            }), 404
+
+        # Check if comparison already exists
+        existing = Comparison.query.filter_by(
+            user_id=current_user.id,
+            phone1_id=phone1_id,
+            phone2_id=phone2_id
+        ).first()
+
+        if existing:
+            existing.is_saved = True
+            db.session.commit()
+            message = 'Comparison updated successfully!'
+        else:
+            # Create new comparison
+            comparison = Comparison(
+                user_id=current_user.id,
+                phone1_id=phone1_id,
+                phone2_id=phone2_id,
+                is_saved=True
+            )
+            db.session.add(comparison)
+            db.session.commit()
+            message = 'Comparison saved successfully!'
+
+        return jsonify({
+            'success': True,
+            'message': message
+        })
+
+    except Exception as e:
+        print(f"Error saving comparison: {e}")
+        import traceback
+        traceback.print_exc()
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': 'Failed to save comparison'
+        }), 500

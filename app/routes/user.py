@@ -92,12 +92,6 @@ def preferences():
         # Update preferences from form
         user_prefs.min_budget = int(request.form.get('min_budget', 500))
         user_prefs.max_budget = int(request.form.get('max_budget', 5000))
-
-        # Validate budget: min cannot be greater than max
-        if user_prefs.min_budget > user_prefs.max_budget:
-            flash('Minimum budget cannot be greater than maximum budget. Please correct your values.', 'danger')
-            return redirect(url_for('user.preferences'))
-
         user_prefs.min_ram = int(request.form.get('min_ram', 4))
         user_prefs.min_storage = int(request.form.get('min_storage', 64))
         user_prefs.min_camera = int(request.form.get('min_camera', 12))
@@ -154,45 +148,16 @@ def recommendation_history():
 def recommendation_wizard():
     """Multi-step recommendation wizard"""
     if request.method == 'POST':
-        # Process wizard form - only include values that user actually provided
-        criteria = {}
-
-        # Budget (only add if provided)
-        min_budget = request.form.get('min_budget')
-        max_budget = request.form.get('max_budget')
-        if min_budget:
-            criteria['min_budget'] = int(min_budget)
-        if max_budget:
-            criteria['max_budget'] = int(max_budget)
-
-        # User selections (lists)
-        primary_usage = request.form.getlist('primary_usage')
-        if primary_usage:
-            criteria['primary_usage'] = primary_usage
-
-        important_features = request.form.getlist('important_features')
-        if important_features:
-            criteria['important_features'] = important_features
-
-        preferred_brands = request.form.getlist('preferred_brands')
-        if preferred_brands:
-            criteria['preferred_brands'] = preferred_brands
-
-        # RAM (only add if provided)
-        min_ram = request.form.get('min_ram')
-        if min_ram:
-            criteria['min_ram'] = int(min_ram)
-
-        # 5G (only add if checked)
-        if request.form.get('requires_5g'):
-            criteria['requires_5g'] = True
-
-        # Validate budget if both provided: min cannot be greater than max
-        if 'min_budget' in criteria and 'max_budget' in criteria:
-            if criteria['min_budget'] > criteria['max_budget']:
-                flash('Minimum budget cannot be greater than maximum budget. Please correct your values.', 'danger')
-                brands = Brand.query.filter_by(is_active=True).all()
-                return render_template('user/wizard.html', brands=brands)
+        # Process wizard form
+        criteria = {
+            'min_budget': int(request.form.get('min_budget', 500)),
+            'max_budget': int(request.form.get('max_budget', 5000)),
+            'primary_usage': request.form.getlist('primary_usage'),
+            'important_features': request.form.getlist('important_features'),
+            'preferred_brands': request.form.getlist('preferred_brands'),
+            'min_ram': int(request.form.get('min_ram', 4)),
+            'requires_5g': bool(request.form.get('requires_5g'))
+        }
 
         # Get AI recommendations
         ai_engine = AIRecommendationEngine()
@@ -241,8 +206,8 @@ def browse():
         query = query.order_by(Phone.price.desc())
     elif sort_by == 'name':
         query = query.order_by(Phone.model_name.asc())
-    else:  # created_at
-        query = query.order_by(Phone.created_at.desc())
+    else:  # created_at / newest - use release_date (launch date from CSV)
+        query = query.order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())
 
     # Paginate
     per_page = 12
@@ -274,21 +239,9 @@ def contact():
         # Process contact form
         name = request.form.get('name')
         email = request.form.get('email')
-        subject = request.form.get('subject', 'General Inquiry')
         message = request.form.get('message')
 
-        # Save to database for admin to view
-        from app.models.contact import ContactMessage
-        contact_msg = ContactMessage(
-            name=name,
-            email=email,
-            subject=subject,
-            message=message,
-            user_id=current_user.id if current_user.is_authenticated else None
-        )
-        db.session.add(contact_msg)
-        db.session.commit()
-
+        # In production, send email or store in database
         flash('Thank you for contacting us. We will get back to you soon.', 'success')
         return redirect(url_for('user.contact'))
 
