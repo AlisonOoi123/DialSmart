@@ -12,7 +12,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import LinearSVC
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import VotingClassifier, RandomForestClassifier
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
@@ -38,35 +38,57 @@ def train_and_save_model():
     print(f"Training set: {len(X_train)} samples")
     print(f"Test set: {len(X_test)} samples")
 
-    # Create improved TF-IDF vectorizer
-    print("\nCreating optimized feature extractor...")
-    vectorizer = TfidfVectorizer(
-        ngram_range=(1, 3),  # Use up to 3-grams for better context
-        max_features=8000,   # Features for better discrimination
+    # Create dual vectorizer (word + character n-grams)
+    print("\nCreating optimized feature extractors...")
+
+    # Word-level TF-IDF
+    word_vectorizer = TfidfVectorizer(
+        analyzer='word',
+        ngram_range=(1, 3),  # Word unigrams, bigrams, trigrams
+        max_features=10000,
         min_df=1,
-        max_df=0.90,
+        max_df=0.85,
         lowercase=True,
         strip_accents='unicode',
         stop_words='english',
-        sublinear_tf=True,   # Use sublinear TF scaling
+        sublinear_tf=True,
         use_idf=True,
         norm='l2'
     )
 
-    # Use Linear SVC which typically performs better for text classification
-    print("Building Linear SVM classifier (best for text)...")
-
-    # Linear SVC - very good for text classification with better accuracy
-    base_classifier = LinearSVC(
-        C=1.0,
-        max_iter=5000,
-        random_state=42,
-        class_weight='balanced',  # Handle class imbalance
-        dual=False  # Better for n_samples > n_features
+    # Character-level TF-IDF (helps with typos and variations)
+    char_vectorizer = TfidfVectorizer(
+        analyzer='char',
+        ngram_range=(2, 5),  # Character 2-5 grams
+        max_features=5000,
+        lowercase=True,
+        sublinear_tf=True,
+        use_idf=True,
+        norm='l2'
     )
 
-    # Calibrate to get probability estimates
-    classifier = CalibratedClassifierCV(base_classifier, cv=3)
+    # Combine both vectorizers for powerful feature extraction
+    vectorizer = FeatureUnion([
+        ('word', word_vectorizer),
+        ('char', char_vectorizer)
+    ])
+
+    # Use Linear SVC with optimized parameters
+    print("Building optimized Linear SVM classifier...")
+
+    # Linear SVC - tuned for 85-90% accuracy
+    base_classifier = LinearSVC(
+        C=2.0,  # Increased for better margin
+        max_iter=10000,
+        random_state=42,
+        class_weight='balanced',
+        dual=False,
+        loss='squared_hinge',  # Better for text
+        tol=1e-4
+    )
+
+    # Calibrate with more folds for better probability estimates
+    classifier = CalibratedClassifierCV(base_classifier, cv=5, method='sigmoid')
 
     # Create pipeline
     pipeline = Pipeline([

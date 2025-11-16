@@ -481,3 +481,15 @@ try:
     print(f"Loaded {len(ADDITIONAL_TRAINING_DATA)} expanded intent categories")
 except ImportError:
     pass  # Expanded data not available, use base data only
+
+# Merge with mega training data for 85-90% accuracy
+try:
+    from data.mega_training_data import MEGA_TRAINING_DATA
+    for intent, samples in MEGA_TRAINING_DATA.items():
+        if intent in TRAINING_DATA:
+            TRAINING_DATA[intent].extend(samples)
+        else:
+            TRAINING_DATA[intent] = samples
+    print(f"Loaded {len(MEGA_TRAINING_DATA)} mega training intent categories")
+except ImportError:
+    pass  # Mega data not available

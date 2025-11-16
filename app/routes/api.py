@@ -12,28 +12,40 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Chatbot endpoints
 @bp.route('/chat', methods=['POST'])
-@login_required
 def chat():
-    """Process chatbot message"""
-    data = request.get_json()
-    message = data.get('message', '')
-    session_id = data.get('session_id') or str(uuid.uuid4())
+    """Process chatbot message - available to all users"""
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        session_id = data.get('session_id') or str(uuid.uuid4())
 
-    if not message:
-        return jsonify({'error': 'Message is required'}), 400
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
 
-    # Process with chatbot engine
-    chatbot = ChatbotEngine()
-    response = chatbot.process_message(current_user.id, message, session_id)
+        # Get user ID if authenticated, otherwise use session ID
+        user_id = current_user.id if current_user.is_authenticated else session_id
 
-    return jsonify({
-        'success': True,
-        'response': response['response'],
-        'type': response.get('type', 'text'),
-        'metadata': response.get('metadata', {}),
-        'quick_replies': response.get('quick_replies', []),
-        'session_id': session_id
-    })
+        # Process with chatbot engine
+        chatbot = ChatbotEngine()
+        response = chatbot.process_message(user_id, message, session_id)
+
+        return jsonify({
+            'success': True,
+            'response': response['response'],
+            'type': response.get('type', 'text'),
+            'metadata': response.get('metadata', {}),
+            'quick_replies': response.get('quick_replies', []),
+            'session_id': session_id
+        })
+    except Exception as e:
+        print(f"Chatbot error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'response': "I'm having trouble processing your request. Please try asking in a different way."
+        }), 500
 
 @bp.route('/chat/history', methods=['GET'])
 @login_required
