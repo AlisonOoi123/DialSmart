@@ -204,11 +204,22 @@ class PhoneComparison:
                 'winner': None
             }
 
+            # Convert weight to numeric for comparison (handle string/int types)
+            try:
+                weight1 = float(str(specs1.weight).replace('g', '').strip()) if specs1.weight else 999
+            except (ValueError, AttributeError):
+                weight1 = 999
+
+            try:
+                weight2 = float(str(specs2.weight).replace('g', '').strip()) if specs2.weight else 999
+            except (ValueError, AttributeError):
+                weight2 = 999
+
             comparison['weight'] = {
                 'label': 'Weight',
                 'phone1': f"{specs1.weight}g" if specs1.weight else 'N/A',
                 'phone2': f"{specs2.weight}g" if specs2.weight else 'N/A',
-                'winner': 1 if (specs1.weight or 999) < (specs2.weight or 999) else 2
+                'winner': 1 if weight1 < weight2 else (2 if weight2 < weight1 else None)
             }
 
         return comparison

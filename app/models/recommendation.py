@@ -11,8 +11,7 @@ class Recommendation(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    phone_id = db.Column(db.Integer, db.ForeignKey('phones.id'), nullable=False)
-
+    phone_id = db.Column(db.Integer, db.ForeignKey('phones.id', ondelete='CASCADE'), nullable=False)
     # Recommendation details
     match_percentage = db.Column(db.Float)  # 0-100
     reasoning = db.Column(db.Text)  # Why this phone was recommended
@@ -42,10 +41,10 @@ class Comparison(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
-    # Phones being compared
-    phone1_id = db.Column(db.Integer, db.ForeignKey('phones.id'), nullable=False)
-    phone2_id = db.Column(db.Integer, db.ForeignKey('phones.id'), nullable=False)
-
+    # Phones being compared - CASCADE delete when phone is deleted
+    phone1_id = db.Column(db.Integer, db.ForeignKey('phones.id', ondelete='CASCADE'), nullable=False)
+    phone2_id = db.Column(db.Integer, db.ForeignKey('phones.id', ondelete='CASCADE'), nullable=False)
+    
     # Comparison metadata
     is_saved = db.Column(db.Boolean, default=False)
     comparison_notes = db.Column(db.Text)
@@ -78,7 +77,7 @@ class ChatHistory(db.Model):
     intent = db.Column(db.String(100))  # Detected user intent
 
     # Metadata (JSON stored as string)
-    metadata = db.Column(db.Text)  # Additional context like recommended phone IDs
+    chat_metadata = db.Column(db.JSON)  # Additional context like recommended phone IDs
 
     # Timestamp
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)

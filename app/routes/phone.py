@@ -32,9 +32,17 @@ def brand_page(brand_id):
     # Get filter parameters
     sort_by = request.args.get('sort_by', 'created_at')
     page = request.args.get('page', 1, type=int)
+    min_price = request.args.get('min_price', type=float)
+    max_price = request.args.get('max_price', type=float)
 
     # Build query
     query = Phone.query.filter_by(brand_id=brand_id, is_active=True)
+
+    # Apply price filters
+    if min_price is not None:
+        query = query.filter(Phone.price >= min_price)
+    if max_price is not None:
+        query = query.filter(Phone.price <= max_price)
 
     # Apply sorting
     if sort_by == 'price_asc':
@@ -43,8 +51,8 @@ def brand_page(brand_id):
         query = query.order_by(Phone.price.desc())
     elif sort_by == 'name':
         query = query.order_by(Phone.model_name.asc())
-    else:  # created_at
-        query = query.order_by(Phone.created_at.desc())
+    else:  # created_at / newest - use release_date (launch date from CSV)
+        query = query.order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())
 
     # Paginate
     per_page = 12
