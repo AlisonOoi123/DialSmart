@@ -777,31 +777,27 @@ class ChatbotEngine:
         return None
 
     def _extract_brand(self, message):
-        """Extract brand name from message"""
-        # Brand mapping: search_term → database_brand_name
+        """Extract brand name from message - matches database brands exactly"""
+        # Brand mapping: search_term → database_brand_name (from your brand table)
         brand_map = {
-            'samsung': 'Samsung',
-            'galaxy': 'Samsung',
-            'apple': 'Apple',
-            'iphone': 'Apple',
-            'xiaomi': 'Xiaomi',
-            'redmi': 'Xiaomi',  # Redmi is Xiaomi sub-brand
-            'poco': 'Xiaomi',   # POCO is Xiaomi sub-brand
-            'mi': 'Xiaomi',
-            'huawei': 'Huawei',
-            'honor': 'Honor',
-            'nokia': 'Nokia',
-            'lenovo': 'Lenovo',
-            'oppo': 'Oppo',
-            'realme': 'Realme',
-            'vivo': 'Vivo',
-            'oneplus': 'OnePlus',
+            # Your exact database brands
             'google': 'Google',
             'pixel': 'Google',
-            'sony': 'Sony',
-            'asus': 'Asus',
-            'motorola': 'Motorola',
-            'moto': 'Motorola'
+            'honor': 'Honor',
+            'huawei': 'Huawei',
+            'infinix': 'Infinix',
+            'oppo': 'Oppo',
+            'poco': 'Poco',      # Separate brand in database
+            'realme': 'Realme',
+            'redmi': 'Redmi',    # Separate brand in database
+            'samsung': 'Samsung',
+            'galaxy': 'Samsung',
+            'vivo': 'Vivo',
+            'xiaomi': 'Xiaomi',
+            'mi': 'Xiaomi',
+            'apple': 'Apple',
+            'iphone': 'Apple',
+            'asus': 'Asus'
         }
 
         message_lower = message.lower()
