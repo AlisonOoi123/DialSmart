@@ -4,234 +4,89 @@
 
 {% block content %}
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Phone Comparison</h2>
-        {% if current_user.is_authenticated %}
-        <div>
-            <button onclick="saveComparison()" class="btn btn-success">
-                <i class="bi bi-bookmark-fill"></i> Save Comparison
-            </button>
-        </div>
-        {% endif %}
-    </div>
+    <h2>Phone Comparison</h2>
 
     <!-- Winner Badge -->
     {% if comparison.winner.phone %}
     <div class="alert alert-success text-center">
-        <h4><i class="bi bi-trophy-fill"></i> Overall Winner: {{ comparison.winner.name }}</h4>
-        <p>Based on {{ comparison.winner.score }} out of 6 key metrics</p>
-    </div>
-    {% else %}
-    <div class="alert alert-info text-center">
-        <h4><i class="bi bi-info-circle-fill"></i> It's a Tie!</h4>
-        <p>Both phones score equally across key metrics</p>
+        <h4><i class="bi bi-trophy-fill"></i> Winner: {{ comparison.winner.name }}</h4>
+        <p>Based on overall specifications comparison</p>
     </div>
     {% endif %}
 
     <!-- Phones Header -->
     <div class="row text-center mb-4">
         <div class="col-md-6">
-            <div class="card shadow-sm h-100">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    {% if comparison.phone1.info.main_image %}
-                    <img src="{{ comparison.phone1.info.main_image|proxy_image }}" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone1.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250?text=Phone'">
+                    {% if comparison.phone1.info.main_image and comparison.phone1.info.main_image != 'None' and comparison.phone1.info.main_image != '' %}
+                    <img src="{{ comparison.phone1.info.main_image }}" class="img-fluid" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone1.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250/e0e0e0/666666?text={{ comparison.phone1.info.model_name | urlencode }}'">
                     {% else %}
-                    <img src="https://via.placeholder.com/200x250?text=Phone" alt="{{ comparison.phone1.info.model_name }}">
+                    <img src="https://via.placeholder.com/200x250/e0e0e0/666666?text={{ comparison.phone1.info.model_name | urlencode }}" class="img-fluid" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone1.info.model_name }}">
                     {% endif %}
                     <h4 class="mt-3">{{ comparison.phone1.info.model_name }}</h4>
                     <p class="text-muted">{{ comparison.phone1.info.brand.name }}</p>
-                    <h3 class="text-primary">RM {{ "{:,.0f}".format(comparison.phone1.info.price) }}</h3>
-                    {% if comparison.winner.phone == 1 %}
-                    <span class="badge bg-success mt-2"><i class="bi bi-trophy-fill"></i> Winner</span>
-                    {% endif %}
+                    <h3 class="text-primary">RM {{ "{:,.2f}".format(comparison.phone1.info.price) }}</h3>
                 </div>
             </div>
         </div>
 
         <div class="col-md-6">
-            <div class="card shadow-sm h-100">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    {% if comparison.phone2.info.main_image %}
-                    <img src="{{ comparison.phone2.info.main_image|proxy_image }}" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone2.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250?text=Phone'">
+                    {% if comparison.phone2.info.main_image and comparison.phone2.info.main_image != 'None' and comparison.phone2.info.main_image != '' %}
+                    <img src="{{ comparison.phone2.info.main_image }}" class="img-fluid" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone2.info.model_name }}" onerror="this.src='https://via.placeholder.com/200x250/e0e0e0/666666?text={{ comparison.phone2.info.model_name | urlencode }}'">
                     {% else %}
-                    <img src="https://via.placeholder.com/200x250?text=Phone" alt="{{ comparison.phone2.info.model_name }}">
+                    <img src="https://via.placeholder.com/200x250/e0e0e0/666666?text={{ comparison.phone2.info.model_name | urlencode }}" class="img-fluid" style="height: 200px; object-fit: contain;" alt="{{ comparison.phone2.info.model_name }}">
                     {% endif %}
                     <h4 class="mt-3">{{ comparison.phone2.info.model_name }}</h4>
                     <p class="text-muted">{{ comparison.phone2.info.brand.name }}</p>
-                    <h3 class="text-primary">RM {{ "{:,.0f}".format(comparison.phone2.info.price) }}</h3>
-                    {% if comparison.winner.phone == 2 %}
-                    <span class="badge bg-success mt-2"><i class="bi bi-trophy-fill"></i> Winner</span>
-                    {% endif %}
+                    <h3 class="text-primary">RM {{ "{:,.2f}".format(comparison.phone2.info.price) }}</h3>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Comparison Table (Balanced Columns) -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-table"></i> Detailed Comparison</h5>
-        </div>
+    <!-- Comparison Table -->
+    <div class="card">
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped comparison-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 25%;">Feature</th>
-                            <th style="width: 37.5%;">{{ comparison.phone1.info.model_name }}</th>
-                            <th style="width: 37.5%;">{{ comparison.phone2.info.model_name }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for key, data in comparison.comparison.items() %}
-                        <tr>
-                            <td><strong>{{ data.label }}</strong></td>
-                            <td
-                                {% if data.winner == 1 and data.phone1 != data.phone2 %}class="table-success fw-bold"{% endif %}
-                                style="word-wrap: break-word; max-width: 300px;">
-                                {{ data.phone1 }}
-                                {% if data.winner == 1 and data.phone1 != data.phone2 %}
-                                <i class="bi bi-check-circle-fill text-success ms-1"></i>
-                                {% endif %}
-                            </td>
-                            <td
-                                {% if data.winner == 2 and data.phone1 != data.phone2 %}class="table-success fw-bold"{% endif %}
-                                style="word-wrap: break-word; max-width: 300px;">
-                                {{ data.phone2 }}
-                                {% if data.winner == 2 and data.phone1 != data.phone2 %}
-                                <i class="bi bi-check-circle-fill text-success ms-1"></i>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>{{ comparison.phone1.info.model_name }}</th>
+                        <th>{{ comparison.phone2.info.model_name }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, data in comparison.comparison.items() %}
+                    <tr>
+                        <td><strong>{{ data.label }}</strong></td>
+                        <td {% if data.winner == 1 %}class="table-success"{% endif %}>
+                            {{ data.phone1 }}
+                            {% if data.winner == 1 %}<i class="bi bi-trophy-fill text-warning"></i>{% endif %}
+                        </td>
+                        <td {% if data.winner == 2 %}class="table-success"{% endif %}>
+                            {{ data.phone2 }}
+                            {% if data.winner == 2 %}<i class="bi bi-trophy-fill text-warning"></i>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <!-- Recommendation Summary -->
-    <div class="card mb-4">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0"><i class="bi bi-lightbulb-fill"></i> Recommendation Summary</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h6 class="text-primary">{{ comparison.phone1.info.model_name }}</h6>
-                    <p class="mb-2"><strong>Best For:</strong></p>
-                    <ul class="list-unstyled">
-                        {% if comparison.comparison.price.winner == 1 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Budget-conscious buyers (RM {{ "{:,.0f}".format(comparison.phone1.info.price) }})</li>
-                        {% endif %}
-                        {% if comparison.phone1.specs and comparison.phone1.specs.battery_capacity and comparison.comparison.battery.winner == 1 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Long battery life ({{ comparison.phone1.specs.battery_capacity }}mAh)</li>
-                        {% endif %}
-                        {% if comparison.phone1.specs and comparison.phone1.specs.rear_camera_main and comparison.comparison.rear_camera.winner == 1 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Photography enthusiasts ({{ comparison.phone1.specs.rear_camera_main }}MP main camera)</li>
-                        {% endif %}
-                        {% if comparison.phone1.specs and comparison.phone1.specs.screen_size and comparison.comparison.screen_size.winner == 1 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Media consumption ({{ comparison.phone1.specs.screen_size }}" display)</li>
-                        {% endif %}
-                        {% if comparison.phone1.specs and comparison.phone1.specs.refresh_rate and comparison.comparison.refresh_rate.winner == 1 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Smooth scrolling & gaming ({{ comparison.phone1.specs.refresh_rate }}Hz)</li>
-                        {% endif %}
-                    </ul>
-                </div>
-                <div class="col-md-6">
-                    <h6 class="text-primary">{{ comparison.phone2.info.model_name }}</h6>
-                    <p class="mb-2"><strong>Best For:</strong></p>
-                    <ul class="list-unstyled">
-                        {% if comparison.comparison.price.winner == 2 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Budget-conscious buyers (RM {{ "{:,.0f}".format(comparison.phone2.info.price) }})</li>
-                        {% endif %}
-                        {% if comparison.phone2.specs and comparison.phone2.specs.battery_capacity and comparison.comparison.battery.winner == 2 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Long battery life ({{ comparison.phone2.specs.battery_capacity }}mAh)</li>
-                        {% endif %}
-                        {% if comparison.phone2.specs and comparison.phone2.specs.rear_camera_main and comparison.comparison.rear_camera.winner == 2 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Photography enthusiasts ({{ comparison.phone2.specs.rear_camera_main }}MP main camera)</li>
-                        {% endif %}
-                        {% if comparison.phone2.specs and comparison.phone2.specs.screen_size and comparison.comparison.screen_size.winner == 2 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Media consumption ({{ comparison.phone2.specs.screen_size }}" display)</li>
-                        {% endif %}
-                        {% if comparison.phone2.specs and comparison.phone2.specs.refresh_rate and comparison.comparison.refresh_rate.winner == 2 %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Smooth scrolling & gaming ({{ comparison.phone2.specs.refresh_rate }}Hz)</li>
-                        {% endif %}
-                    </ul>
-                </div>
-            </div>
-
-            <div class="alert alert-light mt-3">
-                <strong><i class="bi bi-info-circle"></i> Final Recommendation:</strong>
-                {% if comparison.winner.phone == 1 %}
-                The <strong>{{ comparison.phone1.info.model_name }}</strong> offers better overall value with superior specifications across {{ comparison.winner.score }} key categories.
-                {% elif comparison.winner.phone == 2 %}
-                The <strong>{{ comparison.phone2.info.model_name }}</strong> offers better overall value with superior specifications across {{ comparison.winner.score }} key categories.
-                {% else %}
-                Both phones are evenly matched. Choose based on your brand preference or specific features that matter most to you.
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Action Buttons -->
     <div class="text-center mt-4">
         <a href="{{ url_for('phone.compare') }}" class="btn btn-primary">
             <i class="bi bi-arrow-repeat"></i> Compare Other Phones
         </a>
         <a href="{{ url_for('phone.details', phone_id=comparison.phone1.info.id) }}" class="btn btn-outline-primary">
-            <i class="bi bi-eye"></i> View {{ comparison.phone1.info.model_name }}
+            View {{ comparison.phone1.info.model_name }}
         </a>
         <a href="{{ url_for('phone.details', phone_id=comparison.phone2.info.id) }}" class="btn btn-outline-primary">
-            <i class="bi bi-eye"></i> View {{ comparison.phone2.info.model_name }}
+            View {{ comparison.phone2.info.model_name }}
         </a>
     </div>
 </div>
-
-<style>
-.comparison-table {
-    table-layout: fixed;
-    width: 100%;
-}
-
-.comparison-table td,
-.comparison-table th {
-    vertical-align: middle;
-    padding: 12px;
-}
-
-.comparison-table td {
-    word-break: break-word;
-}
-</style>
-
-<script>
-function saveComparison() {
-    // Save comparison to database via AJAX
-    const comparisonData = {
-        phone1_id: {{ comparison.phone1.info.id }},
-        phone2_id: {{ comparison.phone2.info.id }}
-    };
-
-    fetch("{{ url_for('phone.save_comparison_ajax') }}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(comparisonData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while saving the comparison.');
-    });
-}
-</script>
 {% endblock %}
