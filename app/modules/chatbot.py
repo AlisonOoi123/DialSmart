@@ -1,19 +1,29 @@
 """
 Chatbot Engine
-NLP-powered conversational assistant for phone recommendations
+NLP-powered conversational assistant for phone recommendations with ML-based intent classification
 """
 from app import db
 from app.models import ChatHistory, Phone, Brand
 from app.modules.ai_engine import AIRecommendationEngine
+from app.modules.smart_recommendation_engine import SmartRecommendationEngine
+from app.modules.chatbot_responses import ResponseTemplates
 import re
 import json
+import os
+import pickle
 from datetime import datetime
 
 class ChatbotEngine:
-    """Conversational AI chatbot for DialSmart"""
+    """Conversational AI chatbot for DialSmart with ML intent classification"""
 
     def __init__(self):
         self.ai_engine = AIRecommendationEngine()
+        self.smart_engine = SmartRecommendationEngine()
+        self.response_templates = ResponseTemplates()
+        self.ml_model = None
+        self._load_ml_model()
+
+        # Fallback keyword-based intents (if ML model not available)
         self.intents = {
             'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
             'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm'],
@@ -24,6 +34,20 @@ class ChatbotEngine:
             'help': ['help', 'how', 'what can you do'],
             'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment']
         }
+
+    def _load_ml_model(self):
+        """Load the trained ML intent classification model"""
+        model_path = os.path.join(os.path.dirname(__file__), '../../models/chatbot_intent_classifier.pkl')
+        if os.path.exists(model_path):
+            try:
+                with open(model_path, 'rb') as f:
+                    self.ml_model = pickle.load(f)
+                print(f"ML intent classifier loaded successfully from {model_path}")
+            except Exception as e:
+                print(f"Error loading ML model: {e}")
+                self.ml_model = None
+        else:
+            print(f"ML model not found at {model_path}. Using keyword-based intent detection.")
 
     def process_message(self, user_id, message, session_id=None):
         """
@@ -56,10 +80,33 @@ class ChatbotEngine:
         return response_data
 
     def _detect_intent(self, message):
-        """Detect user intent from message"""
+        """
+        Detect user intent from message using ML model or keyword matching
+
+        Args:
+            message: User's message text
+
+        Returns:
+            Detected intent label
+        """
         message_lower = message.lower()
 
-        # Check each intent
+        # Try ML-based intent classification first
+        if self.ml_model is not None:
+            try:
+                predicted_intent = self.ml_model.predict([message_lower])[0]
+
+                # Get confidence scores
+                proba = self.ml_model.predict_proba([message_lower])[0]
+                max_confidence = max(proba)
+
+                # Only use ML prediction if confidence is high enough (>30%)
+                if max_confidence > 0.3:
+                    return predicted_intent
+            except Exception as e:
+                print(f"Error in ML intent detection: {e}")
+
+        # Fallback to keyword-based intent detection
         for intent, keywords in self.intents.items():
             for keyword in keywords:
                 if keyword in message_lower:
@@ -68,11 +115,11 @@ class ChatbotEngine:
         return 'general'
 
     def _generate_response(self, user_id, message, intent):
-        """Generate appropriate response based on intent"""
+        """Generate appropriate response based on intent using smart templates"""
 
         if intent == 'greeting':
             return {
-                'response': "Hello! I'm DialSmart AI Assistant. I'm here to help you find the perfect smartphone. How can I assist you today?",
+                'response': self.response_templates.get_greeting(),
                 'type': 'text',
                 'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
             }
@@ -82,19 +129,28 @@ class ChatbotEngine:
             budget = self._extract_budget(message)
             if budget:
                 min_budget, max_budget = budget
-                phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), top_n=3)
+                phones = self.smart_engine.get_phones_by_budget(min_budget, max_budget, limit=5)
 
                 if phones:
-                    response = f"Here are the top phones within RM{min_budget} - RM{max_budget}:\n\n"
+                    phone_list_text = ""
                     phone_list = []
                     for item in phones:
                         phone = item['phone']
-                        response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"   {item['reason']}\n\n"
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
-                            'price': phone.price
+                            'price': phone.price,
+                            'score': item['score']
                         })
+
+                    response = self.response_templates.get_budget_response(
+                        found=True,
+                        min_budget=min_budget,
+                        max_budget=max_budget,
+                        phone_list=phone_list_text
+                    )
 
                     return {
                         'response': response,
@@ -103,12 +159,16 @@ class ChatbotEngine:
                     }
                 else:
                     return {
-                        'response': f"I couldn't find phones in that exact range. Would you like to adjust your budget?",
+                        'response': self.response_templates.get_budget_response(
+                            found=False,
+                            min_budget=min_budget,
+                            max_budget=max_budget
+                        ),
                         'type': 'text'
                     }
             else:
                 return {
-                    'response': "What's your budget range? For example, 'I'm looking for phones under RM2000'",
+                    'response': self.response_templates.get_budget_response(),
                     'type': 'text'
                 }
 
@@ -153,20 +213,24 @@ class ChatbotEngine:
             usage = self._detect_usage_type(message)
             if usage:
                 budget = self._extract_budget(message)
-                phones = self.ai_engine.get_phones_by_usage(usage, budget, top_n=3)
+                phones = self.smart_engine.get_phones_by_usage(usage, budget, limit=5)
 
                 if phones:
-                    response = f"Great choice! Here are the best phones for {usage}:\n\n"
+                    phone_list_text = ""
                     phone_list = []
 
                     for item in phones:
                         phone = item['phone']
-                        response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"   {item['reason']}\n\n"
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
-                            'price': phone.price
+                            'price': phone.price,
+                            'score': item['score']
                         })
+
+                    response = self.response_templates.get_usage_response(usage, phone_list_text)
 
                     return {
                         'response': response,
@@ -175,7 +239,7 @@ class ChatbotEngine:
                     }
 
             return {
-                'response': "What will you primarily use your phone for? Gaming, photography, business, or entertainment?",
+                'response': self.response_templates.get_usage_response(),
                 'type': 'text'
             }
 
@@ -183,14 +247,203 @@ class ChatbotEngine:
             # Extract brand name
             brand_name = self._extract_brand(message)
             if brand_name:
-                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
-                if brand:
-                    phones = Phone.query.filter_by(brand_id=brand.id, is_active=True).limit(5).all()
-                    response = f"Here are some popular {brand.name} phones:\n\n"
+                phones = self.smart_engine.get_phones_by_brand(brand_name, limit=5)
 
+                if phones:
+                    phone_list_text = ""
                     phone_list = []
-                    for phone in phones:
-                        response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                    for item in phones:
+                        phone = item['phone']
+                        phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"   {item['reason']}\n\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price
+                        })
+
+                    response = self.response_templates.get_brand_response(brand_name, phone_list_text)
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'brand': brand_name}
+                    }
+
+            return {
+                'response': self.response_templates.get_brand_response(),
+                'type': 'text'
+            }
+
+        elif intent == 'comparison':
+            return {
+                'response': self.response_templates.get_comparison_response(),
+                'type': 'text',
+                'action': 'redirect_compare'
+            }
+
+        elif intent == 'camera_query':
+            # Handle camera-specific queries
+            budget = self._extract_budget(message)
+            camera_spec = message.lower()
+            phones = self.smart_engine.get_phones_by_camera(camera_spec, budget, limit=5)
+
+            if phones:
+                phone_list_text = ""
+                phone_list = []
+                for item in phones:
+                    phone = item['phone']
+                    phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                    phone_list_text += f"   {item['reason']}\n\n"
+                    phone_list.append({
+                        'id': phone.id,
+                        'name': phone.model_name,
+                        'price': phone.price
+                    })
+
+                return {
+                    'response': self.response_templates.get_camera_response(phone_list=phone_list_text),
+                    'type': 'recommendation',
+                    'metadata': {'phones': phone_list}
+                }
+
+            return {
+                'response': self.response_templates.get_camera_response(),
+                'type': 'text'
+            }
+
+        elif intent == 'performance_query':
+            # Handle performance queries
+            budget = self._extract_budget(message)
+            phones = self.smart_engine.get_phones_by_performance(budget, limit=5)
+
+            if phones:
+                phone_list_text = ""
+                phone_list = []
+                for item in phones:
+                    phone = item['phone']
+                    phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                    phone_list_text += f"   {item['reason']}\n\n"
+                    phone_list.append({
+                        'id': phone.id,
+                        'name': phone.model_name,
+                        'price': phone.price
+                    })
+
+                return {
+                    'response': self.response_templates.get_performance_response(phone_list_text),
+                    'type': 'recommendation',
+                    'metadata': {'phones': phone_list}
+                }
+
+            return {
+                'response': self.response_templates.get_performance_response(),
+                'type': 'text'
+            }
+
+        elif intent == 'battery_query':
+            # Handle battery queries
+            budget = self._extract_budget(message)
+            phones = self.smart_engine.get_phones_by_battery(budget, limit=5)
+
+            if phones:
+                phone_list_text = ""
+                phone_list = []
+                for item in phones:
+                    phone = item['phone']
+                    phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                    phone_list_text += f"   {item['reason']}\n\n"
+                    phone_list.append({
+                        'id': phone.id,
+                        'name': phone.model_name,
+                        'price': phone.price
+                    })
+
+                return {
+                    'response': self.response_templates.get_battery_response(phone_list_text),
+                    'type': 'recommendation',
+                    'metadata': {'phones': phone_list}
+                }
+
+            return {
+                'response': self.response_templates.get_battery_response(),
+                'type': 'text'
+            }
+
+        elif intent == 'display_query':
+            # Handle display queries
+            budget = self._extract_budget(message)
+            display_spec = message.lower()
+            phones = self.smart_engine.get_phones_by_display(display_spec, budget, limit=5)
+
+            if phones:
+                phone_list_text = ""
+                phone_list = []
+                for item in phones:
+                    phone = item['phone']
+                    phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                    phone_list_text += f"   {item['reason']}\n\n"
+                    phone_list.append({
+                        'id': phone.id,
+                        'name': phone.model_name,
+                        'price': phone.price
+                    })
+
+                return {
+                    'response': self.response_templates.get_display_response(phone_list_text),
+                    'type': 'recommendation',
+                    'metadata': {'phones': phone_list}
+                }
+
+            return {
+                'response': self.response_templates.get_display_response(),
+                'type': 'text'
+            }
+
+        elif intent == 'storage_query':
+            # Handle storage queries
+            budget = self._extract_budget(message)
+            storage_spec = message.lower()
+            phones = self.smart_engine.get_phones_by_storage(storage_spec, budget, limit=5)
+
+            if phones:
+                phone_list_text = ""
+                phone_list = []
+                for item in phones:
+                    phone = item['phone']
+                    phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                    phone_list_text += f"   {item['reason']}\n\n"
+                    phone_list.append({
+                        'id': phone.id,
+                        'name': phone.model_name,
+                        'price': phone.price
+                    })
+
+                return {
+                    'response': self.response_templates.get_storage_response(phone_list=phone_list_text),
+                    'type': 'recommendation',
+                    'metadata': {'phones': phone_list}
+                }
+
+            return {
+                'response': self.response_templates.get_storage_response(),
+                'type': 'text'
+            }
+
+        elif intent == 'feature_query':
+            # Handle feature queries
+            budget = self._extract_budget(message)
+            feature = self._extract_feature(message)
+            if feature:
+                phones = self.smart_engine.get_phones_by_feature(feature, budget, limit=5)
+
+                if phones:
+                    phone_list_text = ""
+                    phone_list = []
+                    for item in phones:
+                        phone = item['phone']
+                        phone_list_text += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list_text += f"   {item['reason']}\n\n"
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
@@ -198,45 +451,25 @@ class ChatbotEngine:
                         })
 
                     return {
-                        'response': response,
+                        'response': self.response_templates.get_feature_response(feature, phone_list_text),
                         'type': 'recommendation',
-                        'metadata': {'phones': phone_list, 'brand': brand.name}
+                        'metadata': {'phones': phone_list, 'feature': feature}
                     }
 
             return {
-                'response': "Which brand are you interested in? We have Samsung, Apple, Xiaomi, Huawei, and more!",
+                'response': self.response_templates.get_feature_response(),
                 'type': 'text'
-            }
-
-        elif intent == 'comparison':
-            return {
-                'response': "I can help you compare phones! Please go to the Compare page and select two phones you'd like to compare side-by-side.",
-                'type': 'text',
-                'action': 'redirect_compare'
             }
 
         elif intent == 'help':
             return {
-                'response': """I can help you with:
-
-📱 Find phone recommendations based on your needs
-💰 Search phones within your budget
-🔍 Compare different phone models
-📊 Get detailed specifications
-🏷️ Browse phones by brand
-
-Just ask me anything like:
-• "Find me a phone under RM2000"
-• "Best phones for gaming"
-• "Show me Samsung phones"
-• "I need a phone with good camera"
-""",
+                'response': self.response_templates.get_help_response(),
                 'type': 'text'
             }
 
-        else:  # general
+        else:  # general or fallback
             return {
-                'response': "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
+                'response': self.response_templates.get_fallback_response(),
                 'type': 'text',
                 'quick_replies': ['Find a phone', 'Budget options', 'Popular brands']
             }
@@ -325,6 +558,36 @@ Just ask me anything like:
                 if brand.lower() == 'iphone':
                     return 'Apple'
                 return brand
+
+        return None
+
+    def _extract_feature(self, message):
+        """Extract feature from message"""
+        message_lower = message.lower()
+
+        # Map common feature keywords to feature names
+        feature_map = {
+            '5g': '5G',
+            'wireless charging': 'wireless charging',
+            'waterproof': 'water resistance',
+            'water resistant': 'water resistance',
+            'ip68': 'water resistance',
+            'expandable storage': 'expandable storage',
+            'sd card': 'expandable storage',
+            'dual sim': 'dual SIM',
+            'fast charging': 'fast charging',
+            'amoled': 'AMOLED display',
+            'oled': 'AMOLED display',
+            'nfc': 'NFC',
+            'fingerprint': 'fingerprint sensor',
+            'face unlock': 'face unlock',
+            '120hz': '120Hz refresh rate',
+            '90hz': '90Hz refresh rate'
+        }
+
+        for keyword, feature in feature_map.items():
+            if keyword in message_lower:
+                return feature
 
         return None
 

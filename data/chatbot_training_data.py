@@ -1,0 +1,364 @@
+"""
+Chatbot Training Data
+Comprehensive training dataset for intent classification
+"""
+
+# Training data organized by intent
+TRAINING_DATA = {
+    'greeting': [
+        "hello",
+        "hi",
+        "hey there",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "hi there",
+        "hello bot",
+        "greetings",
+        "hey",
+        "what's up",
+        "howdy",
+        "hi bot",
+        "hello assistant",
+        "hey assistant"
+    ],
+
+    'budget_query': [
+        "what phones are under rm2000",
+        "show me phones within my budget",
+        "i have a budget of rm1500",
+        "phones under rm3000",
+        "cheap phones",
+        "affordable smartphones",
+        "budget phones",
+        "phones between rm1000 and rm2000",
+        "what can i get for rm1500",
+        "phones under 2000 ringgit",
+        "show me budget options",
+        "i'm looking for phones under rm1000",
+        "phones in my price range rm1500",
+        "what's the cheapest phone",
+        "phones below rm2500",
+        "rm1000 to rm2000 phones",
+        "phones around rm1500",
+        "mid-range price phones",
+        "expensive phones",
+        "premium phones under rm5000"
+    ],
+
+    'recommendation': [
+        "recommend a phone for me",
+        "suggest a good smartphone",
+        "i need a new phone",
+        "looking for a smartphone",
+        "what phone should i buy",
+        "help me find a phone",
+        "i want to buy a phone",
+        "recommend me a device",
+        "suggest a phone",
+        "what's a good phone",
+        "i'm looking for a new smartphone",
+        "find me a phone",
+        "which phone is best",
+        "help me choose a phone",
+        "need a phone recommendation",
+        "what do you recommend",
+        "show me some phones",
+        "i want a good phone",
+        "looking for phone suggestions",
+        "recommend something"
+    ],
+
+    'comparison': [
+        "compare samsung galaxy and iphone",
+        "which is better iphone or samsung",
+        "compare these two phones",
+        "difference between galaxy s23 and s24",
+        "iphone 14 vs iphone 15",
+        "compare phones",
+        "what's the difference",
+        "samsung vs apple",
+        "which one is better",
+        "compare galaxy and xiaomi",
+        "iphone or android",
+        "difference between these models",
+        "compare specifications",
+        "which phone has better camera",
+        "compare battery life",
+        "help me compare",
+        "show comparison",
+        "versus",
+        "what's better between these",
+        "compare features"
+    ],
+
+    'specification': [
+        "what are the specs",
+        "tell me about camera quality",
+        "how much ram does it have",
+        "what's the battery capacity",
+        "screen size",
+        "storage options",
+        "does it have 5g",
+        "processor details",
+        "camera megapixels",
+        "display specifications",
+        "what processor does it use",
+        "battery life",
+        "how much storage",
+        "ram and storage",
+        "screen resolution",
+        "camera specifications",
+        "does it support fast charging",
+        "what's the screen type",
+        "refresh rate",
+        "water resistance rating"
+    ],
+
+    'brand_query': [
+        "show me samsung phones",
+        "do you have apple iphones",
+        "xiaomi smartphones",
+        "what huawei phones do you have",
+        "list all samsung models",
+        "iphone options",
+        "oppo phones available",
+        "vivo smartphones",
+        "realme phones",
+        "nokia devices",
+        "oneplus phones",
+        "google pixel available",
+        "honor phones",
+        "lenovo smartphones",
+        "asus phones",
+        "sony phones",
+        "motorola devices",
+        "show me apple products",
+        "samsung galaxy series",
+        "xiaomi mi phones"
+    ],
+
+    'usage_type': [
+        "best phone for gaming",
+        "i need a phone for photography",
+        "good camera phone",
+        "gaming smartphone",
+        "phone for business use",
+        "best for social media",
+        "phone for work",
+        "photography phone",
+        "gaming device",
+        "phone for watching videos",
+        "entertainment phone",
+        "business smartphone",
+        "phone for content creation",
+        "best for taking photos",
+        "phone with good camera for instagram",
+        "gaming and streaming phone",
+        "professional photography phone",
+        "phone for video calls",
+        "best for multitasking",
+        "phone for students"
+    ],
+
+    'feature_query': [
+        "phones with 5g",
+        "does it have wireless charging",
+        "phones with good battery",
+        "high refresh rate display",
+        "waterproof phones",
+        "phones with expandable storage",
+        "dual sim phones",
+        "phones with headphone jack",
+        "fast charging phones",
+        "phones with amoled display",
+        "nfc support",
+        "phones with ir blaster",
+        "stereo speakers",
+        "in-display fingerprint",
+        "face unlock phones",
+        "ip68 rating",
+        "reverse wireless charging",
+        "120hz display",
+        "90hz screen",
+        "pop-up camera phones"
+    ],
+
+    'camera_query': [
+        "best camera phone",
+        "phone with 108mp camera",
+        "good selfie camera",
+        "optical zoom camera",
+        "night mode photography",
+        "phones with triple camera",
+        "quad camera setup",
+        "wide angle camera",
+        "telephoto lens",
+        "phones for photography",
+        "camera with ois",
+        "best video recording phone",
+        "4k video recording",
+        "front camera quality",
+        "macro camera phones",
+        "ultra wide camera",
+        "periscope camera",
+        "phone camera for low light",
+        "portrait mode camera",
+        "camera with good zoom"
+    ],
+
+    'help': [
+        "help me",
+        "what can you do",
+        "how does this work",
+        "i need help",
+        "what are your features",
+        "how to use this",
+        "help",
+        "assist me",
+        "what can i ask",
+        "show me options",
+        "what do you offer",
+        "how can you help",
+        "tell me what you can do",
+        "features",
+        "capabilities",
+        "how to search",
+        "how to compare phones",
+        "guide me",
+        "instructions",
+        "what services do you provide"
+    ],
+
+    'performance_query': [
+        "fastest phone",
+        "best performance phone",
+        "high performance smartphone",
+        "phones with snapdragon 8 gen 2",
+        "flagship processor phones",
+        "most powerful phone",
+        "phones with best chipset",
+        "flagship phones",
+        "phones with apple a16 chip",
+        "dimensity 9000 phones",
+        "phones with good benchmarks",
+        "high end processors",
+        "phones with 12gb ram",
+        "phones for heavy multitasking",
+        "lag free phones",
+        "smooth performance phones",
+        "phones with best gpu",
+        "antutu score phones",
+        "geekbench performance",
+        "processor comparison"
+    ],
+
+    'battery_query': [
+        "long battery life phone",
+        "phones with 5000mah battery",
+        "best battery backup",
+        "all day battery phone",
+        "phones with big battery",
+        "6000mah battery phones",
+        "battery champion phones",
+        "phones that last long",
+        "best battery smartphone",
+        "phones with power bank feature",
+        "reverse charging phones",
+        "fast charging phones",
+        "67w charging phones",
+        "wireless charging support",
+        "phones with good battery optimization",
+        "battery saver phones",
+        "phones with longest standby time",
+        "quick charging phones",
+        "super fast charging",
+        "magsafe charging phones"
+    ],
+
+    'display_query': [
+        "phones with amoled display",
+        "best screen quality",
+        "120hz refresh rate phones",
+        "large screen phones",
+        "phones with 6.7 inch display",
+        "oled screen phones",
+        "bright display phones",
+        "hdr display support",
+        "phones with small bezels",
+        "edge to edge display",
+        "punch hole display",
+        "notchless phones",
+        "under display camera",
+        "best display phone",
+        "1440p resolution phones",
+        "quad hd display",
+        "retina display phones",
+        "super amoled phones",
+        "90hz display phones",
+        "adaptive refresh rate"
+    ],
+
+    'storage_query': [
+        "phones with 256gb storage",
+        "expandable storage phones",
+        "1tb storage phones",
+        "phones with sd card slot",
+        "512gb internal storage",
+        "phones with most storage",
+        "cloud storage phones",
+        "128gb phones",
+        "large storage capacity",
+        "phones with ufs 3.1 storage",
+        "fast storage phones",
+        "storage options available",
+        "phones without sd card",
+        "internal storage only phones",
+        "phones with dual storage",
+        "hybrid sim slot phones",
+        "dedicated sd card slot",
+        "phones with 64gb base storage",
+        "storage variants",
+        "maximum storage available"
+    ]
+}
+
+# Intent descriptions for better understanding
+INTENT_DESCRIPTIONS = {
+    'greeting': 'User greeting or starting conversation',
+    'budget_query': 'User asking about phones within a specific price range',
+    'recommendation': 'User seeking phone recommendations',
+    'comparison': 'User wants to compare two or more phones',
+    'specification': 'User asking about specific phone specifications',
+    'brand_query': 'User interested in a specific brand',
+    'usage_type': 'User asking about phones for specific use cases (gaming, photography, etc.)',
+    'feature_query': 'User asking about specific features (5G, wireless charging, etc.)',
+    'camera_query': 'User specifically interested in camera capabilities',
+    'help': 'User needs help or wants to know what the bot can do',
+    'performance_query': 'User interested in phone performance and processing power',
+    'battery_query': 'User asking about battery life and charging',
+    'display_query': 'User asking about screen/display specifications',
+    'storage_query': 'User asking about storage capacity and options'
+}
+
+def get_all_training_samples():
+    """
+    Get all training samples as (text, intent) tuples
+    """
+    samples = []
+    for intent, texts in TRAINING_DATA.items():
+        for text in texts:
+            samples.append((text, intent))
+    return samples
+
+def get_intent_labels():
+    """
+    Get list of all unique intent labels
+    """
+    return list(TRAINING_DATA.keys())
+
+def get_samples_for_intent(intent):
+    """
+    Get all training samples for a specific intent
+    """
+    return TRAINING_DATA.get(intent, [])
