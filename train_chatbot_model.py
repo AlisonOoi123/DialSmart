@@ -75,7 +75,7 @@ def train_and_save_model():
 
     # Use GridSearchCV to find optimal C for merged intents
     print("Building OPTIMIZED LinearSVC with GridSearchCV...")
-    print("Finding best C parameter for 9 merged intents")
+    print("Finding best C parameter for 8 merged intents")
     print()
 
     # Create base pipeline
@@ -84,12 +84,12 @@ def train_and_save_model():
         ('classifier', LinearSVC(random_state=42, class_weight='balanced', dual=True, max_iter=25000, loss='squared_hinge', tol=1e-5))
     ])
 
-    # Test different C values
+    # Test different C values - expanded range for better optimization
     param_grid = {
-        'classifier__C': [0.5, 0.8, 1.0, 1.2, 1.5],
+        'classifier__C': [0.1, 0.3, 0.5, 0.8, 1.0, 1.5],
     }
 
-    print("Testing 5 C values with 5-fold CV (25 fits total)...")
+    print("Testing 6 C values with 5-fold CV (30 fits total)...")
     grid_search = GridSearchCV(
         pipeline,
         param_grid,
@@ -225,16 +225,18 @@ if __name__ == '__main__':
     print("for the DialSmart chatbot using machine learning.")
     print()
     print("Training data includes:")
-    print("- 9 intent categories (merged from 14 for higher accuracy)")
+    print("- 8 intent categories (merged from 14 for higher accuracy)")
     print("  * MERGED: display, battery, performance, storage, camera → specification")
+    print("  * MERGED: help → recommendation")
     print("  * specification now has ~730 samples (37% of data - VERY strong!)")
+    print("  * recommendation now has ~240 samples (12% of data)")
     print("- 1966 total training examples")
     print("- Dual TF-IDF vectorization (word + char n-grams)")
     print("- GridSearchCV to find optimal C parameter")
-    print("  * Testing C values: 0.5, 0.8, 1.0, 1.2, 1.5")
+    print("  * Testing C values: 0.1, 0.3, 0.5, 0.8, 1.0, 1.5 (expanded range)")
     print("  * squared_hinge loss (best for text)")
     print("  * cv=5 calibration for confidence scores")
-    print("- Expected accuracy: 89-91% (optimized for 9 merged intents)")
+    print("- Expected accuracy: 88-92% (optimized for 8 merged intents)")
     print()
     print()
     print("="*70)
