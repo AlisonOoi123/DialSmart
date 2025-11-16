@@ -28,10 +28,22 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Main Image</label>
-                            <input type="file" name="main_image" class="form-control" accept="image/*">
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">Option 1: Enter Image URL</label>
+                                <input type="url" name="main_image_url" class="form-control" placeholder="https://example.com/image.jpg" value="{{ phone.main_image if phone and phone.main_image and not phone.main_image.startswith('/static') else '' }}">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">Option 2: Upload from Computer</label>
+                                <input type="file" name="main_image" class="form-control" accept="image/*">
+                            </div>
                             {% if phone and phone.main_image %}
-                            <small class="text-muted">Current: {{ phone.main_image }}</small>
+                            <div class="mt-2">
+                                <small class="text-muted">Current image:</small><br>
+                                <img src="{{ phone.main_image }}" alt="Current image" style="max-width: 200px; max-height: 150px;" class="img-thumbnail mt-1" onerror="this.src='https://via.placeholder.com/200x150/e0e0e0/666666?text=No+Image'">
+                                <br><small class="text-muted">{{ phone.main_image }}</small>
+                            </div>
                             {% endif %}
+                            <small class="form-text text-muted">You can either enter an image URL or upload a file from your computer.</small>
                         </div>
                     </div>
                 </div>

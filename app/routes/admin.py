@@ -128,8 +128,13 @@ def add_phone():
             availability_status=availability_status
         )
 
-        # Handle image upload
-        if 'main_image' in request.files:
+        # Handle image - URL has priority over file upload
+        image_url = request.form.get('main_image_url', '').strip()
+        if image_url:
+            # Use the provided URL directly
+            phone.main_image = image_url
+        elif 'main_image' in request.files:
+            # Fallback to file upload if no URL provided
             file = request.files['main_image']
             if file.filename:
                 filename = save_uploaded_file(file, 'phones')
@@ -198,8 +203,13 @@ def edit_phone(phone_id):
         phone.availability_status = request.form.get('availability_status', 'Available')
         phone.is_active = bool(request.form.get('is_active', True))
 
-        # Handle image upload
-        if 'main_image' in request.files:
+        # Handle image - URL has priority over file upload
+        image_url = request.form.get('main_image_url', '').strip()
+        if image_url:
+            # Use the provided URL directly
+            phone.main_image = image_url
+        elif 'main_image' in request.files:
+            # Fallback to file upload if no URL provided
             file = request.files['main_image']
             if file.filename:
                 filename = save_uploaded_file(file, 'phones')
