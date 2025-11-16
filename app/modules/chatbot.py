@@ -592,17 +592,31 @@ class ChatbotEngine:
         return None
 
     def _save_chat_history(self, user_id, message, response, intent, session_id, metadata):
-        """Save conversation to database"""
-        chat = ChatHistory(
-            user_id=user_id,
-            message=message,
-            response=response,
-            intent=intent,
-            session_id=session_id or datetime.utcnow().strftime('%Y%m%d%H%M%S'),
-            metadata=json.dumps(metadata) if metadata else None
-        )
-        db.session.add(chat)
-        db.session.commit()
+        """Save conversation to database - only for authenticated users"""
+        # Only save if user_id is an integer (authenticated user)
+        # Guest users (session_id strings) won't have history saved
+        if not isinstance(user_id, int):
+            return  # Skip saving for guest users
+
+        try:
+            # Convert numpy string to regular string if needed
+            if hasattr(intent, 'item'):
+                intent = intent.item()
+
+            chat = ChatHistory(
+                user_id=user_id,
+                message=message,
+                response=response,
+                intent=str(intent),
+                session_id=session_id or datetime.utcnow().strftime('%Y%m%d%H%M%S'),
+                chat_metadata=metadata  # Use chat_metadata instead of metadata
+            )
+            db.session.add(chat)
+            db.session.commit()
+        except Exception as e:
+            # If saving fails, just log and continue (don't break the chat)
+            print(f"Warning: Could not save chat history: {e}")
+            db.session.rollback()
 
     def get_chat_history(self, user_id, session_id=None, limit=50):
         """Retrieve chat history for a user"""
