@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Admin Registration - DialSmart{% endblock %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">🔐 Admin Registration</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> Admin registration requires a special registration code.
+                        Contact the system administrator if you need access.
+                    </div>
+
+                    <form method="POST" action="{{ url_for('admin.register_admin') }}">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username *</label>
+                            <input type="text" class="form-control" id="username" name="username" required minlength="3">
+                            <small class="form-text text-muted">At least 3 characters</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email *</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="full_name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="full_name" name="full_name">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                            <small class="form-text text-muted">At least 6 characters</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm Password *</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="registration_code" class="form-label">Registration Code *</label>
+                            <input type="text" class="form-control" id="registration_code" name="registration_code" required>
+                            <small class="form-text text-muted">Required for admin registration</small>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Register Admin Account</button>
+                            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">Back to Login</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <p class="text-muted">Registration Code: <code>DIALSMART_ADMIN_2025</code> (for testing)</p>
+                <small class="text-danger">⚠️ Change this code in production!</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
