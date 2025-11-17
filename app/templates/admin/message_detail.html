@@ -65,29 +65,39 @@
         {% if not message.is_replied %}
         <div class="card bg-light">
             <div class="card-body">
-                <h6>Mark as Replied</h6>
+                <h6><i class="bi bi-reply"></i> Reply to Message</h6>
                 <form method="POST" action="{{ url_for('admin.reply_message', message_id=message.id) }}">
                     <div class="mb-3">
-                        <label class="form-label">Admin Notes (optional)</label>
-                        <textarea name="admin_notes" class="form-control" rows="3"
-                                  placeholder="Add internal notes about this message...">{{ message.admin_notes }}</textarea>
+                        <label class="form-label">Reply Text <span class="text-danger">*</span></label>
+                        <textarea name="reply_text" class="form-control" rows="6" required
+                                  placeholder="Type your email reply here... This will be sent to {{ message.email }}"></textarea>
+                        <small class="form-text text-muted">
+                            <i class="bi bi-info-circle"></i> Note: Email sending is not yet configured. For now, copy this text and manually send via your email client, or click the "Compose Email" button below.
+                        </small>
                     </div>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-circle"></i> Mark as Replied
-                    </button>
-                    <a href="mailto:{{ message.email }}?subject=Re: {{ message.subject or 'Your inquiry' }}"
-                       class="btn btn-primary">
-                        <i class="bi bi-envelope"></i> Send Email Reply
-                    </a>
+                    <div class="mb-3">
+                        <label class="form-label">Admin Notes (Internal Only - Optional)</label>
+                        <textarea name="admin_notes" class="form-control" rows="3"
+                                  placeholder="Add internal notes about this message for admin reference only...">{{ message.admin_notes }}</textarea>
+                    </div>
+                    <div class="btn-group" role="group">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Send Reply & Mark as Replied
+                        </button>
+                        <a href="mailto:{{ message.email }}?subject=Re: {{ message.subject or 'Your inquiry' }}&body={{ 'Hello ' + message.name + ',%0A%0A' }}"
+                           class="btn btn-primary" target="_blank">
+                            <i class="bi bi-envelope"></i> Compose Email in Client
+                        </a>
+                    </div>
                 </form>
             </div>
         </div>
         {% else %}
         <div class="alert alert-success">
-            <i class="bi bi-check-circle"></i> This message was marked as replied on {{ message.replied_at|local_time('%B %d, %Y') }}.
+            <i class="bi bi-check-circle"></i> This message was marked as replied on {{ message.replied_at.strftime('%B %d, %Y') if message.replied_at else 'Unknown date' }}.
             <a href="mailto:{{ message.email }}?subject=Re: {{ message.subject or 'Your inquiry' }}"
-               class="btn btn-sm btn-outline-success ms-2">
-                Send Another Reply
+               class="btn btn-sm btn-outline-success ms-2" target="_blank">
+                <i class="bi bi-envelope"></i> Send Another Email
             </a>
         </div>
         {% endif %}

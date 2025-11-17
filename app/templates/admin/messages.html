@@ -16,21 +16,27 @@
 <!-- Filter Tabs -->
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
-        <a class="nav-link {% if status_filter == 'all' %}active{% endif %}"
+        <a class="nav-link {% if status == 'all' %}active{% endif %}"
            href="{{ url_for('admin.messages', status='all') }}">
-            All Messages
+            All Messages ({{ total_count }})
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if status_filter == 'unread' %}active{% endif %}"
+        <a class="nav-link {% if status == 'unread' %}active{% endif %}"
            href="{{ url_for('admin.messages', status='unread') }}">
             Unread ({{ unread_count }})
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if status_filter == 'read' %}active{% endif %}"
-           href="{{ url_for('admin.messages', status='read') }}">
-            Read
+        <a class="nav-link {% if status == 'unreplied' %}active{% endif %}"
+           href="{{ url_for('admin.messages', status='unreplied') }}">
+            Unreplied ({{ unreplied_count }})
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if status == 'replied' %}active{% endif %}"
+           href="{{ url_for('admin.messages', status='replied') }}">
+            Replied
         </a>
     </li>
 </ul>
@@ -73,7 +79,7 @@
                     <small>{{ msg.created_at|local_time('%Y-%m-%d %H:%M') }}</small>
                 </td>
                 <td>
-                    <a href="{{ url_for('admin.view_message', message_id=msg.id) }}"
+                    <a href="{{ url_for('admin.message_details', message_id=msg.id) }}"
                        class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-eye"></i> View
                     </a>
@@ -90,21 +96,21 @@
     <ul class="pagination justify-content-center">
         {% if messages.has_prev %}
         <li class="page-item">
-            <a class="page-link" href="{{ url_for('admin.messages', page=messages.prev_num, status=status_filter) }}">Previous</a>
+            <a class="page-link" href="{{ url_for('admin.messages', page=messages.prev_num, status=status) }}">Previous</a>
         </li>
         {% endif %}
 
         {% for page_num in messages.iter_pages() %}
         {% if page_num %}
         <li class="page-item {% if page_num == messages.page %}active{% endif %}">
-            <a class="page-link" href="{{ url_for('admin.messages', page=page_num, status=status_filter) }}">{{ page_num }}</a>
+            <a class="page-link" href="{{ url_for('admin.messages', page=page_num, status=status) }}">{{ page_num }}</a>
         </li>
         {% endif %}
         {% endfor %}
 
         {% if messages.has_next %}
         <li class="page-item">
-            <a class="page-link" href="{{ url_for('admin.messages', page=messages.next_num, status=status_filter) }}">Next</a>
+            <a class="page-link" href="{{ url_for('admin.messages', page=messages.next_num, status=status) }}">Next</a>
         </li>
         {% endif %}
     </ul>
