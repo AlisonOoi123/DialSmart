@@ -19,7 +19,10 @@ class ChatbotEngine:
             'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm'],
             'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want'],
             'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
-            'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen'],
+            'specification': ['specs', 'specification', 'battery', 'ram', 'storage', 'screen', 'display',
+                             '5g', 'amoled', 'oled', 'lcd', 'processor', 'chipset', 'megapixel', 'mp',
+                             'long lasting', 'battery life', 'durable', 'wireless charging', 'fast charging',
+                             'waterproof', 'water resistant', 'fingerprint', 'face unlock', 'nfc'],
             'brand_query': ['brand', 'samsung', 'apple', 'iphone', 'xiaomi', 'huawei'],
             'help': ['help', 'how', 'what can you do'],
             'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment']
@@ -172,7 +175,8 @@ class ChatbotEngine:
                         'id': phone.id,
                         'name': phone.model_name,
                         'price': phone.price,
-                        'match_score': rec['match_score']
+                        'match_score': rec['match_score'],
+                        'image': phone.main_image
                     })
 
                 return {
@@ -405,6 +409,81 @@ Just ask me anything like:
                 'type': 'text'
             }
 
+        elif intent == 'specification':
+            # Handle specification queries like "phones with amoled display", "5g phones", etc.
+            criteria = self._extract_criteria(message)
+
+            # Check for "long lasting" or battery-related queries
+            if any(keyword in message.lower() for keyword in ['long lasting', 'battery life', 'durable', 'long battery', 'battery last']):
+                # Use usage type handler with battery prioritization
+                budget = self._extract_budget(message)
+                brand_names = self._extract_brand(message)
+                brand_ids = None
+
+                if brand_names:
+                    brand_ids = []
+                    for brand_name in brand_names:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            brand_ids.append(brand.id)
+
+                # Get phones sorted by battery capacity
+                phones = self.ai_engine.get_phones_by_battery(budget, brand_ids=brand_ids, top_n=5)
+
+                if phones:
+                    response = "Based on your needs, I recommend:\n\n"
+                    phone_list = []
+
+                    for item in phones:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+                        battery_info = f"{specs.battery_capacity}mAh battery" if specs and specs.battery_capacity else "Great battery life"
+
+                        response += f"📱 {phone.model_name}\n"
+                        response += f"   💰 RM{phone.price:,.2f}\n"
+                        response += f"   🔋 {battery_info}\n\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price,
+                            'image': phone.main_image
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+            else:
+                # Handle other specification queries (5G, AMOLED, etc.)
+                phones = self.ai_engine.get_phones_by_specs(criteria, top_n=5)
+
+                if phones:
+                    response = "Here are phones matching your requirements:\n\n"
+                    phone_list = []
+
+                    for phone in phones:
+                        response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price,
+                            'image': phone.main_image
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+
+            # Fallback if no results
+            return {
+                'response': "Let me help you find phones with specific features. What specifications are you looking for?",
+                'type': 'text'
+            }
+
         else:  # general
             return {
                 'response': "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
@@ -414,13 +493,17 @@ Just ask me anything like:
 
     def _extract_budget(self, message):
         """Extract budget range from message"""
-        # Look for patterns like "RM1000", "1000", "under 2000", "within 3000", "between 1000 and 2000"
+        # Look for patterns like "RM1000", "1000", "under 2000", "within 3000", "near 3000", "around 2000"
         patterns = [
             r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)',  # RM1000 to RM2000
             r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000
             r'under\s*rm?\s*(\d+)',  # under RM2000
             r'below\s*rm?\s*(\d+)',  # below 2000
             r'within\s*rm?\s*(\d+)',  # within RM3000 or within 3000
+            r'near\s*rm?\s*(\d+)',  # near RM3000 or near 3000
+            r'around\s*rm?\s*(\d+)',  # around RM2000 or around 2000
+            r'close\s*to\s*rm?\s*(\d+)',  # close to RM2000
+            r'about\s*rm?\s*(\d+)',  # about RM2000
             r'rm\s*(\d+)',  # RM2000
         ]
 
@@ -430,6 +513,11 @@ Just ask me anything like:
                 if 'under' in message.lower() or 'below' in message.lower() or 'within' in message.lower():
                     max_budget = int(match.group(1))
                     return (500, max_budget)
+                elif 'near' in message.lower() or 'around' in message.lower() or 'close to' in message.lower() or 'about' in message.lower():
+                    # For "near 3000", create a range: 2500-3500 (±500)
+                    target = int(match.group(1))
+                    margin = int(target * 0.17)  # ±17% range
+                    return (max(500, target - margin), target + margin)
                 elif len(match.groups()) == 2:
                     return (int(match.group(1)), int(match.group(2)))
                 else:
