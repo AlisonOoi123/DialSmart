@@ -9,6 +9,7 @@ from app import db
 from app.models import User, Phone, PhoneSpecification, Brand, Recommendation
 from app.models.contact import ContactMessage
 from app.utils.helpers import save_uploaded_file
+from app.utils.email import send_contact_reply
 from datetime import datetime, timedelta
 import json
 
@@ -35,10 +36,10 @@ def dashboard():
     total_phones = Phone.query.filter_by(is_active=True).count()
     total_brands = Brand.query.filter_by(is_active=True).count()
 
-    # Today's recommendations - use TRUNC for Oracle compatibility
+    # Today's recommendations
     today = datetime.utcnow().date()
     today_recommendations = Recommendation.query.filter(
-        db.func.trunc(Recommendation.created_at) == today
+        db.func.date(Recommendation.created_at) == today
     ).count()
 
     # Recent activity (last 7 days)
@@ -54,21 +55,13 @@ def dashboard():
         .limit(5)\
         .all()
 
-    # Get popular phones (most recommended) - Oracle compatible version
-    # Use subquery to avoid CLOB columns in GROUP BY (Oracle doesn't support CLOB in GROUP BY)
-    phone_counts = db.session.query(
-        Recommendation.phone_id,
-        db.func.count(Recommendation.id).label('recommendation_count')
-    ).group_by(Recommendation.phone_id)\
-     .order_by(db.func.count(Recommendation.id).desc())\
-     .limit(5)\
-     .subquery()
-
-    # Join with Phone table to get full phone details
+    # Get popular phones (most recommended)
     popular_phones = db.session.query(
         Phone,
-        phone_counts.c.recommendation_count
-    ).join(phone_counts, Phone.id == phone_counts.c.phone_id)\
+        db.func.count(Recommendation.id).label('recommendation_count')
+    ).join(Recommendation).group_by(Phone.id)\
+     .order_by(db.func.count(Recommendation.id).desc())\
+     .limit(5)\
      .all()
 
     # Get unread messages count
@@ -138,17 +131,11 @@ def add_phone():
             brand_id=brand_id,
             price=price,
             model_number=model_number,
-            availability_status=availability_status,
-            release_date=request.form.get('release_date') or None
+            availability_status=availability_status
         )
 
-        # Handle image - URL has priority over file upload
-        image_url = request.form.get('main_image_url', '').strip()
-        if image_url:
-            # Use the provided URL directly
-            phone.main_image = image_url
-        elif 'main_image' in request.files:
-            # Fallback to file upload if no URL provided
+        # Handle image upload
+        if 'main_image' in request.files:
             file = request.files['main_image']
             if file.filename:
                 filename = save_uploaded_file(file, 'phones')
@@ -158,60 +145,37 @@ def add_phone():
         db.session.add(phone)
         db.session.flush()  # Get phone ID
 
-        # Create specifications - All CSV attributes supported
+        # Create specifications
         specs = PhoneSpecification(
             phone_id=phone.id,
-            # Display
-            screen_size=request.form.get('screen_size') or None,
-            screen_resolution=request.form.get('screen_resolution') or None,
-            display_type=request.form.get('display_type') or None,
-            ppi=request.form.get('ppi') or None,
-            multitouch=request.form.get('multitouch') or None,
-            protection=request.form.get('protection') or None,
-            # Performance
-            operating_system=request.form.get('operating_system') or None,
-            chipset=request.form.get('chipset') or None,
-            cpu=request.form.get('cpu') or None,
-            gpu=request.form.get('gpu') or None,
-            ram_options=request.form.get('ram_options') or None,
-            storage_options=request.form.get('storage_options') or None,
-            card_slot=request.form.get('card_slot') or None,
-            # Camera
-            rear_camera=request.form.get('rear_camera') or None,
-            front_camera=request.form.get('front_camera') or None,
-            flash=request.form.get('flash') or None,
-            camera_features=request.form.get('camera_features') or None,
-            video_recording=request.form.get('video_recording') or None,
-            # Battery
-            battery=request.form.get('battery') or None,
-            battery_capacity=request.form.get('battery_capacity') or None,
-            fast_charging=request.form.get('fast_charging') or None,
-            wireless_charging=request.form.get('wireless_charging') or None,
-            removable_battery=request.form.get('removable_battery') or None,
-            # Network
-            sim=request.form.get('sim') or None,
-            technology=request.form.get('technology') or None,
-            network_5g=request.form.get('network_5g') or None,
-            network_4g=request.form.get('network_4g') or None,
-            network_3g=request.form.get('network_3g') or None,
-            network_2g=request.form.get('network_2g') or None,
-            network_speed=request.form.get('network_speed') or None,
-            wifi_standard=request.form.get('wifi_standard') or None,
-            bluetooth_version=request.form.get('bluetooth_version') or None,
-            gps=request.form.get('gps') or None,
-            nfc=request.form.get('nfc') or None,
-            usb=request.form.get('usb') or None,
-            radio=request.form.get('radio') or None,
-            # Physical
-            dimensions=request.form.get('dimensions') or None,
-            weight=request.form.get('weight') or None,
-            colors_available=request.form.get('colors_available') or None,
-            body_material=request.form.get('body_material') or None,
-            # Sensors
-            sensors=request.form.get('sensors') or None,
-            water_resistance=request.form.get('water_resistance') or None,
-            # Reference
-            product_url=request.form.get('product_url') or None
+            screen_size=request.form.get('screen_size', type=float),
+            screen_resolution=request.form.get('screen_resolution'),
+            screen_type=request.form.get('screen_type'),
+            refresh_rate=request.form.get('refresh_rate', type=int),
+            processor=request.form.get('processor'),
+            processor_brand=request.form.get('processor_brand'),
+            ram_options=request.form.get('ram_options'),
+            storage_options=request.form.get('storage_options'),
+            expandable_storage=bool(request.form.get('expandable_storage')),
+            rear_camera=request.form.get('rear_camera'),
+            rear_camera_main=request.form.get('rear_camera_main', type=int),
+            front_camera=request.form.get('front_camera'),
+            front_camera_mp=request.form.get('front_camera_mp', type=int),
+            battery_capacity=request.form.get('battery_capacity', type=int),
+            charging_speed=request.form.get('charging_speed'),
+            wireless_charging=bool(request.form.get('wireless_charging')),
+            has_5g=bool(request.form.get('has_5g')),
+            wifi_standard=request.form.get('wifi_standard'),
+            bluetooth_version=request.form.get('bluetooth_version'),
+            nfc=bool(request.form.get('nfc')),
+            operating_system=request.form.get('operating_system'),
+            fingerprint_sensor=bool(request.form.get('fingerprint_sensor')),
+            face_unlock=bool(request.form.get('face_unlock')),
+            water_resistance=request.form.get('water_resistance'),
+            dual_sim=bool(request.form.get('dual_sim')),
+            weight=request.form.get('weight', type=int),
+            dimensions=request.form.get('dimensions'),
+            colors_available=request.form.get('colors_available')
         )
 
         db.session.add(specs)
@@ -238,78 +202,49 @@ def edit_phone(phone_id):
         phone.price = request.form.get('price', type=float)
         phone.model_number = request.form.get('model_number')
         phone.availability_status = request.form.get('availability_status', 'Available')
-        phone.release_date = request.form.get('release_date') or None
         phone.is_active = bool(request.form.get('is_active', True))
 
-        # Handle image - URL has priority over file upload
-        image_url = request.form.get('main_image_url', '').strip()
-        if image_url:
-            # Use the provided URL directly
-            phone.main_image = image_url
-        elif 'main_image' in request.files:
-            # Fallback to file upload if no URL provided
+        # Handle image upload
+        if 'main_image' in request.files:
             file = request.files['main_image']
             if file.filename:
                 filename = save_uploaded_file(file, 'phones')
                 if filename:
                     phone.main_image = f'/static/uploads/phones/{filename}'
 
-        # Update specifications - All CSV attributes supported
+        # Update specifications
         if not specs:
             specs = PhoneSpecification(phone_id=phone_id)
             db.session.add(specs)
 
-        # Display
-        specs.screen_size = request.form.get('screen_size') or None
-        specs.screen_resolution = request.form.get('screen_resolution') or None
-        specs.display_type = request.form.get('display_type') or None
-        specs.ppi = request.form.get('ppi') or None
-        specs.multitouch = request.form.get('multitouch') or None
-        specs.protection = request.form.get('protection') or None
-        # Performance
-        specs.operating_system = request.form.get('operating_system') or None
-        specs.chipset = request.form.get('chipset') or None
-        specs.cpu = request.form.get('cpu') or None
-        specs.gpu = request.form.get('gpu') or None
-        specs.ram_options = request.form.get('ram_options') or None
-        specs.storage_options = request.form.get('storage_options') or None
-        specs.card_slot = request.form.get('card_slot') or None
-        # Camera
-        specs.rear_camera = request.form.get('rear_camera') or None
-        specs.front_camera = request.form.get('front_camera') or None
-        specs.flash = request.form.get('flash') or None
-        specs.camera_features = request.form.get('camera_features') or None
-        specs.video_recording = request.form.get('video_recording') or None
-        # Battery
-        specs.battery = request.form.get('battery') or None
-        specs.battery_capacity = request.form.get('battery_capacity') or None
-        specs.fast_charging = request.form.get('fast_charging') or None
-        specs.wireless_charging = request.form.get('wireless_charging') or None
-        specs.removable_battery = request.form.get('removable_battery') or None
-        # Network
-        specs.sim = request.form.get('sim') or None
-        specs.technology = request.form.get('technology') or None
-        specs.network_5g = request.form.get('network_5g') or None
-        specs.network_4g = request.form.get('network_4g') or None
-        specs.network_3g = request.form.get('network_3g') or None
-        specs.network_2g = request.form.get('network_2g') or None
-        specs.network_speed = request.form.get('network_speed') or None
-        specs.wifi_standard = request.form.get('wifi_standard') or None
-        specs.bluetooth_version = request.form.get('bluetooth_version') or None
-        specs.gps = request.form.get('gps') or None
-        specs.nfc = request.form.get('nfc') or None
-        specs.usb = request.form.get('usb') or None
-        specs.radio = request.form.get('radio') or None
-        # Physical
-        specs.dimensions = request.form.get('dimensions') or None
-        specs.weight = request.form.get('weight') or None
-        specs.colors_available = request.form.get('colors_available') or None
-        specs.body_material = request.form.get('body_material') or None
-        # Sensors
-        specs.sensors = request.form.get('sensors') or None
-        specs.water_resistance = request.form.get('water_resistance') or None
-        # Reference
-        specs.product_url = request.form.get('product_url') or None
+        specs.screen_size = request.form.get('screen_size', type=float)
+        specs.screen_resolution = request.form.get('screen_resolution')
+        specs.screen_type = request.form.get('screen_type')
+        specs.refresh_rate = request.form.get('refresh_rate', type=int)
+        specs.processor = request.form.get('processor')
+        specs.processor_brand = request.form.get('processor_brand')
+        specs.ram_options = request.form.get('ram_options')
+        specs.storage_options = request.form.get('storage_options')
+        specs.expandable_storage = bool(request.form.get('expandable_storage'))
+        specs.rear_camera = request.form.get('rear_camera')
+        specs.rear_camera_main = request.form.get('rear_camera_main', type=int)
+        specs.front_camera = request.form.get('front_camera')
+        specs.front_camera_mp = request.form.get('front_camera_mp', type=int)
+        specs.battery_capacity = request.form.get('battery_capacity', type=int)
+        specs.charging_speed = request.form.get('charging_speed')
+        specs.wireless_charging = bool(request.form.get('wireless_charging'))
+        specs.has_5g = bool(request.form.get('has_5g'))
+        specs.wifi_standard = request.form.get('wifi_standard')
+        specs.bluetooth_version = request.form.get('bluetooth_version')
+        specs.nfc = bool(request.form.get('nfc'))
+        specs.operating_system = request.form.get('operating_system')
+        specs.fingerprint_sensor = bool(request.form.get('fingerprint_sensor'))
+        specs.face_unlock = bool(request.form.get('face_unlock'))
+        specs.water_resistance = request.form.get('water_resistance')
+        specs.dual_sim = bool(request.form.get('dual_sim'))
+        specs.weight = request.form.get('weight', type=int)
+        specs.dimensions = request.form.get('dimensions')
+        specs.colors_available = request.form.get('colors_available')
 
         db.session.commit()
         flash(f'Phone "{phone.model_name}" updated successfully.', 'success')
@@ -419,26 +354,6 @@ def edit_brand(brand_id):
 
     return render_template('admin/brand_form.html', brand=brand)
 
-@bp.route('/brands/delete/<int:brand_id>', methods=['POST'])
-@login_required
-@admin_required
-def delete_brand(brand_id):
-    """Delete brand and all associated phones (cascade delete)"""
-    brand = Brand.query.get_or_404(brand_id)
-    brand_name = brand.name
-    phone_count = brand.get_phone_count()
-
-    try:
-        # Delete brand (cascade will automatically delete all phones)
-        db.session.delete(brand)
-        db.session.commit()
-        flash(f'Brand "{brand_name}" and {phone_count} associated phone(s) deleted successfully.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error deleting brand: {str(e)}', 'danger')
-
-    return redirect(url_for('admin.brands'))
-
 # User Management
 @bp.route('/users')
 @login_required
@@ -523,7 +438,7 @@ def logs():
     return render_template('admin/logs.html',
                          recommendations=recommendations)
 
-# Messages Management
+# Message Management
 @bp.route('/messages')
 @login_required
 @admin_required
@@ -568,7 +483,7 @@ def message_details(message_id):
         message.mark_as_read()
         db.session.commit()
 
-    return render_template('admin/message_details.html', message=message)
+    return render_template('admin/message_detail.html', message=message)
 
 @bp.route('/messages/<int:message_id>/reply', methods=['POST'])
 @login_required
@@ -587,22 +502,33 @@ def reply_message(message_id):
     if admin_notes:
         message.admin_notes = admin_notes
 
-    # TODO: Send email to user
-    # For now, just mark as replied
-    # In production, integrate with Flask-Mail or similar email service
+    # Send email reply
     try:
-        # Email sending would go here
-        # send_email(
-        #     to=message.email,
-        #     subject=f"Re: {message.subject or 'Your message to DialSmart'}",
-        #     body=reply_text
-        # )
+        # Get admin name for email signature
+        admin_name = current_user.full_name if hasattr(current_user, 'full_name') and current_user.full_name else current_user.username
 
-        message.mark_as_replied()
-        db.session.commit()
-        flash(f'Reply sent to {message.email} successfully.', 'success')
+        # Send the email
+        email_sent = send_contact_reply(
+            user_email=message.email,
+            user_name=message.name,
+            original_subject=message.subject or "Your message to DialSmart",
+            reply_text=reply_text,
+            admin_name=admin_name
+        )
+
+        if email_sent:
+            message.mark_as_replied()
+            db.session.commit()
+            flash(f'Reply sent to {message.email} successfully!', 'success')
+        else:
+            flash(f'Failed to send email to {message.email}. Please check email configuration.', 'warning')
+            # Still mark as replied in database even if email fails
+            message.mark_as_replied()
+            db.session.commit()
+
     except Exception as e:
         flash(f'Error sending reply: {str(e)}', 'danger')
+        db.session.rollback()
 
     return redirect(url_for('admin.message_details', message_id=message_id))
 
@@ -627,6 +553,82 @@ def delete_message(message_id):
     db.session.commit()
     flash('Message deleted successfully.', 'success')
     return redirect(url_for('admin.messages'))
+
+# Admin Registration (requires special registration code)
+@bp.route('/register', methods=['GET', 'POST'])
+def register_admin():
+    """Register new admin with validation"""
+    # If user is already logged in and is admin, redirect to dashboard
+    if current_user.is_authenticated and current_user.is_admin:
+        return redirect(url_for('admin.dashboard'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        registration_code = request.form.get('registration_code', '').strip()
+
+        # Validation
+        errors = []
+
+        # Check registration code (you should change this in production)
+        # TODO: Store this in environment variable or database
+        ADMIN_REGISTRATION_CODE = "DIALSMART_ADMIN_2025"
+        if registration_code != ADMIN_REGISTRATION_CODE:
+            errors.append('Invalid registration code. Contact system administrator.')
+
+        # Validate username
+        if not username or len(username) < 3:
+            errors.append('Username must be at least 3 characters long.')
+
+        if User.query.filter_by(username=username).first():
+            errors.append('Username already exists.')
+
+        # Validate email
+        if not email or '@' not in email:
+            errors.append('Please provide a valid email address.')
+
+        if User.query.filter_by(email=email).first():
+            errors.append('Email already registered.')
+
+        # Validate password
+        if not password or len(password) < 6:
+            errors.append('Password must be at least 6 characters long.')
+
+        if password != confirm_password:
+            errors.append('Passwords do not match.')
+
+        # If there are errors, show them and return
+        if errors:
+            for error in errors:
+                flash(error, 'danger')
+            return render_template('admin/register.html')
+
+        # Create new admin user
+        try:
+            new_admin = User(
+                username=username,
+                email=email,
+                full_name=request.form.get('full_name', username),
+                is_admin=True,
+                is_active=True
+            )
+            new_admin.set_password(password)
+
+            db.session.add(new_admin)
+            db.session.commit()
+
+            flash(f'Admin account created successfully for {username}! Please login.', 'success')
+            return redirect(url_for('auth.login'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error creating admin account: {str(e)}', 'danger')
+            return render_template('admin/register.html')
+
+    # GET request - show registration form
+    return render_template('admin/register.html')
 
 # Settings
 @bp.route('/settings', methods=['GET', 'POST'])
