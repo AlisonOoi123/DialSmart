@@ -287,12 +287,14 @@ class ChatbotEngine:
                             'image': phone.main_image
                         })
 
-                    response = self.response_templates.get_brand_response(brand_name, phone_list_text)
+                    # Create brand text for response (single or multiple brands)
+                    brand_text = ' and '.join(brands) if len(brands) > 1 else brands[0]
+                    response = self.response_templates.get_brand_response(brand_text, phone_list_text)
 
                     return {
                         'response': response,
                         'type': 'recommendation',
-                        'metadata': {'phones': phone_list, 'brand': brand_name}
+                        'metadata': {'phones': phone_list, 'brand': brand_text}
                     }
 
             return {
