@@ -96,7 +96,9 @@ class ChatbotEngine:
                             brand_ids.append(brand.id)
                             brand_display_names.append(brand.name)
 
-                phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), brand_ids=brand_ids, top_n=5)
+                # Get more phones if multiple brands requested
+                top_n = 5 if not brand_ids else max(5, 3 * len(brand_ids))
+                phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), brand_ids=brand_ids, top_n=top_n)
 
                 if phones:
                     if brand_display_names:
@@ -187,7 +189,9 @@ class ChatbotEngine:
                             brand_ids.append(brand.id)
                             brand_display_names.append(brand.name)
 
-                phones = self.ai_engine.get_phones_by_usage(usage, budget, brand_ids=brand_ids, top_n=5)
+                # Get more phones if multiple brands requested
+                top_n = 5 if not brand_ids else max(5, 3 * len(brand_ids))
+                phones = self.ai_engine.get_phones_by_usage(usage, budget, brand_ids=brand_ids, top_n=top_n)
 
                 if phones:
                     if brand_display_names:
@@ -247,11 +251,16 @@ class ChatbotEngine:
                         brand_display_names.append(brand.name)
 
                 if brand_ids:
-                    # Query phones from all mentioned brands
-                    phones = Phone.query.filter(
-                        Phone.brand_id.in_(brand_ids),
-                        Phone.is_active == True
-                    ).limit(10).all()
+                    # Query phones from each brand to ensure balanced results
+                    phones = []
+                    phones_per_brand = max(3, 10 // len(brand_ids))  # At least 3 phones per brand
+
+                    for brand_id in brand_ids:
+                        brand_phones = Phone.query.filter(
+                            Phone.brand_id == brand_id,
+                            Phone.is_active == True
+                        ).order_by(Phone.price.desc()).limit(phones_per_brand).all()
+                        phones.extend(brand_phones)
 
                     if phones:
                         brands_str = " and ".join(brand_display_names)

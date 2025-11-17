@@ -150,91 +150,141 @@ class AIRecommendationEngine:
         """Get top phones within a specific budget range"""
         min_price, max_price = budget_range
 
-        query = Phone.query.filter(
-            Phone.is_active == True,
-            Phone.price >= min_price,
-            Phone.price <= max_price
-        )
+        # If multiple brands requested, fetch balanced results per brand
+        if brand_ids and len(brand_ids) > 1:
+            results = []
+            phones_per_brand = max(2, top_n // len(brand_ids))
 
-        # Filter by brand if specified
-        if brand_ids:
-            query = query.filter(Phone.brand_id.in_(brand_ids))
+            for brand_id in brand_ids:
+                phones = Phone.query.filter(
+                    Phone.is_active == True,
+                    Phone.brand_id == brand_id,
+                    Phone.price >= min_price,
+                    Phone.price <= max_price
+                ).order_by(Phone.price.desc()).limit(phones_per_brand).all()
 
-        phones = query.order_by(Phone.price.desc()).limit(top_n).all()
+                for phone in phones:
+                    specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+                    results.append({
+                        'phone': phone,
+                        'specifications': specs
+                    })
 
-        results = []
-        for phone in phones:
-            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
-            results.append({
-                'phone': phone,
-                'specifications': specs
-            })
+            return results
+        else:
+            # Single or no brand filter
+            query = Phone.query.filter(
+                Phone.is_active == True,
+                Phone.price >= min_price,
+                Phone.price <= max_price
+            )
 
-        return results
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+            phones = query.order_by(Phone.price.desc()).limit(top_n).all()
+
+            results = []
+            for phone in phones:
+                specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+                results.append({
+                    'phone': phone,
+                    'specifications': specs
+                })
+
+            return results
 
     def get_phones_by_usage(self, usage_type, budget_range=None, brand_ids=None, top_n=5):
         """Get phones optimized for specific usage types"""
-        query = Phone.query.filter_by(is_active=True)
 
-        # Filter by brand if specified
-        if brand_ids:
-            query = query.filter(Phone.brand_id.in_(brand_ids))
-
-        if budget_range:
-            min_price, max_price = budget_range
-            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
-
-        phones = query.all()
-        results = []
-
-        for phone in phones:
-            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
-            if not specs:
-                continue
-
+        # Helper function to score a phone based on usage type
+        def calculate_usage_score(specs, usage_type):
             score = 0
-
-            # Score based on usage type
             if usage_type == 'Gaming':
-                # High RAM, good processor, high refresh rate
                 ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
                 if ram_values:
                     score += max(ram_values) * 10
                 score += (specs.refresh_rate or 60) / 10
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
-
             elif usage_type == 'Photography':
-                # High camera MP, good front camera
                 score += (specs.rear_camera_main or 0) * 2
                 score += (specs.front_camera_mp or 0)
-
             elif usage_type == 'Business' or usage_type == 'Work':
-                # Good battery, decent specs
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
                 ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
                 if ram_values:
                     score += max(ram_values) * 5
-
             elif usage_type == 'Entertainment':
-                # Large screen, good battery
                 score += (specs.screen_size or 0) * 20
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
-
             else:  # Social Media and general use
-                # Balanced specs, good camera
                 score += (specs.rear_camera_main or 0)
                 score += specs.battery_capacity / 200 if specs.battery_capacity else 0
+            return score
 
-            results.append({
-                'phone': phone,
-                'specifications': specs,
-                'usage_score': score
-            })
+        # If multiple brands requested, fetch and score per brand to ensure balanced results
+        if brand_ids and len(brand_ids) > 1:
+            all_results = []
+            phones_per_brand = max(2, top_n // len(brand_ids))
 
-        # Sort by usage score
-        results.sort(key=lambda x: x['usage_score'], reverse=True)
+            for brand_id in brand_ids:
+                query = Phone.query.filter_by(is_active=True, brand_id=brand_id)
 
-        return results[:top_n]
+                if budget_range:
+                    min_price, max_price = budget_range
+                    query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+                phones = query.all()
+                results = []
+
+                for phone in phones:
+                    specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+                    if not specs:
+                        continue
+
+                    score = calculate_usage_score(specs, usage_type)
+                    results.append({
+                        'phone': phone,
+                        'specifications': specs,
+                        'usage_score': score
+                    })
+
+                # Sort by usage score and take top N per brand
+                results.sort(key=lambda x: x['usage_score'], reverse=True)
+                all_results.extend(results[:phones_per_brand])
+
+            # Sort combined results by score
+            all_results.sort(key=lambda x: x['usage_score'], reverse=True)
+            return all_results[:top_n]
+
+        else:
+            # Single or no brand filter - original logic
+            query = Phone.query.filter_by(is_active=True)
+
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+            if budget_range:
+                min_price, max_price = budget_range
+                query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+            phones = query.all()
+            results = []
+
+            for phone in phones:
+                specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+                if not specs:
+                    continue
+
+                score = calculate_usage_score(specs, usage_type)
+                results.append({
+                    'phone': phone,
+                    'specifications': specs,
+                    'usage_score': score
+                })
+
+            results.sort(key=lambda x: x['usage_score'], reverse=True)
+            return results[:top_n]
 
     def get_similar_phones(self, phone_id, top_n=3):
         """Get phones similar to a given phone"""
