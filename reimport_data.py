@@ -1,16 +1,21 @@
 # reimport_data.py
 import pandas as pd
-import oracledb  
+import oracledb  # ✅ Changed from cx_Oracle
 from datetime import datetime
 
 print("="*60)
 print("RE-IMPORTING PHONE DATA TO ORACLE")
 print("="*60)
 
-# Oracle connection
+# Oracle connection (using oracledb)
 try:
-    dsn = cx_Oracle.makedsn('localhost', 1521, service_name='orclpdb')
-    connection = cx_Oracle.connect(user='ds_user', password='dsuser123', dsn=dsn)
+    connection = oracledb.connect(
+        user='ds_user',
+        password='dsuser123',
+        host='localhost',
+        port=1521,
+        service_name='orclpdb'
+    )
     cursor = connection.cursor()
     print("✓ Connected to Oracle")
 except Exception as e:
