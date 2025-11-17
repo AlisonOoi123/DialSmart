@@ -56,10 +56,25 @@ class ChatbotEngine:
         return response_data
 
     def _detect_intent(self, message):
-        """Detect user intent from message"""
+        """Detect user intent from message with priority-based matching"""
         message_lower = message.lower()
 
-        # Check each intent
+        # Priority 1: Check for brand mentions first (handles brand + budget + usage merged intent)
+        has_brand = self._extract_brand(message)
+        if has_brand:
+            return 'brand_query'
+
+        # Priority 2: Check for usage type (handles usage + budget merged intent)
+        has_usage = self._detect_usage_type(message)
+        if has_usage:
+            return 'usage_type'
+
+        # Priority 3: Check for budget alone
+        has_budget = self._extract_budget(message)
+        if has_budget:
+            return 'budget_query'
+
+        # Priority 4: Check keyword-based intents
         for intent, keywords in self.intents.items():
             for keyword in keywords:
                 if keyword in message_lower:
@@ -238,8 +253,12 @@ class ChatbotEngine:
             }
 
         elif intent == 'brand_query':
-            # Extract brand names (can be multiple)
+            # Extract brand(s), budget, AND usage (merged intent handling)
+            # Handles: "samsung", "samsung within 2000", "samsung and xiaomi for photographer", etc.
             brand_names = self._extract_brand(message)
+            budget = self._extract_budget(message)
+            usage = self._detect_usage_type(message)
+
             if brand_names:
                 # Get Brand IDs for all mentioned brands
                 brand_ids = []
@@ -251,35 +270,104 @@ class ChatbotEngine:
                         brand_display_names.append(brand.name)
 
                 if brand_ids:
-                    # Query phones from each brand to ensure balanced results
-                    phones = []
-                    phones_per_brand = max(3, 10 // len(brand_ids))  # At least 3 phones per brand
+                    # If usage detected, use usage-based recommendations with brand filter
+                    if usage:
+                        top_n = max(6, 3 * len(brand_ids))
+                        phones = self.ai_engine.get_phones_by_usage(usage, budget, brand_ids=brand_ids, top_n=top_n)
 
-                    for brand_id in brand_ids:
-                        brand_phones = Phone.query.filter(
-                            Phone.brand_id == brand_id,
-                            Phone.is_active == True
-                        ).order_by(Phone.price.desc()).limit(phones_per_brand).all()
-                        phones.extend(brand_phones)
+                        if phones:
+                            brands_str = " and ".join(brand_display_names)
+                            budget_str = ""
+                            if budget:
+                                min_budget, max_budget = budget
+                                budget_str = f" within RM{min_budget}-RM{max_budget}"
 
-                    if phones:
-                        brands_str = " and ".join(brand_display_names)
-                        response = f"Here are our {brands_str} smartphones:\n\n"
+                            response = f"Perfect! Here are {brands_str} smartphones{budget_str} for {usage}:\n\n"
+                            phone_list = []
 
-                        phone_list = []
-                        for phone in phones:
-                            response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
-                            phone_list.append({
-                                'id': phone.id,
-                                'name': phone.model_name,
-                                'price': phone.price
-                            })
+                            for item in phones:
+                                phone = item['phone']
+                                specs = item.get('specifications')
 
-                        return {
-                            'response': response,
-                            'type': 'recommendation',
-                            'metadata': {'phones': phone_list, 'brands': brand_display_names}
-                        }
+                                # Add relevant feature info
+                                feature_info = ""
+                                if usage == 'Photography' and specs and specs.rear_camera_main:
+                                    feature_info = f"{specs.rear_camera_main}MP main camera - Excellent for photography"
+                                elif usage == 'Gaming' and specs and specs.ram_options:
+                                    feature_info = f"{specs.ram_options} RAM - Great for gaming"
+                                elif usage == 'Business' and specs and specs.battery_capacity:
+                                    feature_info = f"{specs.battery_capacity}mAh battery - Long-lasting for work"
+
+                                response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                                if feature_info:
+                                    response += f"   {feature_info}\n"
+
+                                phone_list.append({
+                                    'id': phone.id,
+                                    'name': phone.model_name,
+                                    'price': phone.price
+                                })
+
+                            return {
+                                'response': response,
+                                'type': 'recommendation',
+                                'metadata': {'phones': phone_list, 'usage': usage, 'brands': brand_display_names}
+                            }
+                    # Else if budget specified, use budget recommendations with brand filter
+                    elif budget:
+                        min_budget, max_budget = budget
+                        top_n = max(6, 3 * len(brand_ids))
+                        phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), brand_ids=brand_ids, top_n=top_n)
+
+                        if phones:
+                            brands_str = " and ".join(brand_display_names)
+                            response = f"Check out these {brands_str} models within RM{min_budget} - RM{max_budget}:\n\n"
+
+                            phone_list = []
+                            for item in phones:
+                                phone = item['phone']
+                                response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                                phone_list.append({
+                                    'id': phone.id,
+                                    'name': phone.model_name,
+                                    'price': phone.price
+                                })
+
+                            return {
+                                'response': response,
+                                'type': 'recommendation',
+                                'metadata': {'phones': phone_list, 'brands': brand_display_names}
+                            }
+                    # Else just show brand phones
+                    else:
+                        phones = []
+                        phones_per_brand = max(3, 10 // len(brand_ids))
+
+                        for brand_id in brand_ids:
+                            brand_phones = Phone.query.filter(
+                                Phone.brand_id == brand_id,
+                                Phone.is_active == True
+                            ).order_by(Phone.price.desc()).limit(phones_per_brand).all()
+                            phones.extend(brand_phones)
+
+                        if phones:
+                            brands_str = " and ".join(brand_display_names)
+                            response = f"Here are our {brands_str} smartphones:\n\n"
+
+                            phone_list = []
+                            for phone in phones:
+                                response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                                phone_list.append({
+                                    'id': phone.id,
+                                    'name': phone.model_name,
+                                    'price': phone.price
+                                })
+
+                            return {
+                                'response': response,
+                                'type': 'recommendation',
+                                'metadata': {'phones': phone_list, 'brands': brand_display_names}
+                            }
 
             return {
                 'response': "Which brand are you interested in? We have Samsung, Apple, Xiaomi, Huawei, and more!",
@@ -321,19 +409,20 @@ Just ask me anything like:
 
     def _extract_budget(self, message):
         """Extract budget range from message"""
-        # Look for patterns like "RM1000", "1000", "under 2000", "between 1000 and 2000"
+        # Look for patterns like "RM1000", "1000", "under 2000", "within 3000", "between 1000 and 2000"
         patterns = [
             r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)',  # RM1000 to RM2000
             r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000
             r'under\s*rm?\s*(\d+)',  # under RM2000
             r'below\s*rm?\s*(\d+)',  # below 2000
+            r'within\s*rm?\s*(\d+)',  # within RM3000 or within 3000
             r'rm\s*(\d+)',  # RM2000
         ]
 
         for pattern in patterns:
             match = re.search(pattern, message.lower())
             if match:
-                if 'under' in message.lower() or 'below' in message.lower():
+                if 'under' in message.lower() or 'below' in message.lower() or 'within' in message.lower():
                     max_budget = int(match.group(1))
                     return (500, max_budget)
                 elif len(match.groups()) == 2:
@@ -393,13 +482,13 @@ Just ask me anything like:
 
         if 'gam' in message_lower:
             return 'Gaming'
-        elif 'photo' in message_lower or 'camera' in message_lower:
+        elif 'photo' in message_lower or 'camera' in message_lower or 'picture' in message_lower:
             return 'Photography'
-        elif 'business' in message_lower or 'work' in message_lower:
+        elif 'business' in message_lower or 'work' in message_lower or 'office' in message_lower:
             return 'Business'
-        elif 'social' in message_lower:
+        elif 'social' in message_lower or 'instagram' in message_lower or 'facebook' in message_lower:
             return 'Social Media'
-        elif 'entertainment' in message_lower or 'video' in message_lower or 'movie' in message_lower:
+        elif 'entertainment' in message_lower or 'video' in message_lower or 'movie' in message_lower or 'stream' in message_lower:
             return 'Entertainment'
 
         return None
