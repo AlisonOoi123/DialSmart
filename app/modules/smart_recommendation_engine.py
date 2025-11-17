@@ -15,20 +15,18 @@ class SmartRecommendationEngine:
     def __init__(self):
         pass
 
-    def _apply_brand_filter(self, query, brand_name):
+    def _get_brand_ids(self, brand_name):
         """
-        Helper method to apply brand filter to a query
-        Supports both single brand (string) and multiple brands (list)
+        Get brand IDs from brand name(s)
 
         Args:
-            query: SQLAlchemy query object
             brand_name: String (single brand) or List (multiple brands) or None
 
         Returns:
-            Tuple: (modified query, number of brands for limit adjustment)
+            Tuple: (list of brand_ids, list of brand_names, is_multi_brand)
         """
         if not brand_name:
-            return query, 1
+            return [], [], False
 
         # Convert single brand to list for uniform handling
         brand_names = [brand_name] if isinstance(brand_name, str) else brand_name
@@ -42,19 +40,17 @@ class SmartRecommendationEngine:
                 brand_ids.append(brand.id)
                 found_brands.append(brand.name)
 
-        if brand_ids:
-            if len(brand_ids) == 1:
-                # Single brand - use exact match
-                print(f"DEBUG: Brand filter applied - {found_brands[0]} (ID: {brand_ids[0]})")
-                query = query.filter(Phone.brand_id == brand_ids[0])
-            else:
-                # Multiple brands - use IN clause
-                print(f"DEBUG: Multi-brand filter applied - {', '.join(found_brands)} (IDs: {brand_ids})")
-                query = query.filter(Phone.brand_id.in_(brand_ids))
-        else:
-            print(f"WARNING: Brand(s) '{brand_names}' not found in database. Showing all brands.")
+        is_multi = len(brand_ids) > 1
 
-        return query, len(brand_ids) if brand_ids else 1
+        if brand_ids:
+            if is_multi:
+                print(f"DEBUG: Multi-brand query - {', '.join(found_brands)} (IDs: {brand_ids})")
+            else:
+                print(f"DEBUG: Single brand query - {found_brands[0]} (ID: {brand_ids[0]})")
+        else:
+            print(f"WARNING: Brand(s) '{brand_names}' not found in database.")
+
+        return brand_ids, found_brands, is_multi
 
     def get_phones_by_budget(self, min_budget=None, max_budget=None, limit=10):
         """
@@ -102,31 +98,56 @@ class SmartRecommendationEngine:
         Returns:
             List of phones
         """
-        query = Phone.query.filter(Phone.is_active == True)
+        brand_ids, found_brands, is_multi = self._get_brand_ids(brand_name)
 
-        # Apply brand filter using helper method
-        query, brand_count = self._apply_brand_filter(query, brand_name)
-
-        # Apply budget filter if provided
-        if budget:
-            min_budget, max_budget = budget
-            query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
-
-        # For multi-brand queries, get more results to ensure representation from all brands
-        fetch_limit = limit * brand_count if brand_count > 1 else limit
-        phones = query.order_by(Phone.price.desc()).limit(fetch_limit).all()
+        if not brand_ids:
+            return []
 
         # Get brand names for reason text
-        brand_names = [brand_name] if isinstance(brand_name, str) else brand_name
-        brand_text = ' or '.join(brand_names) if isinstance(brand_names, list) else brand_name
-
+        brand_text = ' or '.join(found_brands) if is_multi else found_brands[0]
         results = []
-        for phone in phones:
-            results.append({
-                'phone': phone,
-                'score': self._calculate_value_score(phone),
-                'reason': f"Popular {brand_text} model with great features"
-            })
+
+        if is_multi:
+            # Multi-brand: Query each brand separately to ensure balanced representation
+            per_brand_limit = max(3, limit // len(brand_ids))  # At least 3 per brand
+
+            for brand_id in brand_ids:
+                query = Phone.query.filter(
+                    Phone.is_active == True,
+                    Phone.brand_id == brand_id
+                )
+
+                if budget:
+                    min_budget, max_budget = budget
+                    query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+                phones = query.order_by(Phone.price.desc()).limit(per_brand_limit).all()
+
+                for phone in phones:
+                    results.append({
+                        'phone': phone,
+                        'score': self._calculate_value_score(phone),
+                        'reason': f"Popular {brand_text} model with great features"
+                    })
+        else:
+            # Single brand
+            query = Phone.query.filter(
+                Phone.is_active == True,
+                Phone.brand_id == brand_ids[0]
+            )
+
+            if budget:
+                min_budget, max_budget = budget
+                query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+            phones = query.order_by(Phone.price.desc()).limit(limit).all()
+
+            for phone in phones:
+                results.append({
+                    'phone': phone,
+                    'score': self._calculate_value_score(phone),
+                    'reason': f"Popular {brand_text} model with great features"
+                })
 
         # Sort by score and limit to requested amount
         results.sort(key=lambda x: x['score'], reverse=True)
@@ -145,77 +166,90 @@ class SmartRecommendationEngine:
         Returns:
             List of phones optimized for the usage
         """
-        query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
-
-        # Apply brand filter using helper method
-        query, brand_count = self._apply_brand_filter(query, brand_name)
-
-        # Apply budget filter if provided
-        if budget:
-            min_budget, max_budget = budget
-            query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
-
-        # For multi-brand queries, get more results to ensure representation from all brands
-        fetch_limit = limit * brand_count if brand_count > 1 else limit
-
+        brand_ids, found_brands, is_multi = self._get_brand_ids(brand_name)
         usage_lower = usage_type.lower()
 
-        if usage_lower == 'gaming':
-            # Gaming: High refresh rate, powerful processor, good RAM
-            query = query.filter(
-                or_(
+        # Helper function to apply usage filter
+        def apply_usage_filter(q):
+            if usage_lower == 'gaming':
+                return q.filter(or_(
                     PhoneSpecification.refresh_rate >= 90,
                     PhoneSpecification.ram_options.like('%8GB%'),
                     PhoneSpecification.ram_options.like('%12GB%'),
                     PhoneSpecification.processor_brand.in_(['Qualcomm', 'Apple'])
-                )
-            )
-        elif usage_lower == 'photography':
-            # Photography: High MP camera, multiple lenses
-            query = query.filter(
-                or_(
+                ))
+            elif usage_lower == 'photography':
+                return q.filter(or_(
                     PhoneSpecification.rear_camera_main >= 48,
-                    PhoneSpecification.rear_camera.like('%MP%+%MP%')  # Multiple cameras
-                )
-            )
-        elif usage_lower == 'business':
-            # Business: Good battery, 5G, decent performance
-            query = query.filter(
-                or_(
+                    PhoneSpecification.rear_camera.like('%MP%+%MP%')
+                ))
+            elif usage_lower == 'business':
+                return q.filter(or_(
                     PhoneSpecification.battery_capacity >= 4500,
                     PhoneSpecification.has_5g == True
-                )
-            )
-        elif usage_lower == 'entertainment':
-            # Entertainment: Large screen, good battery, AMOLED
-            query = query.filter(
-                or_(
+                ))
+            elif usage_lower == 'entertainment':
+                return q.filter(or_(
                     PhoneSpecification.screen_size >= 6.5,
                     PhoneSpecification.screen_type.like('%AMOLED%'),
                     PhoneSpecification.battery_capacity >= 4500
-                )
-            )
-        elif usage_lower == 'social media':
-            # Social Media: Good front camera, decent performance
-            query = query.filter(
-                or_(
+                ))
+            elif usage_lower == 'social media':
+                return q.filter(or_(
                     PhoneSpecification.front_camera_mp >= 16,
                     PhoneSpecification.rear_camera_main >= 48
-                )
-            )
+                ))
+            return q
 
-        phones = query.order_by(Phone.price.desc()).limit(fetch_limit * 2).all()
-
-        # Score and filter results
         results = []
-        for phone in phones:
-            score = self._calculate_usage_score(phone, usage_type)
-            if score > 0:
-                results.append({
-                    'phone': phone,
-                    'score': score,
-                    'reason': self._get_usage_reason(phone, usage_type)
-                })
+
+        if is_multi and brand_ids:
+            # Multi-brand: Query each brand separately
+            per_brand_limit = max(3, limit // len(brand_ids))
+
+            for brand_id in brand_ids:
+                query = Phone.query.join(PhoneSpecification).filter(
+                    Phone.is_active == True,
+                    Phone.brand_id == brand_id
+                )
+
+                if budget:
+                    min_budget, max_budget = budget
+                    query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+                query = apply_usage_filter(query)
+                phones = query.order_by(Phone.price.desc()).limit(per_brand_limit * 2).all()
+
+                for phone in phones:
+                    score = self._calculate_usage_score(phone, usage_type)
+                    if score > 0:
+                        results.append({
+                            'phone': phone,
+                            'score': score,
+                            'reason': self._get_usage_reason(phone, usage_type)
+                        })
+        else:
+            # Single brand or no brand filter
+            query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
+
+            if brand_ids:
+                query = query.filter(Phone.brand_id == brand_ids[0])
+
+            if budget:
+                min_budget, max_budget = budget
+                query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+            query = apply_usage_filter(query)
+            phones = query.order_by(Phone.price.desc()).limit(limit * 2).all()
+
+            for phone in phones:
+                score = self._calculate_usage_score(phone, usage_type)
+                if score > 0:
+                    results.append({
+                        'phone': phone,
+                        'score': score,
+                        'reason': self._get_usage_reason(phone, usage_type)
+                    })
 
         # Sort by score and limit to requested amount
         results.sort(key=lambda x: x['score'], reverse=True)
@@ -237,15 +271,17 @@ class SmartRecommendationEngine:
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
         # Apply brand filter using helper method
-        query, brand_count = self._apply_brand_filter(query, brand_name)
+        brand_ids, _, _ = self._get_brand_ids(brand_name)
+        if brand_ids:
+            if len(brand_ids) == 1:
+                query = query.filter(Phone.brand_id == brand_ids[0])
+            else:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
 
         # Apply budget filter
         if budget:
             min_budget, max_budget = budget
             query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
-
-        # For multi-brand queries, get more results
-        fetch_limit = limit * brand_count if brand_count > 1 else limit
 
         feature_lower = feature.lower()
 
@@ -270,7 +306,7 @@ class SmartRecommendationEngine:
         elif 'face unlock' in feature_lower:
             query = query.filter(PhoneSpecification.face_unlock == True)
 
-        phones = query.order_by(Phone.price.desc()).limit(fetch_limit).all()
+        phones = query.order_by(Phone.price.desc()).limit(limit).all()
 
         results = []
         for phone in phones:
@@ -297,37 +333,59 @@ class SmartRecommendationEngine:
         Returns:
             List of phones with good cameras
         """
-        query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
+        brand_ids, found_brands, is_multi = self._get_brand_ids(brand_name)
 
-        # Apply brand filter using helper method
-        query, brand_count = self._apply_brand_filter(query, brand_name)
-
-        # Apply budget filter
-        if budget:
-            min_budget, max_budget = budget
-            query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
-
-        # For multi-brand queries, get more results
-        fetch_limit = limit * brand_count if brand_count > 1 else limit
-
-        # Extract MP if mentioned
+        # Extract MP requirement
         mp_match = re.search(r'(\d+)\s*mp', camera_spec.lower())
-        if mp_match:
-            mp_value = int(mp_match.group(1))
-            query = query.filter(PhoneSpecification.rear_camera_main >= mp_value)
-        else:
-            # Default to good cameras (48MP+)
-            query = query.filter(PhoneSpecification.rear_camera_main >= 48)
-
-        phones = query.order_by(PhoneSpecification.rear_camera_main.desc()).limit(fetch_limit).all()
+        mp_value = int(mp_match.group(1)) if mp_match else 48  # Default 48MP+
 
         results = []
-        for phone in phones:
-            results.append({
-                'phone': phone,
-                'score': self._calculate_camera_score(phone),
-                'reason': self._get_camera_reason(phone)
-            })
+
+        if is_multi and brand_ids:
+            # Multi-brand: Query each brand separately to ensure balanced representation
+            per_brand_limit = max(3, limit // len(brand_ids))  # At least 3 per brand
+
+            for brand_id in brand_ids:
+                query = Phone.query.join(PhoneSpecification).filter(
+                    Phone.is_active == True,
+                    Phone.brand_id == brand_id,
+                    PhoneSpecification.rear_camera_main >= mp_value
+                )
+
+                if budget:
+                    min_budget, max_budget = budget
+                    query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+                phones = query.order_by(PhoneSpecification.rear_camera_main.desc()).limit(per_brand_limit).all()
+
+                for phone in phones:
+                    results.append({
+                        'phone': phone,
+                        'score': self._calculate_camera_score(phone),
+                        'reason': self._get_camera_reason(phone)
+                    })
+        else:
+            # Single brand or no brand filter
+            query = Phone.query.join(PhoneSpecification).filter(
+                Phone.is_active == True,
+                PhoneSpecification.rear_camera_main >= mp_value
+            )
+
+            if brand_ids:
+                query = query.filter(Phone.brand_id == brand_ids[0])
+
+            if budget:
+                min_budget, max_budget = budget
+                query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+            phones = query.order_by(PhoneSpecification.rear_camera_main.desc()).limit(limit).all()
+
+            for phone in phones:
+                results.append({
+                    'phone': phone,
+                    'score': self._calculate_camera_score(phone),
+                    'reason': self._get_camera_reason(phone)
+                })
 
         # Sort by camera score and limit to requested amount
         results.sort(key=lambda x: x['score'], reverse=True)
@@ -348,12 +406,14 @@ class SmartRecommendationEngine:
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
         # Apply brand filter using helper method
-        query, brand_count = self._apply_brand_filter(query, brand_name)
+        brand_ids, _, _ = self._get_brand_ids(brand_name)
+        if brand_ids:
+            if len(brand_ids) == 1:
+                query = query.filter(Phone.brand_id == brand_ids[0])
+            else:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
 
         # Apply budget filter
-
-        # For multi-brand queries, get more results
-        fetch_limit = limit * brand_count if brand_count > 1 else limit
 
         # Apply budget filter
         if budget:
@@ -370,7 +430,7 @@ class SmartRecommendationEngine:
             )
         )
 
-        phones = query.order_by(Phone.price.desc()).limit(fetch_limit).all()
+        phones = query.order_by(Phone.price.desc()).limit(limit).all()
 
         results = []
         for phone in phones:
@@ -399,12 +459,14 @@ class SmartRecommendationEngine:
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
         # Apply brand filter using helper method
-        query, brand_count = self._apply_brand_filter(query, brand_name)
+        brand_ids, _, _ = self._get_brand_ids(brand_name)
+        if brand_ids:
+            if len(brand_ids) == 1:
+                query = query.filter(Phone.brand_id == brand_ids[0])
+            else:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
 
         # Apply budget filter
-
-        # For multi-brand queries, get more results
-        fetch_limit = limit * brand_count if brand_count > 1 else limit
 
         # Apply budget filter
         if budget:
@@ -414,7 +476,7 @@ class SmartRecommendationEngine:
         # Filter for good battery (4500mAh+)
         query = query.filter(PhoneSpecification.battery_capacity >= 4500)
 
-        phones = query.order_by(PhoneSpecification.battery_capacity.desc()).limit(fetch_limit).all()
+        phones = query.order_by(PhoneSpecification.battery_capacity.desc()).limit(limit).all()
 
         results = []
         for phone in phones:
@@ -442,12 +504,14 @@ class SmartRecommendationEngine:
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
         # Apply brand filter using helper method
-        query, brand_count = self._apply_brand_filter(query, brand_name)
+        brand_ids, _, _ = self._get_brand_ids(brand_name)
+        if brand_ids:
+            if len(brand_ids) == 1:
+                query = query.filter(Phone.brand_id == brand_ids[0])
+            else:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
 
         # Apply budget filter
-
-        # For multi-brand queries, get more results
-        fetch_limit = limit * brand_count if brand_count > 1 else limit
 
         # Apply budget filter
         if budget:
@@ -465,7 +529,7 @@ class SmartRecommendationEngine:
         elif 'large' in display_lower or 'big' in display_lower:
             query = query.filter(PhoneSpecification.screen_size >= 6.5)
 
-        phones = query.order_by(Phone.price.desc()).limit(fetch_limit).all()
+        phones = query.order_by(Phone.price.desc()).limit(limit).all()
 
         results = []
         for phone in phones:
@@ -495,12 +559,14 @@ class SmartRecommendationEngine:
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
         # Apply brand filter using helper method
-        query, brand_count = self._apply_brand_filter(query, brand_name)
+        brand_ids, _, _ = self._get_brand_ids(brand_name)
+        if brand_ids:
+            if len(brand_ids) == 1:
+                query = query.filter(Phone.brand_id == brand_ids[0])
+            else:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
 
         # Apply budget filter
-
-        # For multi-brand queries, get more results
-        fetch_limit = limit * brand_count if brand_count > 1 else limit
 
         # Apply budget filter
         if budget:
@@ -517,7 +583,7 @@ class SmartRecommendationEngine:
         elif 'expandable' in storage_lower or 'sd card' in storage_lower:
             query = query.filter(PhoneSpecification.expandable_storage == True)
 
-        phones = query.order_by(Phone.price.desc()).limit(fetch_limit).all()
+        phones = query.order_by(Phone.price.desc()).limit(limit).all()
 
         results = []
         for phone in phones:
