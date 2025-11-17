@@ -79,7 +79,7 @@ class ChatHistory(db.Model):
     intent = db.Column(db.String(100))  # Detected user intent
 
     # Metadata (JSON stored as string)
-    chat_metadata = db.Column(db.JSON)  # Additional context like recommended phone IDs
+    chat_metadata = db.Column(db.Text)  # Additional context like recommended phone IDs
 
     # Timestamp
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
