@@ -1057,6 +1057,28 @@ try:
 except ImportError:
     pass  # Advanced data not available
 
+# REPLACE WITH FINAL BALANCED DATA TO FIX CLASS IMBALANCE
+# This replaces the imbalanced data with properly balanced samples
+try:
+    from data.final_balanced_training_data import FINAL_BALANCED_DATA
+    print("Loading FINAL BALANCED DATA to fix class imbalance...")
+    # REPLACE existing data with balanced version
+    for intent, samples in FINAL_BALANCED_DATA.items():
+        TRAINING_DATA[intent] = samples  # REPLACE, not extend
+
+    # Remove leftover specification-related intents from earlier merges
+    # to prevent them from being merged again (which would create imbalance)
+    intents_to_remove = ['display_query', 'battery_query', 'performance_query', 'storage_query', 'camera_query', 'feature_query', 'help']
+    for intent in intents_to_remove:
+        if intent in TRAINING_DATA:
+            del TRAINING_DATA[intent]
+            print(f"  Removed {intent} to prevent duplicate merge")
+
+    print(f"✓ Replaced with {len(FINAL_BALANCED_DATA)} balanced intent categories")
+    print(f"  This fixes the 10.46x imbalance ratio issue")
+except ImportError:
+    print("⚠ final_balanced_training_data.py not found - using imbalanced data")
+
 # MERGE SPECIFICATION-RELATED INTENTS FOR 90%+ ACCURACY
 # Combine 7 similar intents into one "specification" intent to reduce confusion
 print("Merging specification-related intents for better accuracy...")
