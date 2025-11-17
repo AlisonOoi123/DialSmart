@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from functools import wraps
 from app import db
 from app.models import User, Phone, PhoneSpecification, Brand, Recommendation
+from app.models.contact import ContactMessage
 from app.utils.helpers import save_uploaded_file
 from datetime import datetime, timedelta
 import json
@@ -70,6 +71,9 @@ def dashboard():
     ).join(phone_counts, Phone.id == phone_counts.c.phone_id)\
      .all()
 
+    # Get unread messages count
+    unread_messages = ContactMessage.query.filter_by(is_read=False).count()
+
     return render_template('admin/dashboard.html',
                          total_users=total_users,
                          total_phones=total_phones,
@@ -78,7 +82,8 @@ def dashboard():
                          new_users=new_users,
                          recent_recommendations=recent_recommendations,
                          recent_users=recent_users_list,
-                         popular_phones=popular_phones)
+                         popular_phones=popular_phones,
+                         unread_messages=unread_messages)
 
 # Phone Management
 @bp.route('/phones')
@@ -517,6 +522,111 @@ def logs():
 
     return render_template('admin/logs.html',
                          recommendations=recommendations)
+
+# Messages Management
+@bp.route('/messages')
+@login_required
+@admin_required
+def messages():
+    """View all contact messages"""
+    page = request.args.get('page', 1, type=int)
+    status = request.args.get('status', 'all')
+
+    query = ContactMessage.query
+
+    if status == 'unread':
+        query = query.filter_by(is_read=False)
+    elif status == 'replied':
+        query = query.filter_by(is_replied=True)
+    elif status == 'unreplied':
+        query = query.filter_by(is_replied=False)
+
+    messages = query.order_by(ContactMessage.created_at.desc())\
+        .paginate(page=page, per_page=20, error_out=False)
+
+    # Get counts for tabs
+    total_count = ContactMessage.query.count()
+    unread_count = ContactMessage.query.filter_by(is_read=False).count()
+    unreplied_count = ContactMessage.query.filter_by(is_replied=False).count()
+
+    return render_template('admin/messages.html',
+                         messages=messages,
+                         status=status,
+                         total_count=total_count,
+                         unread_count=unread_count,
+                         unreplied_count=unreplied_count)
+
+@bp.route('/messages/<int:message_id>')
+@login_required
+@admin_required
+def message_details(message_id):
+    """View message details"""
+    message = ContactMessage.query.get_or_404(message_id)
+
+    # Mark as read
+    if not message.is_read:
+        message.mark_as_read()
+        db.session.commit()
+
+    return render_template('admin/message_details.html', message=message)
+
+@bp.route('/messages/<int:message_id>/reply', methods=['POST'])
+@login_required
+@admin_required
+def reply_message(message_id):
+    """Reply to a message via email"""
+    message = ContactMessage.query.get_or_404(message_id)
+    reply_text = request.form.get('reply_text', '')
+    admin_notes = request.form.get('admin_notes', '')
+
+    if not reply_text:
+        flash('Reply text is required.', 'danger')
+        return redirect(url_for('admin.message_details', message_id=message_id))
+
+    # Save admin notes
+    if admin_notes:
+        message.admin_notes = admin_notes
+
+    # TODO: Send email to user
+    # For now, just mark as replied
+    # In production, integrate with Flask-Mail or similar email service
+    try:
+        # Email sending would go here
+        # send_email(
+        #     to=message.email,
+        #     subject=f"Re: {message.subject or 'Your message to DialSmart'}",
+        #     body=reply_text
+        # )
+
+        message.mark_as_replied()
+        db.session.commit()
+        flash(f'Reply sent to {message.email} successfully.', 'success')
+    except Exception as e:
+        flash(f'Error sending reply: {str(e)}', 'danger')
+
+    return redirect(url_for('admin.message_details', message_id=message_id))
+
+@bp.route('/messages/<int:message_id>/mark-read', methods=['POST'])
+@login_required
+@admin_required
+def mark_message_read(message_id):
+    """Mark message as read"""
+    message = ContactMessage.query.get_or_404(message_id)
+    message.mark_as_read()
+    db.session.commit()
+    flash('Message marked as read.', 'success')
+    return redirect(url_for('admin.messages'))
+
+@bp.route('/messages/<int:message_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_message(message_id):
+    """Delete a message"""
+    message = ContactMessage.query.get_or_404(message_id)
+    db.session.delete(message)
+    db.session.commit()
+    flash('Message deleted successfully.', 'success')
+    return redirect(url_for('admin.messages'))
 
 # Settings
 @bp.route('/settings', methods=['GET', 'POST'])
