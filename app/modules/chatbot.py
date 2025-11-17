@@ -130,7 +130,8 @@ class ChatbotEngine:
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
-                            'price': phone.price
+                            'price': phone.price,
+                            'image': phone.main_image
                         })
 
                     return {
@@ -238,7 +239,8 @@ class ChatbotEngine:
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
-                            'price': phone.price
+                            'price': phone.price,
+                            'image': phone.main_image
                         })
 
                     return {
@@ -305,7 +307,8 @@ class ChatbotEngine:
                                 phone_list.append({
                                     'id': phone.id,
                                     'name': phone.model_name,
-                                    'price': phone.price
+                                    'price': phone.price,
+                                    'image': phone.main_image
                                 })
 
                             return {
@@ -330,7 +333,8 @@ class ChatbotEngine:
                                 phone_list.append({
                                     'id': phone.id,
                                     'name': phone.model_name,
-                                    'price': phone.price
+                                    'price': phone.price,
+                                    'image': phone.main_image
                                 })
 
                             return {
@@ -360,7 +364,8 @@ class ChatbotEngine:
                                 phone_list.append({
                                     'id': phone.id,
                                     'name': phone.model_name,
-                                    'price': phone.price
+                                    'price': phone.price,
+                                    'image': phone.main_image
                                 })
 
                             return {

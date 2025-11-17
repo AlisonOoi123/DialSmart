@@ -200,8 +200,21 @@ class AIRecommendationEngine:
         # Helper function to score a phone based on usage type
         def calculate_usage_score(specs, usage_type):
             score = 0
+
+            # Helper to safely extract RAM values from strings like "8GB, 12GB" or "8 / 12 GB"
+            def extract_ram_values(ram_str):
+                ram_values = []
+                if not ram_str:
+                    return ram_values
+                # Replace / with , to handle both formats
+                for r in ram_str.replace('/', ',').split(','):
+                    r = r.strip().replace('GB', '').replace('gb', '').strip()
+                    if r.isdigit():
+                        ram_values.append(int(r))
+                return ram_values
+
             if usage_type == 'Gaming':
-                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                ram_values = extract_ram_values(specs.ram_options)
                 if ram_values:
                     score += max(ram_values) * 10
                 score += (specs.refresh_rate or 60) / 10
@@ -211,7 +224,7 @@ class AIRecommendationEngine:
                 score += (specs.front_camera_mp or 0)
             elif usage_type == 'Business' or usage_type == 'Work':
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
-                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                ram_values = extract_ram_values(specs.ram_options)
                 if ram_values:
                     score += max(ram_values) * 5
             elif usage_type == 'Entertainment':
