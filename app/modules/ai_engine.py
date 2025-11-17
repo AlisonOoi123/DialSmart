@@ -4,14 +4,14 @@ Machine learning-based phone recommendation system
 """
 from app import db
 from app.models import Phone, PhoneSpecification, UserPreference, Recommendation
-from app.utils.helpers import calculate_match_score, generate_recommendation_reasoning, parse_memory_values
+from app.utils.helpers import calculate_match_score, generate_recommendation_reasoning
 import json
 
 class AIRecommendationEngine:
     """AI-powered recommendation engine for smartphones"""
 
     def __init__(self):
-        self.min_match_threshold = 30  # Minimum match percentage to recommend (lowered for better results)
+        self.min_match_threshold = 50  # Minimum match percentage to recommend
 
     def get_recommendations(self, user_id, criteria=None, top_n=3):
         """
@@ -42,60 +42,13 @@ class AIRecommendationEngine:
             user_prefs = self._create_default_preferences(user_id)
 
         # Get all active phones with their specifications
-        phones_query = Phone.query.filter_by(is_active=True)
+        query = Phone.query.filter_by(is_active=True)
 
-        # Filter by preferred brands if specified
-        if user_prefs.preferred_brands:
-            # Handle both JSON string and list
-            preferred_brands = user_prefs.preferred_brands
-            if isinstance(preferred_brands, str):
-                try:
-                    import json
-                    preferred_brands = json.loads(preferred_brands)
-                except:
-                    preferred_brands = []
+        # Filter by brand if specified in criteria
+        if criteria and 'brand_ids' in criteria:
+            query = query.filter(Phone.brand_id.in_(criteria['brand_ids']))
 
-            # Debug logging
-            print(f"DEBUG: preferred_brands type: {type(preferred_brands)}, value: {preferred_brands}")
-
-            # Only filter if brands are actually specified
-            if preferred_brands and len(preferred_brands) > 0:
-                from app.models import Brand
-                brand_ids = []
-
-                for brand_value in preferred_brands:
-                    # Check if it's an ID (number/string of number) or a name
-                    try:
-                        # Try to convert to integer (it's a brand ID)
-                        brand_id = int(brand_value)
-                        # Verify the brand exists and is active
-                        brand = Brand.query.filter_by(id=brand_id, is_active=True).first()
-                        if brand:
-                            brand_ids.append(brand_id)
-                            print(f"DEBUG: Found brand ID {brand_id} -> '{brand.name}'")
-                        else:
-                            print(f"DEBUG: Brand ID {brand_id} NOT FOUND or inactive")
-                    except (ValueError, TypeError):
-                        # It's a brand name, do case-insensitive lookup
-                        from sqlalchemy import func
-                        brand = Brand.query.filter(
-                            func.upper(Brand.name) == func.upper(str(brand_value)),
-                            Brand.is_active == True
-                        ).first()
-                        if brand:
-                            brand_ids.append(brand.id)
-                            print(f"DEBUG: Found brand name '{brand_value}' with ID {brand.id}")
-                        else:
-                            print(f"DEBUG: Brand name '{brand_value}' NOT FOUND in database")
-
-                # Filter phones by brand IDs
-                if brand_ids:
-                    print(f"DEBUG: Filtering phones by brand IDs: {brand_ids}")
-                    phones_query = phones_query.filter(Phone.brand_id.in_(brand_ids))
-                else:
-                    print("DEBUG: No valid brand IDs found, not filtering by brand")
-
-        phones = phones_query.all()
+        phones = query.all()
 
         # Calculate match scores for each phone
         recommendations = []
@@ -121,40 +74,6 @@ class AIRecommendationEngine:
         # Sort by match score (descending)
         recommendations.sort(key=lambda x: x['match_score'], reverse=True)
 
-        # If multiple brands selected, get top phone from each brand
-        if user_prefs.preferred_brands:
-            preferred_brands = user_prefs.preferred_brands
-            if isinstance(preferred_brands, str):
-                try:
-                    import json
-                    preferred_brands = json.loads(preferred_brands)
-                except:
-                    preferred_brands = []
-
-            if preferred_brands and len(preferred_brands) > 1:
-                # Group recommendations by brand
-                brand_groups = {}
-                for rec in recommendations:
-                    brand_id = rec['phone'].brand_id
-                    if brand_id not in brand_groups:
-                        brand_groups[brand_id] = []
-                    brand_groups[brand_id].append(rec)
-
-                # Get top phone from each brand
-                top_per_brand = []
-                for brand_id, brand_recs in brand_groups.items():
-                    top_per_brand.append(brand_recs[0])  # Already sorted by score
-
-                # Sort combined results by match score
-                top_per_brand.sort(key=lambda x: x['match_score'], reverse=True)
-
-                # Save and return top phones from each brand
-                if not criteria and user_prefs and hasattr(user_prefs, 'user_id'):
-                    self._save_recommendations(user_id, top_per_brand[:top_n], user_prefs)
-
-                print(f"DEBUG: Returning top phone from each of {len(brand_groups)} brands")
-                return top_per_brand[:top_n]
-
         # Save recommendations to database if using actual user preferences
         if not criteria and user_prefs and hasattr(user_prefs, 'user_id'):
             self._save_recommendations(user_id, recommendations[:top_n], user_prefs)
@@ -162,33 +81,23 @@ class AIRecommendationEngine:
         return recommendations[:top_n]
 
     def _create_temp_preferences(self, criteria):
-        """
-        Create temporary preference object from criteria dictionary
-        Only uses values explicitly provided by user (no defaults)
-        """
+        """Create temporary preference object from criteria dictionary"""
         class TempPreference:
             pass
 
         prefs = TempPreference()
-        # Budget - use provided values or None
-        prefs.min_budget = criteria.get('min_budget', None)
-        prefs.max_budget = criteria.get('max_budget', None)
-
-        # Specifications - use provided values or None for flexible matching
-        prefs.min_ram = criteria.get('min_ram', None)
-        prefs.min_storage = criteria.get('min_storage', None)
-        prefs.min_camera = criteria.get('min_camera', None)
-        prefs.min_battery = criteria.get('min_battery', None)
+        prefs.min_budget = criteria.get('min_budget', 500)
+        prefs.max_budget = criteria.get('max_budget', 5000)
+        prefs.min_ram = criteria.get('min_ram', 4)
+        prefs.min_storage = criteria.get('min_storage', 64)
+        prefs.min_camera = criteria.get('min_camera', 12)
+        prefs.min_battery = criteria.get('min_battery', 3000)
         prefs.requires_5g = criteria.get('requires_5g', False)
-
-        # Screen size - use provided values or None
-        prefs.min_screen_size = criteria.get('min_screen_size', None)
-        prefs.max_screen_size = criteria.get('max_screen_size', None)
-
-        # Usage and features - use provided values (strings/lists)
-        prefs.primary_usage = criteria.get('primary_usage', None)  # String like 'Gaming'
-        prefs.important_features = criteria.get('important_features', [])  # List like ['Battery', 'Camera']
-        prefs.preferred_brands = criteria.get('preferred_brands', [])
+        prefs.min_screen_size = criteria.get('min_screen_size', 5.5)
+        prefs.max_screen_size = criteria.get('max_screen_size', 7.0)
+        prefs.primary_usage = criteria.get('primary_usage', '[]')
+        prefs.important_features = criteria.get('important_features', '[]')
+        prefs.preferred_brands = criteria.get('preferred_brands', '[]')
 
         return prefs
 
@@ -237,15 +146,21 @@ class AIRecommendationEngine:
 
         db.session.commit()
 
-    def get_budget_recommendations(self, budget_range, top_n=5):
+    def get_budget_recommendations(self, budget_range, brand_ids=None, top_n=5):
         """Get top phones within a specific budget range"""
         min_price, max_price = budget_range
 
-        phones = Phone.query.filter(
+        query = Phone.query.filter(
             Phone.is_active == True,
             Phone.price >= min_price,
             Phone.price <= max_price
-        ).order_by(Phone.price.desc()).limit(top_n).all()
+        )
+
+        # Filter by brand if specified
+        if brand_ids:
+            query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.order_by(Phone.price.desc()).limit(top_n).all()
 
         results = []
         for phone in phones:
@@ -257,9 +172,13 @@ class AIRecommendationEngine:
 
         return results
 
-    def get_phones_by_usage(self, usage_type, budget_range=None, top_n=5):
+    def get_phones_by_usage(self, usage_type, budget_range=None, brand_ids=None, top_n=5):
         """Get phones optimized for specific usage types"""
         query = Phone.query.filter_by(is_active=True)
+
+        # Filter by brand if specified
+        if brand_ids:
+            query = query.filter(Phone.brand_id.in_(brand_ids))
 
         if budget_range:
             min_price, max_price = budget_range
@@ -278,7 +197,7 @@ class AIRecommendationEngine:
             # Score based on usage type
             if usage_type == 'Gaming':
                 # High RAM, good processor, high refresh rate
-                ram_values = parse_memory_values(specs.ram_options)
+                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
                 if ram_values:
                     score += max(ram_values) * 10
                 score += (specs.refresh_rate or 60) / 10
@@ -292,7 +211,7 @@ class AIRecommendationEngine:
             elif usage_type == 'Business' or usage_type == 'Work':
                 # Good battery, decent specs
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
-                ram_values = parse_memory_values(specs.ram_options)
+                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
                 if ram_values:
                     score += max(ram_values) * 5
 
