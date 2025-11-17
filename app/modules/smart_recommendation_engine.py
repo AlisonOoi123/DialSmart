@@ -15,6 +15,47 @@ class SmartRecommendationEngine:
     def __init__(self):
         pass
 
+    def _apply_brand_filter(self, query, brand_name):
+        """
+        Helper method to apply brand filter to a query
+        Supports both single brand (string) and multiple brands (list)
+
+        Args:
+            query: SQLAlchemy query object
+            brand_name: String (single brand) or List (multiple brands) or None
+
+        Returns:
+            Modified query with brand filter applied
+        """
+        if not brand_name:
+            return query
+
+        # Convert single brand to list for uniform handling
+        brand_names = [brand_name] if isinstance(brand_name, str) else brand_name
+
+        # Get brand IDs for all requested brands
+        brand_ids = []
+        found_brands = []
+        for name in brand_names:
+            brand = Brand.query.filter(func.lower(Brand.name) == name.lower()).first()
+            if brand:
+                brand_ids.append(brand.id)
+                found_brands.append(brand.name)
+
+        if brand_ids:
+            if len(brand_ids) == 1:
+                # Single brand - use exact match
+                print(f"DEBUG: Brand filter applied - {found_brands[0]} (ID: {brand_ids[0]})")
+                query = query.filter(Phone.brand_id == brand_ids[0])
+            else:
+                # Multiple brands - use IN clause
+                print(f"DEBUG: Multi-brand filter applied - {', '.join(found_brands)} (IDs: {brand_ids})")
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+        else:
+            print(f"WARNING: Brand(s) '{brand_names}' not found in database. Showing all brands.")
+
+        return query
+
     def get_phones_by_budget(self, min_budget=None, max_budget=None, limit=10):
         """
         Get phones within budget range
@@ -51,28 +92,20 @@ class SmartRecommendationEngine:
 
     def get_phones_by_brand(self, brand_name, budget=None, limit=10):
         """
-        Get phones by brand
+        Get phones by brand (supports multiple brands via list)
 
         Args:
-            brand_name: Brand name
+            brand_name: Brand name (string) or list of brand names
             budget: Optional budget tuple (min, max)
             limit: Maximum results
 
         Returns:
             List of phones
         """
-        brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
+        query = Phone.query.filter(Phone.is_active == True)
 
-        if not brand:
-            print(f"WARNING: Brand '{brand_name}' not found in database.")
-            return []
-
-        print(f"DEBUG: get_phones_by_brand - Brand filter applied: {brand.name} (ID: {brand.id})")
-
-        query = Phone.query.filter(
-            Phone.brand_id == brand.id,
-            Phone.is_active == True
-        )
+        # Apply brand filter using helper method
+        query = self._apply_brand_filter(query, brand_name)
 
         # Apply budget filter if provided
         if budget:
@@ -81,12 +114,16 @@ class SmartRecommendationEngine:
 
         phones = query.order_by(Phone.price.desc()).limit(limit).all()
 
+        # Get brand names for reason text
+        brand_names = [brand_name] if isinstance(brand_name, str) else brand_name
+        brand_text = ' or '.join(brand_names) if isinstance(brand_names, list) else brand_name
+
         results = []
         for phone in phones:
             results.append({
                 'phone': phone,
                 'score': self._calculate_value_score(phone),
-                'reason': f"Popular {brand.name} model with great features"
+                'reason': f"Popular {brand_text} model with great features"
             })
 
         return results
@@ -98,7 +135,7 @@ class SmartRecommendationEngine:
         Args:
             usage_type: Usage type (Gaming, Photography, Business, etc.)
             budget: Optional budget tuple (min, max)
-            brand_name: Optional brand name filter
+            brand_name: Optional brand name filter (string or list)
             limit: Maximum results
 
         Returns:
@@ -106,15 +143,8 @@ class SmartRecommendationEngine:
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
-        # Apply brand filter if provided
-        if brand_name:
-            # Try exact match first (case-insensitive)
-            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
-            if brand:
-                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
-                query = query.filter(Phone.brand_id == brand.id)
-            else:
-                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
+        # Apply brand filter using helper method
+        query = self._apply_brand_filter(query, brand_name)
 
         # Apply budget filter if provided
         if budget:
@@ -191,7 +221,7 @@ class SmartRecommendationEngine:
         Args:
             feature: Feature to filter by
             budget: Optional budget tuple
-            brand_name: Optional brand name filter
+            brand_name: Optional brand name filter (string or list)
             limit: Maximum results
 
         Returns:
@@ -199,14 +229,8 @@ class SmartRecommendationEngine:
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
-        # Apply brand filter
-        if brand_name:
-            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
-            if brand:
-                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
-                query = query.filter(Phone.brand_id == brand.id)
-            else:
-                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
+        # Apply brand filter using helper method
+        query = self._apply_brand_filter(query, brand_name)
 
         # Apply budget filter
         if budget:
@@ -255,7 +279,7 @@ class SmartRecommendationEngine:
         Args:
             camera_spec: Camera specification to filter by
             budget: Optional budget tuple
-            brand_name: Optional brand name filter
+            brand_name: Optional brand name filter (string or list)
             limit: Maximum results
 
         Returns:
@@ -263,14 +287,8 @@ class SmartRecommendationEngine:
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
-        # Apply brand filter
-        if brand_name:
-            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
-            if brand:
-                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
-                query = query.filter(Phone.brand_id == brand.id)
-            else:
-                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
+        # Apply brand filter using helper method
+        query = self._apply_brand_filter(query, brand_name)
 
         # Apply budget filter
         if budget:
@@ -306,7 +324,7 @@ class SmartRecommendationEngine:
 
         Args:
             budget: Optional budget tuple
-            brand_name: Optional brand name filter
+            brand_name: Optional brand name filter (string or list)
             limit: Maximum results
 
         Returns:
@@ -314,14 +332,8 @@ class SmartRecommendationEngine:
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
-        # Apply brand filter
-        if brand_name:
-            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
-            if brand:
-                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
-                query = query.filter(Phone.brand_id == brand.id)
-            else:
-                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
+        # Apply brand filter using helper method
+        query = self._apply_brand_filter(query, brand_name)
 
         # Apply budget filter
         if budget:
@@ -358,7 +370,7 @@ class SmartRecommendationEngine:
 
         Args:
             budget: Optional budget tuple
-            brand_name: Optional brand name filter
+            brand_name: Optional brand name filter (string or list)
             limit: Maximum results
 
         Returns:
@@ -366,14 +378,8 @@ class SmartRecommendationEngine:
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
-        # Apply brand filter
-        if brand_name:
-            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
-            if brand:
-                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
-                query = query.filter(Phone.brand_id == brand.id)
-            else:
-                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
+        # Apply brand filter using helper method
+        query = self._apply_brand_filter(query, brand_name)
 
         # Apply budget filter
         if budget:
@@ -402,7 +408,7 @@ class SmartRecommendationEngine:
         Args:
             display_spec: Display specification to filter by
             budget: Optional budget tuple
-            brand_name: Optional brand name filter
+            brand_name: Optional brand name filter (string or list)
             limit: Maximum results
 
         Returns:
@@ -410,14 +416,8 @@ class SmartRecommendationEngine:
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
-        # Apply brand filter
-        if brand_name:
-            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
-            if brand:
-                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
-                query = query.filter(Phone.brand_id == brand.id)
-            else:
-                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
+        # Apply brand filter using helper method
+        query = self._apply_brand_filter(query, brand_name)
 
         # Apply budget filter
         if budget:
@@ -456,7 +456,7 @@ class SmartRecommendationEngine:
         Args:
             storage_spec: Storage specification
             budget: Optional budget tuple
-            brand_name: Optional brand name filter
+            brand_name: Optional brand name filter (string or list)
             limit: Maximum results
 
         Returns:
@@ -464,14 +464,8 @@ class SmartRecommendationEngine:
         """
         query = Phone.query.join(PhoneSpecification).filter(Phone.is_active == True)
 
-        # Apply brand filter
-        if brand_name:
-            brand = Brand.query.filter(func.lower(Brand.name) == brand_name.lower()).first()
-            if brand:
-                print(f"DEBUG: Brand filter applied - {brand.name} (ID: {brand.id})")
-                query = query.filter(Phone.brand_id == brand.id)
-            else:
-                print(f"WARNING: Brand '{brand_name}' not found in database. Showing all brands.")
+        # Apply brand filter using helper method
+        query = self._apply_brand_filter(query, brand_name)
 
         # Apply budget filter
         if budget:
