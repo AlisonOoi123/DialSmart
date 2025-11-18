@@ -2,11 +2,12 @@
 Authentication Routes
 Handles user registration, login, and logout
 """
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models import User
 from app.utils.helpers import validate_password
+from app.utils.email import send_verification_email, send_password_reset_email, is_token_expired
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -57,7 +58,20 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        flash('Registration successful! Please login.', 'success')
+        # Send verification email if enabled
+        if current_app.config.get('EMAIL_VERIFICATION_REQUIRED'):
+            success, message = send_verification_email(user)
+            if success:
+                db.session.commit()  # Save verification token
+                flash('Registration successful! Please check your email to verify your account.', 'success')
+            else:
+                flash('Registration successful! However, we could not send the verification email. You can still login.', 'warning')
+        else:
+            # Auto-verify if email verification is disabled
+            user.email_verified = True
+            db.session.commit()
+            flash('Registration successful! Please login.', 'success')
+
         return redirect(url_for('auth.login'))
 
     return render_template('auth/register.html')
@@ -170,15 +184,132 @@ def register_admin():
 
 @bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
-    """Forgot password page"""
+    """Forgot password page - verifies email and sends reset link"""
+    if current_user.is_authenticated:
+        return redirect(url_for('user.dashboard'))
+
+    if request.method == 'POST':
+        email = request.form.get('email')
+
+        # Check if email exists
+        user = User.query.filter_by(email=email).first()
+
+        if not user:
+            # Email not registered - ask user to register
+            flash('This email is not registered. Please register for an account first.', 'warning')
+            return redirect(url_for('auth.register'))
+
+        # Email exists - send password reset email
+        success, message = send_password_reset_email(user)
+
+        if success:
+            db.session.commit()  # Save reset token
+            flash('Password reset instructions have been sent to your email. Please check your inbox.', 'success')
+        else:
+            current_app.logger.error(f"Failed to send reset email: {message}")
+            flash('An error occurred while sending the reset email. Please try again later.', 'danger')
+
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/forgot_password.html')
+
+@bp.route('/verify-email/<token>')
+def verify_email(token):
+    """Verify user email with token"""
+    user = User.query.filter_by(email_verification_token=token).first()
+
+    if not user:
+        flash('Invalid verification link.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    # Check if token expired
+    expiry_seconds = current_app.config.get('EMAIL_VERIFICATION_TOKEN_EXPIRY', 24 * 3600)
+    if is_token_expired(user.email_verification_sent_at, expiry_seconds):
+        flash('Verification link has expired. Please request a new one.', 'warning')
+        return redirect(url_for('auth.resend_verification', email=user.email))
+
+    # Verify the email
+    user.email_verified = True
+    user.email_verification_token = None
+    user.email_verification_sent_at = None
+    db.session.commit()
+
+    flash('Email verified successfully! You can now login.', 'success')
+    return redirect(url_for('auth.login'))
+
+@bp.route('/resend-verification', methods=['GET', 'POST'])
+def resend_verification():
+    """Resend verification email"""
     if request.method == 'POST':
         email = request.form.get('email')
         user = User.query.filter_by(email=email).first()
 
-        if user:
-            # In production, send password reset email
-            flash('Password reset instructions have been sent to your email.', 'info')
-        else:
-            flash('Email not found.', 'warning')
+        if not user:
+            flash('Email not found.', 'danger')
+            return render_template('auth/resend_verification.html')
 
-    return render_template('auth/forgot_password.html')
+        if user.email_verified:
+            flash('Your email is already verified. Please login.', 'info')
+            return redirect(url_for('auth.login'))
+
+        # Resend verification email
+        success, message = send_verification_email(user)
+        if success:
+            db.session.commit()
+            flash('Verification email sent! Please check your inbox.', 'success')
+        else:
+            flash(f'Failed to send verification email. {message}', 'danger')
+
+        return redirect(url_for('auth.login'))
+
+    # GET request - show form
+    email = request.args.get('email', '')
+    return render_template('auth/resend_verification.html', email=email)
+
+@bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Reset password with token"""
+    if current_user.is_authenticated:
+        return redirect(url_for('user.dashboard'))
+
+    # Find user with this reset token
+    user = User.query.filter_by(password_reset_token=token).first()
+
+    if not user:
+        flash('Invalid or expired password reset link.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    # Check if token expired (1 hour = 3600 seconds)
+    if is_token_expired(user.password_reset_sent_at, 3600):
+        flash('Password reset link has expired. Please request a new one.', 'warning')
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Validation
+        if not new_password or not confirm_password:
+            flash('Both password fields are required.', 'danger')
+            return render_template('auth/reset_password.html', token=token)
+
+        if new_password != confirm_password:
+            flash('Passwords do not match.', 'danger')
+            return render_template('auth/reset_password.html', token=token)
+
+        # Validate password strength
+        is_valid, error_message = validate_password(new_password)
+        if not is_valid:
+            flash(error_message, 'danger')
+            return render_template('auth/reset_password.html', token=token)
+
+        # Reset the password
+        user.set_password(new_password)
+        user.password_reset_token = None
+        user.password_reset_sent_at = None
+        db.session.commit()
+
+        flash('Password reset successful! You can now login with your new password.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/reset_password.html', token=token)
