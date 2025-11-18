@@ -4,8 +4,7 @@ RESTful API endpoints for AJAX requests and chatbot
 """
 from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
-from app import db
-from app.models import Phone, PhoneSpecification, Brand, Comparison
+from app.models import Phone, PhoneSpecification, Brand
 from app.modules import ChatbotEngine, AIRecommendationEngine
 import uuid
 
@@ -13,8 +12,9 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Chatbot endpoints
 @bp.route('/chat', methods=['POST'])
+@login_required
 def chat():
-    """Process chatbot message - available to all users"""
+    """Process chatbot message"""
     try:
         data = request.get_json()
         message = data.get('message', '')
@@ -23,12 +23,9 @@ def chat():
         if not message:
             return jsonify({'error': 'Message is required'}), 400
 
-        # Get user ID if authenticated, otherwise use session ID
-        user_id = current_user.id if current_user.is_authenticated else session_id
-
         # Process with chatbot engine
         chatbot = ChatbotEngine()
-        response = chatbot.process_message(user_id, message, session_id)
+        response = chatbot.process_message(current_user.id, message, session_id)
 
         return jsonify({
             'success': True,
@@ -39,13 +36,13 @@ def chat():
             'session_id': session_id
         })
     except Exception as e:
-        print(f"Chatbot error: {e}")
+        current_app.logger.error(f"Chatbot error: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({
             'success': False,
-            'error': str(e),
-            'response': "I'm having trouble processing your request. Please try asking in a different way."
+            'error': 'Failed to process message',
+            'message': str(e)
         }), 500
 
 @bp.route('/chat/history', methods=['GET'])
@@ -279,67 +276,3 @@ def get_stats():
             'max_price': max(prices) if prices else 0
         }
     })
-
-# Comparison endpoints
-@bp.route('/comparison/save', methods=['POST'])
-@login_required
-def save_comparison():
-    """Save a phone comparison"""
-    try:
-        data = request.get_json()
-        phone1_id = data.get('phone1_id')
-        phone2_id = data.get('phone2_id')
-
-        if not phone1_id or not phone2_id:
-            return jsonify({
-                'success': False,
-                'error': 'Both phone IDs are required'
-            }), 400
-
-        # Check if phones exist
-        phone1 = Phone.query.get(phone1_id)
-        phone2 = Phone.query.get(phone2_id)
-
-        if not phone1 or not phone2:
-            return jsonify({
-                'success': False,
-                'error': 'One or both phones not found'
-            }), 404
-
-        # Check if comparison already exists
-        existing = Comparison.query.filter_by(
-            user_id=current_user.id,
-            phone1_id=phone1_id,
-            phone2_id=phone2_id
-        ).first()
-
-        if existing:
-            existing.is_saved = True
-            db.session.commit()
-            message = 'Comparison updated successfully!'
-        else:
-            # Create new comparison
-            comparison = Comparison(
-                user_id=current_user.id,
-                phone1_id=phone1_id,
-                phone2_id=phone2_id,
-                is_saved=True
-            )
-            db.session.add(comparison)
-            db.session.commit()
-            message = 'Comparison saved successfully!'
-
-        return jsonify({
-            'success': True,
-            'message': message
-        })
-
-    except Exception as e:
-        print(f"Error saving comparison: {e}")
-        import traceback
-        traceback.print_exc()
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'error': 'Failed to save comparison'
-        }), 500
