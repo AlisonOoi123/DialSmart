@@ -156,6 +156,15 @@ def send_admin_reply_email(user_email, user_name, reply_message, original_messag
         return False, f"Failed to send email: {str(e)}"
 
 
+# Alias for backward compatibility
+def send_contact_reply(user_email, user_name, reply_message, original_message=None):
+    """
+    Alias for send_admin_reply_email for backward compatibility
+    Send admin reply to user contact message via email
+    """
+    return send_admin_reply_email(user_email, user_name, reply_message, original_message)
+
+
 def send_password_reset_email(user):
     """Send password reset email to user with token generation"""
     try:
