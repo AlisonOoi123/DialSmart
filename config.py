@@ -12,8 +12,19 @@ class Config:
 
     # Database settings
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+    # Oracle Database configuration (default)
+    # Format: oracle+cx_oracle://username:password@host:port/?service_name=service_name
+    ORACLE_USER = os.environ.get('ORACLE_USER') or 'ds_user'
+    ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD') or 'dsuser123'
+    ORACLE_HOST = os.environ.get('ORACLE_HOST') or 'localhost'
+    ORACLE_PORT = os.environ.get('ORACLE_PORT') or '1521'
+    ORACLE_SERVICE = os.environ.get('ORACLE_SERVICE') or 'orclpdb'
+
+    # Build Oracle connection string
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(BASE_DIR, 'dialsmart.db')
+        f'oracle+cx_oracle://{ORACLE_USER}:{ORACLE_PASSWORD}@{ORACLE_HOST}:{ORACLE_PORT}/?service_name={ORACLE_SERVICE}'
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Session settings
