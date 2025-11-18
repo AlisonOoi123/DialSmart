@@ -254,65 +254,8 @@ class ChatbotEngine:
                         }
                     }
 
-            # Fall back to usage-based or general recommendations if no features detected
-            if usage:
-                # If usage type is detected, use get_phones_by_usage which supports brand filtering
-                phones = self.ai_engine.get_phones_by_usage(usage, budget, brands, top_n=5)
-
-                if phones:
-                    budget_text = ""
-                    if budget:
-                        min_b, max_b = budget
-                        budget_text = f" within RM{min_b:,.0f} - RM{max_b:,.0f}"
-
-                    brand_text = ""
-                    if brands:
-                        if len(brands) == 1:
-                            brand_text = f" from {brands[0]}"
-                        else:
-                            brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}"
-                            brand_text = f" from {brands_list}"
-
-                    response = f"Great choice! Here are the best phones for {usage}{brand_text}{budget_text}: 📱\n\n"
-                    phone_list = []
-
-                    for item in phones:
-                        phone = item['phone']
-                        specs = item.get('specifications')
-
-                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
-
-                        # Add RAM and storage info if available
-                        if specs and specs.ram_options:
-                            response += f"   {specs.ram_options} RAM"
-                            if specs.storage_options:
-                                response += f" - {specs.storage_options} Storage"
-                            response += f" - Great for {usage.lower()}\n"
-
-                        response += "\n"
-
-                        phone_list.append({
-                            'id': phone.id,
-                            'name': phone.model_name,
-                            'brand': phone.brand.name,
-                            'price': phone.price,
-                            'image': phone.main_image,
-                            'ram': specs.ram_options if specs else None,
-                            'storage': specs.storage_options if specs else None
-                        })
-
-                    return {
-                        'response': response,
-                        'type': 'recommendation',
-                        'metadata': {
-                            'phones': phone_list,
-                            'usage': usage,
-                            'budget': budget,
-                            'brands': brands
-                        }
-                    }
-            elif criteria or budget:
-                # No usage type but has criteria or budget
+            # Fall back to general recommendations if no features detected
+            if criteria or budget or usage:
                 recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=5)
 
                 if recommendations:
@@ -349,7 +292,7 @@ class ChatbotEngine:
                     category_name = "students"
                     intro = "Perfect! Here are the best value phones for students - great performance for studying and entertainment:"
                 elif user_category == 'senior':
-                    budget = budget or (800, 2000)  # Increased range to ensure phones are available
+                    budget = budget or (500, 1500)
                     category_name = "seniors"
                     intro = "Great! Here are user-friendly phones for seniors - simple to use with excellent battery life:"
                 elif user_category == 'professional':
@@ -362,20 +305,14 @@ class ChatbotEngine:
                     intro = f"Here are the best phones for {category_name}:"
 
                 # Get recommendations based on user category
-                try:
-                    phones = self.ai_engine.get_phones_by_features(
-                        features=[],  # No specific features, let category scoring decide
-                        budget_range=budget,
-                        usage_type=usage,
-                        brand_names=brands,
-                        user_category=user_category,
-                        top_n=5
-                    )
-                except Exception as e:
-                    # Log error and return fallback
-                    import traceback
-                    traceback.print_exc()
-                    phones = []
+                phones = self.ai_engine.get_phones_by_features(
+                    features=[],  # No specific features, let category scoring decide
+                    budget_range=budget,
+                    usage_type=usage,
+                    brand_names=brands,
+                    user_category=user_category,
+                    top_n=5
+                )
 
                 if phones:
                     budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
@@ -440,14 +377,6 @@ class ChatbotEngine:
                             'user_category': user_category,
                             'budget': budget
                         }
-                    }
-                else:
-                    # No phones found for this category - provide helpful fallback
-                    budget_text = f"RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
-                    return {
-                        'response': f"I couldn't find phones specifically for {category_name} within {budget_text}. Let me show you our available phones. What's your preferred budget range?",
-                        'type': 'text',
-                        'quick_replies': ['Under RM1000', 'RM1000-RM2000', 'RM2000-RM3000', 'Above RM3000']
                     }
             # END NEW CODE
 
