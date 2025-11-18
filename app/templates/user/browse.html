@@ -38,13 +38,37 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">&nbsp;</label>
-                            <button type="submit" class="btn btn-primary w-100">Filter</button>
+                            <button type="submit" class="btn btn-primary w-100" onclick="return validatePriceRange()">Filter</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+    function validatePriceRange() {
+        const minPrice = document.querySelector('input[name="min_price"]').value;
+        const maxPrice = document.querySelector('input[name="max_price"]').value;
+
+        if (minPrice && maxPrice) {
+            const min = parseInt(minPrice);
+            const max = parseInt(maxPrice);
+
+            if (min > max) {
+                alert('⚠️ Warning: Minimum price (RM' + min + ') cannot be greater than maximum price (RM' + max + ').\n\nPlease adjust your price range.');
+                return false;
+            }
+
+            if (min < 0 || max < 0) {
+                alert('⚠️ Warning: Price values cannot be negative.');
+                return false;
+            }
+        }
+
+        return true;
+    }
+    </script>
 
     <div class="row">
         {% for phone in phones.items %}
