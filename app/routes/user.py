@@ -9,6 +9,7 @@ from app.models import Brand, Phone, PhoneSpecification, UserPreference, Recomme
 from app.modules import AIRecommendationEngine
 from app.utils.helpers import parse_json_field, validate_password
 import json
+from datetime import datetime
 
 bp = Blueprint('user', __name__)
 
@@ -258,7 +259,10 @@ def contact():
             name=name,
             email=email,
             subject=subject,
-            message=message
+            message=message,
+            is_read=0,  # Oracle uses 0/1 instead of False/True
+            is_replied=0,
+            created_at=datetime.utcnow()
         )
 
         try:

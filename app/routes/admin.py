@@ -75,8 +75,10 @@ def dashboard():
     ).order_by(phone_counts_subquery.c.recommendation_count.desc())\
      .all()
 
-    # Get unread contact messages count
-    unread_messages = ContactMessage.query.filter_by(is_read=False).count()
+    # Get unread contact messages count (Oracle uses 0 for false, 1 for true)
+    unread_messages = ContactMessage.query.filter(
+        (ContactMessage.is_read == 0) | (ContactMessage.is_read == None)
+    ).count()
 
     return render_template('admin/dashboard.html',
                          total_users=total_users,
@@ -472,20 +474,25 @@ def messages():
 
     query = ContactMessage.query
 
+    # Oracle uses 0 for false, 1 for true
     if filter_type == 'unread':
-        query = query.filter_by(is_read=False)
+        query = query.filter((ContactMessage.is_read == 0) | (ContactMessage.is_read == None))
     elif filter_type == 'replied':
-        query = query.filter_by(is_replied=True)
+        query = query.filter(ContactMessage.is_replied == 1)
     elif filter_type == 'pending':
-        query = query.filter_by(is_replied=False)
+        query = query.filter((ContactMessage.is_replied == 0) | (ContactMessage.is_replied == None))
 
     messages = query.order_by(ContactMessage.created_at.desc())\
         .paginate(page=page, per_page=20, error_out=False)
 
     # Get counts for filters
     total_count = ContactMessage.query.count()
-    unread_count = ContactMessage.query.filter_by(is_read=False).count()
-    pending_count = ContactMessage.query.filter_by(is_replied=False).count()
+    unread_count = ContactMessage.query.filter(
+        (ContactMessage.is_read == 0) | (ContactMessage.is_read == None)
+    ).count()
+    pending_count = ContactMessage.query.filter(
+        (ContactMessage.is_replied == 0) | (ContactMessage.is_replied == None)
+    ).count()
 
     return render_template('admin/messages.html',
                          messages=messages,
