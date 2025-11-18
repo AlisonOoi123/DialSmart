@@ -154,6 +154,11 @@ def recommendation_history():
 @bp.route('/recommendation/wizard', methods=['GET', 'POST'])
 def recommendation_wizard():
     """Multi-step recommendation wizard"""
+
+    user_prefs = None
+    if current_user.is_authenticated:
+        user_prefs = UserPreference.query.filter_by(user_id=current_user.id).first()
+
     if request.method == 'POST':
         # Process wizard form
         criteria = {
@@ -162,14 +167,14 @@ def recommendation_wizard():
             'primary_usage': request.form.getlist('primary_usage'),
             'important_features': request.form.getlist('important_features'),
             'preferred_brands': request.form.getlist('preferred_brands'),
-            # Add reasonable defaults for specs not collected by wizard
-            'min_ram': 4,  # 4GB minimum
-            'min_storage': 64,  # 64GB minimum
-            'min_camera': 12,  # 12MP minimum
-            'min_battery': 3000,  # 3000mAh minimum
+            # Use user preferences or reasonable defaults for specs not collected by wizard
+            'min_ram': user_prefs.min_ram if user_prefs else 4,
+            'min_storage': user_prefs.min_storage if user_prefs else 64,
+            'min_camera': user_prefs.min_camera if user_prefs else 12,
+            'min_battery': user_prefs.min_battery if user_prefs else 3000,
             'requires_5g': '5G' in request.form.getlist('important_features'),  # Check if 5G was selected
-            'min_screen_size': 5.5,
-            'max_screen_size': 7.0
+            'min_screen_size': user_prefs.min_screen_size if user_prefs else 5.5,
+            'max_screen_size': user_prefs.max_screen_size if user_prefs else 7.0
         }
 
         # Get AI recommendations
@@ -200,7 +205,7 @@ def recommendation_wizard():
     # Get brands for wizard
     brands = Brand.query.filter_by(is_active=True).all()
 
-    return render_template('user/wizard.html', brands=brands)
+    return render_template('user/wizard.html', brands=brands, preferences=user_prefs)
 
 @bp.route('/browse')
 def browse():
