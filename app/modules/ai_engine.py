@@ -31,28 +31,6 @@ class AIRecommendationEngine:
         except (ValueError, AttributeError):
             return []
 
-    def _extract_storage_values(self, storage_string):
-        """
-        Safely extract storage values from string, handling various formats
-        Examples: "128GB", "128 / 256 GB", "256GB, 512GB", "1TB"
-        Returns list of integers (in GB)
-        """
-        if not storage_string:
-            return []
-
-        import re
-        # Find all numbers that appear before GB
-        gb_matches = re.findall(r'(\d+)\s*(?:GB|gb)', str(storage_string))
-        # Find all numbers that appear before TB and convert to GB
-        tb_matches = re.findall(r'(\d+)\s*(?:TB|tb)', str(storage_string))
-
-        try:
-            values = [int(m) for m in gb_matches]
-            values.extend([int(m) * 1024 for m in tb_matches])  # Convert TB to GB
-            return values
-        except (ValueError, AttributeError):
-            return []
-
     def get_recommendations(self, user_id, criteria=None, top_n=3):
         """
         Get top N phone recommendations for a user
