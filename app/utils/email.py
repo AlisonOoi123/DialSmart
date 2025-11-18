@@ -79,8 +79,16 @@ def send_verification_email(user):
         return True, "Verification email sent successfully"
 
     except Exception as e:
-        current_app.logger.error(f"Failed to send verification email: {str(e)}")
-        return False, f"Failed to send verification email: {str(e)}"
+        error_msg = str(e)
+        current_app.logger.error(f"Failed to send verification email: {error_msg}")
+
+        # Provide helpful error messages
+        if "530" in error_msg or "Authentication Required" in error_msg:
+            return False, f"Failed to send email: Gmail authentication failed. You need to use a Gmail App Password (not your regular password). Visit https://myaccount.google.com/apppasswords to generate one, then update MAIL_USERNAME and MAIL_PASSWORD in your .env file."
+        elif "MAIL_USERNAME" in error_msg or "MAIL_PASSWORD" in error_msg:
+            return False, f"Failed to send email: Email not configured. Please set MAIL_USERNAME and MAIL_PASSWORD in your .env file."
+        else:
+            return False, f"Failed to send verification email: {error_msg}"
 
 
 def send_admin_reply_email(user_email, user_name, reply_message, original_message=None):
@@ -152,8 +160,16 @@ def send_admin_reply_email(user_email, user_name, reply_message, original_messag
         return True, "Reply sent successfully via email"
 
     except Exception as e:
-        current_app.logger.error(f"Failed to send admin reply email: {str(e)}")
-        return False, f"Failed to send email: {str(e)}"
+        error_msg = str(e)
+        current_app.logger.error(f"Failed to send admin reply email: {error_msg}")
+
+        # Provide helpful error messages
+        if "530" in error_msg or "Authentication Required" in error_msg:
+            return False, f"Failed to send email: Gmail authentication failed. You need to use a Gmail App Password (not your regular password). Visit https://myaccount.google.com/apppasswords to generate one, then update MAIL_USERNAME and MAIL_PASSWORD in your .env file."
+        elif "MAIL_USERNAME" in error_msg or "MAIL_PASSWORD" in error_msg:
+            return False, f"Failed to send email: Email not configured. Please set MAIL_USERNAME and MAIL_PASSWORD in your .env file."
+        else:
+            return False, f"Failed to send email: {error_msg}"
 
 
 # Alias for backward compatibility
@@ -238,8 +254,16 @@ def send_password_reset_email(user):
         return True, "Password reset email sent successfully"
 
     except Exception as e:
-        current_app.logger.error(f"Failed to send password reset email: {str(e)}")
-        return False, f"Failed to send email: {str(e)}"
+        error_msg = str(e)
+        current_app.logger.error(f"Failed to send password reset email: {error_msg}")
+
+        # Provide helpful error messages
+        if "530" in error_msg or "Authentication Required" in error_msg:
+            return False, f"Failed to send email: Gmail authentication failed. You need to use a Gmail App Password (not your regular password). Visit https://myaccount.google.com/apppasswords to generate one, then update MAIL_USERNAME and MAIL_PASSWORD in your .env file."
+        elif "MAIL_USERNAME" in error_msg or "MAIL_PASSWORD" in error_msg:
+            return False, f"Failed to send email: Email not configured. Please set MAIL_USERNAME and MAIL_PASSWORD in your .env file."
+        else:
+            return False, f"Failed to send password reset email: {error_msg}"
 
 
 def is_token_expired(sent_at, expiry_seconds):

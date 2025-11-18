@@ -443,10 +443,31 @@ Just ask me anything like:
 
     # NEW METHODS for specific phone queries
     def _extract_phone_model(self, message):
-        """Extract specific phone model name from message"""
+        """Extract specific phone model name from message with brand awareness"""
         message_lower = message.lower()
+        from sqlalchemy import or_, func
 
-        # Remove common query words to get the phone model
+        # Step 1: Detect if a specific brand is mentioned
+        detected_brand = None
+        brand_keywords = {
+            'apple': ['apple', 'iphone'],
+            'samsung': ['samsung', 'galaxy'],
+            'xiaomi': ['xiaomi', 'redmi', 'poco', 'mi '],  # 'mi ' with space to avoid matching in 'premium'
+            'huawei': ['huawei', 'honor'],
+            'oppo': ['oppo'],
+            'vivo': ['vivo'],
+            'realme': ['realme'],
+            'nokia': ['nokia'],
+            'lenovo': ['lenovo'],
+            'oneplus': ['oneplus', 'one plus']
+        }
+
+        for brand_name, keywords in brand_keywords.items():
+            if any(keyword in message_lower for keyword in keywords):
+                detected_brand = brand_name
+                break
+
+        # Step 2: Remove common query words to extract model name
         query_words = ['price', 'cost', 'how much', 'specs', 'specification', 'details', 'info', 'information',
                       'about', 'tell me', 'show me', 'what is', 'whats', 'the', 'of', 'spec', 'battery']
 
@@ -454,22 +475,53 @@ Just ask me anything like:
         for word in query_words:
             cleaned_message = cleaned_message.replace(word, ' ')
 
+        # Also remove brand keywords from cleaned message to get just the model
+        if detected_brand and detected_brand in brand_keywords:
+            for keyword in brand_keywords[detected_brand]:
+                cleaned_message = cleaned_message.replace(keyword, ' ')
+
         # Clean up extra spaces
         cleaned_message = ' '.join(cleaned_message.split()).strip()
 
-        if len(cleaned_message) < 3:  # Too short to be a phone model
+        if len(cleaned_message) < 2:  # Too short to be a phone model
             return None
 
-        # Search strategy: Try exact model match first, then fuzzy
-        from sqlalchemy import or_, func
+        # Step 3: Search with brand filtering if brand was detected
+        if detected_brand:
+            # Search within the detected brand first
+            brand_obj = Brand.query.filter(Brand.name.ilike(f'%{detected_brand}%')).first()
 
+            if brand_obj:
+                # Strategy 1: Exact model name match within brand
+                phones = Phone.query.filter(
+                    Phone.is_active == True,
+                    Phone.brand_id == brand_obj.id,
+                    Phone.model_name.ilike(f'%{cleaned_message}%')
+                ).limit(5).all()
+
+                if phones:
+                    return phones
+
+                # Strategy 2: Try with original message (brand + model)
+                phones = Phone.query.join(Brand).filter(
+                    Phone.is_active == True,
+                    Phone.brand_id == brand_obj.id,
+                    or_(
+                        Phone.model_name.ilike(f'%{message_lower}%'),
+                        func.concat(Brand.name, ' ', Phone.model_name).ilike(f'%{message_lower}%')
+                    )
+                ).limit(5).all()
+
+                if phones:
+                    return phones
+
+        # Step 4: Fallback - search without brand filtering
         # Strategy 1: Search model_name directly (e.g., "galaxy s23 fe")
         phones = Phone.query.join(Brand).filter(
             Phone.is_active == True,
             Phone.model_name.ilike(f'%{cleaned_message}%')
         ).limit(5).all()
 
-        # If found, return them
         if phones:
             return phones
 
