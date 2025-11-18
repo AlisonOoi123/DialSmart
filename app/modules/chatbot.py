@@ -59,11 +59,21 @@ class ChatbotEngine:
         """Detect user intent from message"""
         message_lower = message.lower()
 
-        # Check each intent
+        # Check each intent with word boundary matching to avoid false matches
+        # (e.g., "hi" shouldn't match "within")
         for intent, keywords in self.intents.items():
             for keyword in keywords:
-                if keyword in message_lower:
-                    return intent
+                # Use word boundaries for single words, direct match for phrases
+                if ' ' in keyword:
+                    # Multi-word phrase - direct substring match
+                    if keyword in message_lower:
+                        return intent
+                else:
+                    # Single word - use word boundary regex
+                    import re
+                    pattern = r'\b' + re.escape(keyword) + r'\b'
+                    if re.search(pattern, message_lower):
+                        return intent
 
         return 'general'
 

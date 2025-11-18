@@ -13,6 +13,24 @@ class AIRecommendationEngine:
     def __init__(self):
         self.min_match_threshold = 50  # Minimum match percentage to recommend
 
+    def _extract_ram_values(self, ram_string):
+        """
+        Safely extract RAM values from string, handling various formats
+        Examples: "8GB", "8 / 16 GB", "8GB, 16GB", "12 / 16 / 24TB" (typo)
+        Returns list of integers
+        """
+        if not ram_string:
+            return []
+
+        import re
+        # Find all numbers that appear before GB (ignore TB typos)
+        matches = re.findall(r'(\d+)\s*(?:GB|gb)', str(ram_string))
+
+        try:
+            return [int(m) for m in matches]
+        except (ValueError, AttributeError):
+            return []
+
     def get_recommendations(self, user_id, criteria=None, top_n=3):
         """
         Get top N phone recommendations for a user
@@ -181,7 +199,7 @@ class AIRecommendationEngine:
             # Score based on usage type
             if usage_type == 'Gaming':
                 # High RAM, good processor, high refresh rate
-                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                ram_values = self._extract_ram_values(specs.ram_options)
                 if ram_values:
                     score += max(ram_values) * 10
                 score += (specs.refresh_rate or 60) / 10
@@ -195,7 +213,7 @@ class AIRecommendationEngine:
             elif usage_type == 'Business' or usage_type == 'Work':
                 # Good battery, decent specs
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
-                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                ram_values = self._extract_ram_values(specs.ram_options)
                 if ram_values:
                     score += max(ram_values) * 5
 
