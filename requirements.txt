@@ -21,6 +21,7 @@ pytz>=2024.1
 
 # Utilities
 python-dotenv>=1.0.0
+requests>=2.31.0
 
 # Development Tools
 flask-shell-ipython>=0.4.1
