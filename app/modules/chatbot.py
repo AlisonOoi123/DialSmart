@@ -3,7 +3,7 @@ Chatbot Engine
 NLP-powered conversational assistant for phone recommendations
 """
 from app import db
-from app.models import ChatHistory, Phone, Brand
+from app.models import ChatHistory, Phone, Brand, PhoneSpecification
 from app.modules.ai_engine import AIRecommendationEngine
 import re
 import json

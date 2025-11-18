@@ -15,25 +15,35 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 @login_required
 def chat():
     """Process chatbot message"""
-    data = request.get_json()
-    message = data.get('message', '')
-    session_id = data.get('session_id') or str(uuid.uuid4())
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        session_id = data.get('session_id') or str(uuid.uuid4())
 
-    if not message:
-        return jsonify({'error': 'Message is required'}), 400
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
 
-    # Process with chatbot engine
-    chatbot = ChatbotEngine()
-    response = chatbot.process_message(current_user.id, message, session_id)
+        # Process with chatbot engine
+        chatbot = ChatbotEngine()
+        response = chatbot.process_message(current_user.id, message, session_id)
 
-    return jsonify({
-        'success': True,
-        'response': response['response'],
-        'type': response.get('type', 'text'),
-        'metadata': response.get('metadata', {}),
-        'quick_replies': response.get('quick_replies', []),
-        'session_id': session_id
-    })
+        return jsonify({
+            'success': True,
+            'response': response['response'],
+            'type': response.get('type', 'text'),
+            'metadata': response.get('metadata', {}),
+            'quick_replies': response.get('quick_replies', []),
+            'session_id': session_id
+        })
+    except Exception as e:
+        current_app.logger.error(f"Chatbot error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': 'Failed to process message',
+            'message': str(e)
+        }), 500
 
 @bp.route('/chat/history', methods=['GET'])
 @login_required
