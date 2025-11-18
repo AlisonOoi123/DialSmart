@@ -743,24 +743,22 @@ Just ask me anything like:
         from sqlalchemy import or_, func
 
         # Step 1: Detect if a specific brand is mentioned
+        # All 13 known brands (matches database brands exactly)
         detected_brand = None
         brand_keywords = {
             'apple': ['apple', 'iphone'],
-            'samsung': ['samsung', 'galaxy'],
-            'xiaomi': ['xiaomi', 'mi '],  # 'mi ' with space to avoid matching in 'premium'
-            'redmi': ['redmi'],
-            'poco': ['poco'],
-            'huawei': ['huawei'],
-            'honor': ['honor'],
-            'oppo': ['oppo'],
-            'vivo': ['vivo'],
-            'realme': ['realme'],
-            'google': ['google', 'pixel'],
             'asus': ['asus', 'rog'],
+            'google': ['google', 'pixel'],
+            'honor': ['honor'],
+            'huawei': ['huawei'],
             'infinix': ['infinix'],
-            'nokia': ['nokia'],
-            'lenovo': ['lenovo'],
-            'oneplus': ['oneplus', 'one plus']
+            'oppo': ['oppo'],
+            'poco': ['poco'],
+            'realme': ['realme'],
+            'redmi': ['redmi'],
+            'samsung': ['samsung', 'galaxy'],
+            'vivo': ['vivo'],
+            'xiaomi': ['xiaomi']  # Removed 'mi ' to avoid conflicts
         }
 
         for brand_name, keywords in brand_keywords.items():
@@ -1062,21 +1060,21 @@ Just ask me anything like:
 
     def _extract_multiple_brands(self, message):
         """Extract all brand names mentioned in message"""
-        # All known brands
+        # All 13 known brands (matches database brands exactly)
         brand_keywords = {
-            'Samsung': ['samsung', 'galaxy'],
             'Apple': ['apple', 'iphone'],
-            'Xiaomi': ['xiaomi', 'mi', 'redmi', 'poco'],
-            'Huawei': ['huawei'],
-            'Oppo': ['oppo'],
-            'Vivo': ['vivo'],
-            'Realme': ['realme'],
-            'Honor': ['honor'],
-            'Google': ['google', 'pixel'],
             'Asus': ['asus', 'rog'],
+            'Google': ['google', 'pixel'],
+            'Honor': ['honor'],
+            'Huawei': ['huawei'],
             'Infinix': ['infinix'],
+            'Oppo': ['oppo'],
+            'Poco': ['poco'],
+            'Realme': ['realme'],
             'Redmi': ['redmi'],
-            'Poco': ['poco']
+            'Samsung': ['samsung', 'galaxy'],
+            'Vivo': ['vivo'],
+            'Xiaomi': ['xiaomi']  # Removed 'mi', 'redmi', 'poco' to avoid conflicts
         }
 
         message_lower = message.lower()
