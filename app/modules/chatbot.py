@@ -292,7 +292,7 @@ class ChatbotEngine:
                     category_name = "students"
                     intro = "Perfect! Here are the best value phones for students - great performance for studying and entertainment:"
                 elif user_category == 'senior':
-                    budget = budget or (500, 1500)
+                    budget = budget or (800, 2000)  # Increased range to ensure phones are available
                     category_name = "seniors"
                     intro = "Great! Here are user-friendly phones for seniors - simple to use with excellent battery life:"
                 elif user_category == 'professional':
@@ -305,14 +305,20 @@ class ChatbotEngine:
                     intro = f"Here are the best phones for {category_name}:"
 
                 # Get recommendations based on user category
-                phones = self.ai_engine.get_phones_by_features(
-                    features=[],  # No specific features, let category scoring decide
-                    budget_range=budget,
-                    usage_type=usage,
-                    brand_names=brands,
-                    user_category=user_category,
-                    top_n=5
-                )
+                try:
+                    phones = self.ai_engine.get_phones_by_features(
+                        features=[],  # No specific features, let category scoring decide
+                        budget_range=budget,
+                        usage_type=usage,
+                        brand_names=brands,
+                        user_category=user_category,
+                        top_n=5
+                    )
+                except Exception as e:
+                    # Log error and return fallback
+                    import traceback
+                    traceback.print_exc()
+                    phones = []
 
                 if phones:
                     budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
@@ -377,6 +383,14 @@ class ChatbotEngine:
                             'user_category': user_category,
                             'budget': budget
                         }
+                    }
+                else:
+                    # No phones found for this category - provide helpful fallback
+                    budget_text = f"RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
+                    return {
+                        'response': f"I couldn't find phones specifically for {category_name} within {budget_text}. Let me show you our available phones. What's your preferred budget range?",
+                        'type': 'text',
+                        'quick_replies': ['Under RM1000', 'RM1000-RM2000', 'RM2000-RM3000', 'Above RM3000']
                     }
             # END NEW CODE
 
