@@ -153,25 +153,44 @@ class ChatbotEngine:
             usage = self._detect_usage_type(message)
             if usage:
                 budget = self._extract_budget(message)
-                phones = self.ai_engine.get_phones_by_usage(usage, budget, top_n=3)
+                phones = self.ai_engine.get_phones_by_usage(usage, budget, top_n=5)
 
                 if phones:
-                    response = f"Great choice! Here are the best phones for {usage}:\n\n"
+                    budget_text = ""
+                    if budget:
+                        min_b, max_b = budget
+                        budget_text = f" within RM{min_b:,.0f} - RM{max_b:,.0f}"
+
+                    response = f"Great choice! Here are the best phones for {usage}{budget_text}: 📱\n\n"
                     phone_list = []
 
                     for item in phones:
                         phone = item['phone']
+                        specs = item.get('specifications')
+
                         response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+
+                        # Add RAM and storage info if available
+                        if specs and specs.ram_options:
+                            response += f"   {specs.ram_options} RAM"
+                            if specs.storage_options:
+                                response += f" - {specs.storage_options} Storage"
+                            response += f" - Great for {usage.lower()}\n"
+
+                        response += "\n"
+
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
-                            'price': phone.price
+                            'price': phone.price,
+                            'ram': specs.ram_options if specs else None,
+                            'storage': specs.storage_options if specs else None
                         })
 
                     return {
                         'response': response,
                         'type': 'recommendation',
-                        'metadata': {'phones': phone_list, 'usage': usage}
+                        'metadata': {'phones': phone_list, 'usage': usage, 'budget': budget}
                     }
 
             return {
@@ -243,19 +262,19 @@ Just ask me anything like:
 
     def _extract_budget(self, message):
         """Extract budget range from message"""
-        # Look for patterns like "RM1000", "1000", "under 2000", "between 1000 and 2000"
+        # Look for patterns like "RM1000", "1000", "under 2000", "within 3000", "between 1000 and 2000"
         patterns = [
             r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)',  # RM1000 to RM2000
             r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000
-            r'under\s*rm?\s*(\d+)',  # under RM2000
-            r'below\s*rm?\s*(\d+)',  # below 2000
+            r'(?:under|below|within|max|maximum)\s*rm?\s*(\d+)',  # under/below/within RM2000
             r'rm\s*(\d+)',  # RM2000
+            r'(?:^|\s)(\d{3,5})(?:\s|$)',  # standalone number 1000-99999
         ]
 
         for pattern in patterns:
             match = re.search(pattern, message.lower())
             if match:
-                if 'under' in message.lower() or 'below' in message.lower():
+                if any(word in message.lower() for word in ['under', 'below', 'within', 'max', 'maximum']):
                     max_budget = int(match.group(1))
                     return (500, max_budget)
                 elif len(match.groups()) == 2:
@@ -277,6 +296,11 @@ Just ask me anything like:
         if budget:
             criteria['min_budget'], criteria['max_budget'] = budget
 
+        # Check for usage type and add to criteria
+        usage = self._detect_usage_type(message)
+        if usage:
+            criteria['primary_usage'] = json.dumps([usage])
+
         # Check for 5G mention
         if '5g' in message.lower():
             criteria['requires_5g'] = True
@@ -295,6 +319,11 @@ Just ask me anything like:
         camera_match = re.search(r'(\d+)\s*mp', message.lower())
         if camera_match:
             criteria['min_camera'] = int(camera_match.group(1))
+
+        # Check for battery mention
+        battery_match = re.search(r'(\d+)\s*mah', message.lower())
+        if battery_match:
+            criteria['min_battery'] = int(battery_match.group(1))
 
         return criteria if criteria else None
 
