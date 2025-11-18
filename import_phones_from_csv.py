@@ -98,7 +98,7 @@ with app.app_context():
     brands_cache = {}
 
     # Read CSV file
-    csv_file = '/home/user/DialSmart/fyp_phoneDataset.csv'
+    csv_file = '/home/user/DialSmart/data/fyp_phoneDataset.csv'
 
     with open(csv_file, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
