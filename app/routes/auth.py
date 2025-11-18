@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models import User
+from app.utils.helpers import validate_password
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -30,6 +31,12 @@ def register():
 
         if password != confirm_password:
             flash('Passwords do not match.', 'danger')
+            return render_template('auth/register.html')
+
+        # Validate password strength
+        is_valid, error_message = validate_password(password)
+        if not is_valid:
+            flash(error_message, 'danger')
             return render_template('auth/register.html')
 
         # Check if email already exists
@@ -130,6 +137,12 @@ def register_admin():
 
         if password != confirm_password:
             flash('Passwords do not match.', 'danger')
+            return render_template('auth/register.html', is_admin_registration=True)
+
+        # Validate password strength
+        is_valid, error_message = validate_password(password)
+        if not is_valid:
+            flash(error_message, 'danger')
             return render_template('auth/register.html', is_admin_registration=True)
 
         # Check if email already exists

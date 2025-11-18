@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from app import db
 from app.models import Brand, Phone, PhoneSpecification, UserPreference, Recommendation, Comparison
 from app.modules import AIRecommendationEngine
-from app.utils.helpers import parse_json_field
+from app.utils.helpers import parse_json_field, validate_password
 import json
 
 bp = Blueprint('user', __name__)
@@ -66,6 +66,12 @@ def profile():
         if new_password:
             current_password = request.form.get('current_password')
             if current_user.check_password(current_password):
+                # Validate new password strength
+                is_valid, error_message = validate_password(new_password)
+                if not is_valid:
+                    flash(error_message, 'danger')
+                    return render_template('user/profile.html')
+
                 current_user.set_password(new_password)
                 flash('Password updated successfully.', 'success')
             else:
@@ -206,7 +212,7 @@ def browse():
         query = query.order_by(Phone.price.desc())
     elif sort_by == 'name':
         query = query.order_by(Phone.model_name.asc())
-    else:  # created_at / newest - use release_date (launch date from CSV)
+    else:  # newest - sort by launch date (release_date)
         query = query.order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())
 
     # Paginate
@@ -239,26 +245,9 @@ def contact():
         # Process contact form
         name = request.form.get('name')
         email = request.form.get('email')
-        subject = request.form.get('subject', '')
         message = request.form.get('message')
 
-        # Validation
-        if not all([name, email, message]):
-            flash('Please fill in all required fields.', 'danger')
-            return redirect(url_for('user.contact'))
-
-        # Save message to database
-        from app.models.contact import ContactMessage
-        contact_message = ContactMessage(
-            name=name,
-            email=email,
-            subject=subject,
-            message=message,
-            user_id=current_user.id if current_user.is_authenticated else None
-        )
-        db.session.add(contact_message)
-        db.session.commit()
-
+        # In production, send email or store in database
         flash('Thank you for contacting us. We will get back to you soon.', 'success')
         return redirect(url_for('user.contact'))
 
