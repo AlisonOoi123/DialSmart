@@ -2,13 +2,92 @@
 API Routes
 RESTful API endpoints for AJAX requests and chatbot
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file, current_app
 from flask_login import login_required, current_user
 from app.models import Phone, PhoneSpecification, Brand
 from app.modules import ChatbotEngine, AIRecommendationEngine
 import uuid
+import requests
+from io import BytesIO
+from datetime import datetime, timedelta
+import hashlib
 
 bp = Blueprint('api', __name__, url_prefix='/api')
+
+# Simple in-memory cache for images (could be replaced with Redis in production)
+image_cache = {}
+
+# Image proxy endpoint
+@bp.route('/image-proxy', methods=['GET'])
+def image_proxy():
+    """
+    Proxy external images to bypass CORS and hotlinking protection
+    Usage: /api/image-proxy?url=<encoded_image_url>
+    """
+    image_url = request.args.get('url')
+
+    if not image_url:
+        return jsonify({'error': 'URL parameter is required'}), 400
+
+    try:
+        # Generate cache key
+        cache_key = hashlib.md5(image_url.encode()).hexdigest()
+
+        # Check cache (valid for 1 hour)
+        if cache_key in image_cache:
+            cached_data, cached_time, content_type = image_cache[cache_key]
+            if datetime.utcnow() - cached_time < timedelta(hours=1):
+                return send_file(
+                    BytesIO(cached_data),
+                    mimetype=content_type,
+                    as_attachment=False,
+                    download_name='image.webp'
+                )
+
+        # Fetch image with proper headers to bypass hotlinking protection
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': 'https://www.mobile57.com/',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'image',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'cross-site'
+        }
+
+        # Fetch image with timeout
+        response = requests.get(image_url, headers=headers, timeout=10, stream=True)
+        response.raise_for_status()
+
+        # Get content type
+        content_type = response.headers.get('Content-Type', 'image/webp')
+
+        # Read image data
+        image_data = response.content
+
+        # Cache it (limit cache size to prevent memory issues)
+        if len(image_cache) < 100:  # Limit cache to 100 images
+            image_cache[cache_key] = (image_data, datetime.utcnow(), content_type)
+
+        # Return image
+        return send_file(
+            BytesIO(image_data),
+            mimetype=content_type,
+            as_attachment=False,
+            download_name='image.webp'
+        )
+
+    except requests.exceptions.Timeout:
+        current_app.logger.error(f"Image proxy timeout for URL: {image_url}")
+        return jsonify({'error': 'Image request timed out'}), 504
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Image proxy error for URL {image_url}: {str(e)}")
+        return jsonify({'error': 'Failed to fetch image'}), 500
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error in image proxy: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 # Chatbot endpoints
 @bp.route('/chat', methods=['POST'])
