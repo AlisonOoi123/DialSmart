@@ -38,9 +38,9 @@ class ChatbotEngine:
 
         # User category keywords
         self.user_categories = {
-            'senior': ['senior', 'elderly', 'senior citizen', 'old age'],
-            'student': ['student', 'college', 'university', 'school'],
-            'professional': ['professional', 'business', 'work', 'office'],
+            'senior': ['senior', 'elderly', 'senior citizen', 'old age', 'old people', 'retiree'],
+            'student': ['student', 'college', 'university', 'school', 'teen', 'teenager', 'young'],
+            'professional': ['professional', 'business', 'work', 'office', 'worker', 'working', 'employee', 'businessman'],
         }
 
     def process_message(self, user_id, message, session_id=None):
@@ -283,6 +283,102 @@ class ChatbotEngine:
                         'type': 'recommendation',
                         'metadata': {'phones': phone_list}
                     }
+
+            # NEW: Handle user category recommendations (student, senior, worker)
+            if user_category:
+                # Set default budget ranges for each category
+                if user_category == 'student':
+                    budget = budget or (1000, 2500)
+                    category_name = "students"
+                    intro = "Perfect! Here are the best value phones for students - great performance for studying and entertainment:"
+                elif user_category == 'senior':
+                    budget = budget or (500, 1500)
+                    category_name = "seniors"
+                    intro = "Great! Here are user-friendly phones for seniors - simple to use with excellent battery life:"
+                elif user_category == 'professional':
+                    budget = budget or (2000, 5000)
+                    category_name = "professionals"
+                    intro = "Excellent! Here are reliable phones for professionals - long battery, big storage, and great performance:"
+                else:
+                    budget = budget or (1000, 3000)
+                    category_name = user_category + "s"
+                    intro = f"Here are the best phones for {category_name}:"
+
+                # Get recommendations based on user category
+                phones = self.ai_engine.get_phones_by_features(
+                    features=[],  # No specific features, let category scoring decide
+                    budget_range=budget,
+                    usage_type=usage,
+                    brand_names=brands,
+                    user_category=user_category,
+                    top_n=5
+                )
+
+                if phones:
+                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
+                    response = f"{intro}\n\n"
+                    phone_list = []
+
+                    for item in phones:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+
+                        # Show relevant specs based on user category
+                        if specs:
+                            if user_category == 'student':
+                                # Students: processor, RAM, battery
+                                if specs.processor:
+                                    response += f"   ⚡ {specs.processor}\n"
+                                if specs.ram_options:
+                                    response += f"   🧠 {specs.ram_options} RAM\n"
+                                if specs.battery_capacity:
+                                    response += f"   🔋 {specs.battery_capacity}mAh\n"
+                            elif user_category == 'senior':
+                                # Seniors: screen size, battery, simple features
+                                if specs.screen_size:
+                                    response += f"   📺 {specs.screen_size}\" display (easy to read)\n"
+                                if specs.battery_capacity:
+                                    response += f"   🔋 {specs.battery_capacity}mAh (long lasting)\n"
+                                if specs.ram_options:
+                                    response += f"   🧠 {specs.ram_options} RAM\n"
+                            elif user_category == 'professional':
+                                # Professionals: battery, storage, RAM
+                                if specs.battery_capacity:
+                                    response += f"   🔋 {specs.battery_capacity}mAh battery\n"
+                                if specs.storage_options:
+                                    response += f"   💾 {specs.storage_options} storage\n"
+                                if specs.ram_options:
+                                    response += f"   🧠 {specs.ram_options} RAM\n"
+
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'specs': {
+                                'battery': specs.battery_capacity if specs else None,
+                                'camera': specs.rear_camera_main if specs else None,
+                                'processor': specs.processor if specs else None,
+                                'ram': specs.ram_options if specs else None,
+                                'storage': specs.storage_options if specs else None
+                            }
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {
+                            'phones': phone_list,
+                            'user_category': user_category,
+                            'budget': budget
+                        }
+                    }
+            # END NEW CODE
 
             return {
                 'response': "Let me help you find the perfect phone. What's your budget and what will you primarily use it for?",
