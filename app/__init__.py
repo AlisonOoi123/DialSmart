@@ -8,6 +8,8 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from config import config
 import os
+from datetime import datetime
+import pytz
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -27,6 +29,32 @@ def create_app(config_name='default'):
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
     mail.init_app(app)
+
+    # Register custom Jinja2 filters
+    @app.template_filter('local_time')
+    def local_time_filter(dt, format='%Y-%m-%d %H:%M:%S'):
+        """Convert UTC datetime to local time and format it"""
+        if dt is None:
+            return ''
+
+        # If datetime is naive, assume it's UTC
+        if dt.tzinfo is None:
+            dt = pytz.UTC.localize(dt)
+
+        # Convert to Malaysia timezone (UTC+8)
+        malaysia_tz = pytz.timezone('Asia/Kuala_Lumpur')
+        local_dt = dt.astimezone(malaysia_tz)
+
+        return local_dt.strftime(format)
+
+    @app.template_filter('format_date')
+    def format_date_filter(dt, format='%d %b %Y'):
+        """Format date"""
+        if dt is None:
+            return ''
+        if isinstance(dt, datetime):
+            return dt.strftime(format)
+        return str(dt)
 
     # Create upload folder if it doesn't exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
