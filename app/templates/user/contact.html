@@ -3,22 +3,32 @@
 {% block content %}
 <div class="container py-5">
     <h1>Contact Us</h1>
+    <p class="text-muted">Have a question or feedback? We'd love to hear from you!</p>
+
     <form method="POST" class="mt-4">
         <div class="mb-3">
-            <label class="form-label">Name <span class="text-danger">*</span></label>
-            <input type="text" name="name" class="form-control" required>
+            <label class="form-label">Name</label>
+            <input type="text" name="name" class="form-control"
+                   value="{% if current_user.is_authenticated %}{{ current_user.full_name }}{% endif %}"
+                   required>
         </div>
         <div class="mb-3">
-            <label class="form-label">Email <span class="text-danger">*</span></label>
-            <input type="email" name="email" class="form-control" required>
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control"
+                   value="{% if current_user.is_authenticated %}{{ current_user.email }}{% endif %}"
+                   {% if current_user.is_authenticated %}readonly{% endif %}
+                   required>
+            {% if current_user.is_authenticated %}
+            <small class="text-muted">This email is from your account profile</small>
+            {% endif %}
         </div>
         <div class="mb-3">
             <label class="form-label">Subject</label>
-            <input type="text" name="subject" class="form-control" placeholder="Brief subject of your inquiry">
+            <input type="text" name="subject" class="form-control" placeholder="Brief description of your inquiry">
         </div>
         <div class="mb-3">
-            <label class="form-label">Message <span class="text-danger">*</span></label>
-            <textarea name="message" class="form-control" rows="5" required placeholder="Your message..."></textarea>
+            <label class="form-label">Message</label>
+            <textarea name="message" class="form-control" rows="5" placeholder="Tell us how we can help..." required></textarea>
         </div>
         <button type="submit" class="btn btn-primary">
             <i class="bi bi-send"></i> Send Message
