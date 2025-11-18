@@ -24,6 +24,18 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
+    # Email settings
+    MAIL_SERVER = os.environ.get('MAIL_SERVER') or 'smtp.gmail.com'
+    MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'noreply@dialsmart.my'
+
+    # Email verification settings
+    EMAIL_VERIFICATION_REQUIRED = os.environ.get('EMAIL_VERIFICATION_REQUIRED', 'false').lower() in ['true', 'on', '1']
+    EMAIL_VERIFICATION_TOKEN_EXPIRY = 24 * 3600  # 24 hours in seconds
+
     # Pagination
     ITEMS_PER_PAGE = 12
     ADMIN_ITEMS_PER_PAGE = 20
@@ -44,16 +56,6 @@ class Config:
         'Samsung', 'Apple', 'Huawei', 'XIAOMI', 'Nokia',
         'Lenovo', 'Honor', 'Oppo', 'Realme', 'Vivo'
     ]
-
-    # Email settings (Flask-Mail)
-    MAIL_SERVER = os.environ.get('MAIL_SERVER') or 'smtp.gmail.com'
-    MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'noreply@dialsmart.com'
-    MAIL_MAX_EMAILS = None
-    MAIL_ASCII_ATTACHMENTS = False
 
 class DevelopmentConfig(Config):
     """Development configuration"""
