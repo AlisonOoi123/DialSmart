@@ -98,5 +98,8 @@ class PhoneSpecification(db.Model):
     dimensions = db.Column(db.String(50))  # "160.5 x 74.8 x 8.4 mm"
     colors_available = db.Column(db.String(200))  # "Black, White, Blue"
 
+    # Reference
+    product_url = db.Column(db.String(500))  # Original product page URL
+
     def __repr__(self):
         return f'<PhoneSpecification for Phone {self.phone_id}>'

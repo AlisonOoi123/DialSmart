@@ -197,7 +197,8 @@ def add_phone():
             dual_sim=bool(request.form.get('dual_sim')),
             weight=request.form.get('weight', type=int),
             dimensions=request.form.get('dimensions'),
-            colors_available=request.form.get('colors_available')
+            colors_available=request.form.get('colors_available'),
+            product_url=request.form.get('product_url')
         )
 
         db.session.add(specs)
@@ -267,6 +268,7 @@ def edit_phone(phone_id):
         specs.weight = request.form.get('weight', type=int)
         specs.dimensions = request.form.get('dimensions')
         specs.colors_available = request.form.get('colors_available')
+        specs.product_url = request.form.get('product_url')
 
         db.session.commit()
         flash(f'Phone "{phone.model_name}" updated successfully.', 'success')
