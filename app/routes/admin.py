@@ -75,6 +75,9 @@ def dashboard():
     ).order_by(phone_counts_subquery.c.recommendation_count.desc())\
      .all()
 
+    # Get unread contact messages count
+    unread_messages = ContactMessage.query.filter_by(is_read=False).count()
+
     return render_template('admin/dashboard.html',
                          total_users=total_users,
                          total_phones=total_phones,
@@ -83,7 +86,8 @@ def dashboard():
                          new_users=new_users,
                          recent_recommendations=recent_recommendations,
                          recent_users=recent_users_list,
-                         popular_phones=popular_phones)
+                         popular_phones=popular_phones,
+                         unread_messages=unread_messages)
 
 # Phone Management
 @bp.route('/phones')
