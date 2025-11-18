@@ -179,169 +179,15 @@ class ChatbotEngine:
                 }
 
         elif intent == 'recommendation' or intent == 'specification':
-            # Check for specific criteria in message
-            criteria = self._extract_criteria(message)
-
-            # Detect feature priorities and user category
+            # Detect all parameters from message
             features = self._detect_feature_priority(message)
             user_category = self._detect_user_category(message)
             budget = self._extract_budget(message)
             usage = self._detect_usage_type(message)
             brands = self._extract_multiple_brands(message)
+            criteria = self._extract_criteria(message)
 
-            # If we have feature priorities, use feature-based search
-            if features:
-                phones = self.ai_engine.get_phones_by_features(
-                    features=features,
-                    budget_range=budget,
-                    usage_type=usage,
-                    brand_names=brands,
-                    user_category=user_category,
-                    top_n=5
-                )
-
-                if phones:
-                    # Build description based on features
-                    feature_desc = " and ".join([f.replace('_', ' ') for f in features])
-                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
-                    category_text = f" for {user_category}s" if user_category else ""
-
-                    response = f"Here are the best phones with {feature_desc}{budget_text}{category_text}:\n\n"
-                    phone_list = []
-
-                    for item in phones:
-                        phone = item['phone']
-                        specs = item.get('specifications')
-
-                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
-
-                        # Show relevant specs based on features
-                        if specs:
-                            if 'battery' in features and specs.battery_capacity:
-                                response += f"   🔋 {specs.battery_capacity}mAh battery\n"
-                            if 'camera' in features and specs.rear_camera_main:
-                                response += f"   📷 {specs.rear_camera_main}MP camera\n"
-                            if 'display' in features and specs.screen_type:
-                                response += f"   📺 {specs.screen_size}\" {specs.screen_type}\n"
-                            if 'performance' in features and specs.processor:
-                                response += f"   ⚡ {specs.processor}\n"
-                            if '5g' in features and specs.has_5g:
-                                response += f"   📶 5G Support\n"
-
-                        response += "\n"
-
-                        phone_list.append({
-                            'id': phone.id,
-                            'name': phone.model_name,
-                            'brand': phone.brand.name,
-                            'price': phone.price,
-                            'image': phone.main_image,
-                            'specs': {
-                                'battery': specs.battery_capacity if specs else None,
-                                'camera': specs.rear_camera_main if specs else None,
-                                'display': specs.screen_type if specs else None,
-                            }
-                        })
-
-                    return {
-                        'response': response,
-                        'type': 'recommendation',
-                        'metadata': {
-                            'phones': phone_list,
-                            'features': features,
-                            'budget': budget,
-                            'user_category': user_category
-                        }
-                    }
-
-            # Fall back to usage-based or general recommendations if no features detected
-            if usage:
-                # If usage type is detected, use get_phones_by_usage which supports brand filtering
-                phones = self.ai_engine.get_phones_by_usage(usage, budget, brands, top_n=5)
-
-                if phones:
-                    budget_text = ""
-                    if budget:
-                        min_b, max_b = budget
-                        budget_text = f" within RM{min_b:,.0f} - RM{max_b:,.0f}"
-
-                    brand_text = ""
-                    if brands:
-                        if len(brands) == 1:
-                            brand_text = f" from {brands[0]}"
-                        else:
-                            brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}"
-                            brand_text = f" from {brands_list}"
-
-                    response = f"Great choice! Here are the best phones for {usage}{brand_text}{budget_text}: 📱\n\n"
-                    phone_list = []
-
-                    for item in phones:
-                        phone = item['phone']
-                        specs = item.get('specifications')
-
-                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
-
-                        # Add RAM and storage info if available
-                        if specs and specs.ram_options:
-                            response += f"   {specs.ram_options} RAM"
-                            if specs.storage_options:
-                                response += f" - {specs.storage_options} Storage"
-                            response += f" - Great for {usage.lower()}\n"
-
-                        response += "\n"
-
-                        phone_list.append({
-                            'id': phone.id,
-                            'name': phone.model_name,
-                            'brand': phone.brand.name,
-                            'price': phone.price,
-                            'image': phone.main_image,
-                            'ram': specs.ram_options if specs else None,
-                            'storage': specs.storage_options if specs else None
-                        })
-
-                    return {
-                        'response': response,
-                        'type': 'recommendation',
-                        'metadata': {
-                            'phones': phone_list,
-                            'usage': usage,
-                            'budget': budget,
-                            'brands': brands
-                        }
-                    }
-            elif criteria or budget:
-                # No usage type but has criteria or budget
-                recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=5)
-
-                if recommendations:
-                    response = "Based on your needs, I recommend:\n\n"
-                    phone_list = []
-
-                    for rec in recommendations:
-                        phone = rec['phone']
-                        response += f"📱 {phone.brand.name} {phone.model_name}\n"
-                        response += f"   💰 RM{phone.price:,.2f}\n"
-                        response += f"   ✨ {rec['match_score']}% match\n"
-                        response += f"   {rec['reasoning'][:100]}...\n\n"
-
-                        phone_list.append({
-                            'id': phone.id,
-                            'name': phone.model_name,
-                            'brand': phone.brand.name,
-                            'price': phone.price,
-                            'image': phone.main_image,
-                            'match_score': rec['match_score']
-                        })
-
-                    return {
-                        'response': response,
-                        'type': 'recommendation',
-                        'metadata': {'phones': phone_list}
-                    }
-
-            # NEW: Handle user category recommendations (student, senior, worker)
+            # PRIORITY 1: User category (student, senior, professional) - handle first
             if user_category:
                 # Set default budget ranges for each category
                 if user_category == 'student':
@@ -449,11 +295,273 @@ class ChatbotEngine:
                         'type': 'text',
                         'quick_replies': ['Under RM1000', 'RM1000-RM2000', 'RM2000-RM3000', 'Above RM3000']
                     }
-            # END NEW CODE
 
+            # PRIORITY 2: Brands mentioned - always prioritize brand filtering
+            if brands:
+                phones = []
+
+                # Brands + Usage (e.g., "apple and samsung gaming phone")
+                if usage:
+                    phones = self.ai_engine.get_phones_by_usage(usage, budget, brands, top_n=5)
+
+                    if phones:
+                        budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        response = f"Great choice! Here are the best phones for {usage} from {brands_list}{budget_text}:\n\n"
+
+                        phone_list = []
+                        for item in phones:
+                            phone = item['phone']
+                            specs = item.get('specifications')
+                            response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                            if specs and specs.ram_options:
+                                response += f"   {specs.ram_options} RAM"
+                                if specs.storage_options:
+                                    response += f" - {specs.storage_options} Storage"
+                                response += f"\n"
+                            response += "\n"
+
+                            phone_list.append({
+                                'id': phone.id,
+                                'name': phone.model_name,
+                                'brand': phone.brand.name,
+                                'price': phone.price,
+                                'image': phone.main_image,
+                                'ram': specs.ram_options if specs else None,
+                                'storage': specs.storage_options if specs else None
+                            })
+
+                        return {
+                            'response': response,
+                            'type': 'recommendation',
+                            'metadata': {'phones': phone_list, 'usage': usage, 'brands': brands, 'budget': budget}
+                        }
+                    else:
+                        # No phones found with these brands for this usage
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        return {
+                            'response': f"I couldn't find {brands_list} phones for {usage.lower()}. Would you like to see {usage.lower()} phones from other brands, or choose different brands?",
+                            'type': 'text',
+                            'quick_replies': [f'Show all {usage} phones', 'Try different brands']
+                        }
+
+                # Brands + Features (e.g., "apple and samsung with good camera")
+                elif features:
+                    phones = self.ai_engine.get_phones_by_features(features, budget, usage, brands, user_category, top_n=5)
+
+                    if phones:
+                        feature_desc = " and ".join([f.replace('_', ' ') for f in features])
+                        budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        response = f"Here are the best {brands_list} phones with {feature_desc}{budget_text}:\n\n"
+
+                        phone_list = []
+                        for item in phones:
+                            phone = item['phone']
+                            specs = item.get('specifications')
+                            response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+
+                            if specs:
+                                if 'battery' in features and specs.battery_capacity:
+                                    response += f"   🔋 {specs.battery_capacity}mAh battery\n"
+                                if 'camera' in features and specs.rear_camera_main:
+                                    response += f"   📷 {specs.rear_camera_main}MP camera\n"
+                                if 'display' in features and specs.screen_type:
+                                    response += f"   📺 {specs.screen_size}\" {specs.screen_type}\n"
+                                if 'performance' in features and specs.processor:
+                                    response += f"   ⚡ {specs.processor}\n"
+                            response += "\n"
+
+                            phone_list.append({
+                                'id': phone.id,
+                                'name': phone.model_name,
+                                'brand': phone.brand.name,
+                                'price': phone.price,
+                                'image': phone.main_image,
+                                'specs': {
+                                    'battery': specs.battery_capacity if specs else None,
+                                    'camera': specs.rear_camera_main if specs else None,
+                                    'display': specs.screen_type if specs else None,
+                                }
+                            })
+
+                        return {
+                            'response': response,
+                            'type': 'recommendation',
+                            'metadata': {'phones': phone_list, 'features': features, 'brands': brands, 'budget': budget}
+                        }
+                    else:
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        feature_desc = " and ".join([f.replace('_', ' ') for f in features])
+                        return {
+                            'response': f"I couldn't find {brands_list} phones with {feature_desc}. Would you like to see similar phones from other brands?",
+                            'type': 'text',
+                            'quick_replies': ['Show all brands', 'Try different features']
+                        }
+
+                # Brands only (e.g., "apple and samsung phone")
+                else:
+                    all_phones = []
+                    found_brands = []
+
+                    for brand_name in brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            query = Phone.query.filter_by(brand_id=brand.id, is_active=True)
+
+                            if budget:
+                                min_b, max_b = budget
+                                query = query.filter(Phone.price >= min_b, Phone.price <= max_b)
+
+                            phones_found = query.limit(3).all()  # Limit per brand
+                            if phones_found:
+                                found_brands.append(brand.name)
+                                all_phones.extend([(p, brand.name) for p in phones_found])
+
+                    if all_phones:
+                        budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                        brands_list = ", ".join(found_brands[:-1]) + f" and {found_brands[-1]}" if len(found_brands) > 1 else found_brands[0]
+                        response = f"Here are phones from {brands_list}{budget_text}:\n\n"
+
+                        phone_list = []
+                        for phone, brand_name in all_phones:
+                            response += f"📱 {brand_name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                            phone_list.append({
+                                'id': phone.id,
+                                'name': phone.model_name,
+                                'brand': brand_name,
+                                'price': phone.price,
+                                'image': phone.main_image
+                            })
+
+                        return {
+                            'response': response,
+                            'type': 'recommendation',
+                            'metadata': {'phones': phone_list, 'brands': found_brands, 'budget': budget}
+                        }
+                    else:
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        budget_text = f" within your budget" if budget else ""
+                        return {
+                            'response': f"I couldn't find {brands_list} phones{budget_text}. Would you like to see phones from other brands?",
+                            'type': 'text',
+                            'quick_replies': ['Show all brands', 'Adjust budget']
+                        }
+
+            # PRIORITY 3: Usage type without brands (e.g., "gaming phone")
+            if usage:
+                phones = self.ai_engine.get_phones_by_usage(usage, budget, None, top_n=5)
+
+                if phones:
+                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                    response = f"Great choice! Here are the best phones for {usage}{budget_text}:\n\n"
+
+                    phone_list = []
+                    for item in phones:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        if specs and specs.ram_options:
+                            response += f"   {specs.ram_options} RAM"
+                            if specs.storage_options:
+                                response += f" - {specs.storage_options} Storage"
+                            response += f"\n"
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'ram': specs.ram_options if specs else None,
+                            'storage': specs.storage_options if specs else None
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'usage': usage, 'budget': budget}
+                    }
+
+            # PRIORITY 4: Features without brands (e.g., "phone with good camera")
+            if features:
+                phones = self.ai_engine.get_phones_by_features(features, budget, usage, None, user_category, top_n=5)
+
+                if phones:
+                    feature_desc = " and ".join([f.replace('_', ' ') for f in features])
+                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                    response = f"Here are the best phones with {feature_desc}{budget_text}:\n\n"
+
+                    phone_list = []
+                    for item in phones:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+
+                        if specs:
+                            if 'battery' in features and specs.battery_capacity:
+                                response += f"   🔋 {specs.battery_capacity}mAh battery\n"
+                            if 'camera' in features and specs.rear_camera_main:
+                                response += f"   📷 {specs.rear_camera_main}MP camera\n"
+                            if 'display' in features and specs.screen_type:
+                                response += f"   📺 {specs.screen_size}\" {specs.screen_type}\n"
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'specs': {
+                                'battery': specs.battery_capacity if specs else None,
+                                'camera': specs.rear_camera_main if specs else None,
+                                'display': specs.screen_type if specs else None,
+                            }
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'features': features, 'budget': budget}
+                    }
+
+            # PRIORITY 5: Budget/criteria only (e.g., "phone under RM2000")
+            if criteria or budget:
+                recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=5)
+
+                if recommendations:
+                    response = "Based on your needs, I recommend:\n\n"
+                    phone_list = []
+
+                    for rec in recommendations:
+                        phone = rec['phone']
+                        response += f"📱 {phone.brand.name} {phone.model_name}\n"
+                        response += f"   💰 RM{phone.price:,.2f}\n"
+                        response += f"   ✨ {rec['match_score']}% match\n"
+                        response += f"   {rec['reasoning'][:100]}...\n\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'match_score': rec['match_score']
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+
+            # PRIORITY 6: Fallback - ask for more info
             return {
                 'response': "Let me help you find the perfect phone. What's your budget and what will you primarily use it for?",
-                'type': 'text'
+                'type': 'text',
+                'quick_replies': ['Under RM2000', 'Gaming', 'Photography', 'Show popular phones']
             }
 
         elif intent == 'usage_type':
