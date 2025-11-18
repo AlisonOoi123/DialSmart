@@ -1,48 +1,53 @@
 """
 Contact Message Model
-Handles contact form submissions from users
+Stores user contact form submissions and admin replies
 """
-from app import db
 from datetime import datetime
+from app import db
+
 
 class ContactMessage(db.Model):
-    """Contact form messages"""
+    """Model for storing contact form messages"""
     __tablename__ = 'contact_messages'
 
     id = db.Column(db.Integer, primary_key=True)
 
     # Sender information
     name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(150), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
 
     # Message content
     subject = db.Column(db.String(200))
     message = db.Column(db.Text, nullable=False)
 
-    # Status tracking
-    is_read = db.Column(db.Boolean, default=False, index=True)
+    # Status and tracking
+    is_read = db.Column(db.Boolean, default=False)
     is_replied = db.Column(db.Boolean, default=False)
-    admin_notes = db.Column(db.Text)  # Notes from admin
 
-    # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-    read_at = db.Column(db.DateTime)
+    # Reply information
+    admin_reply = db.Column(db.Text)
+    replied_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     replied_at = db.Column(db.DateTime)
 
-    # User reference (if logged in)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    replied_by = db.relationship('User', backref='message_replies', lazy=True)
+
+    def __repr__(self):
+        return f'<ContactMessage {self.id} from {self.email}>'
 
     def mark_as_read(self):
         """Mark message as read"""
-        if not self.is_read:
-            self.is_read = True
-            self.read_at = datetime.utcnow()
+        self.is_read = True
+        db.session.commit()
 
-    def mark_as_replied(self):
-        """Mark message as replied"""
-        if not self.is_replied:
-            self.is_replied = True
-            self.replied_at = datetime.utcnow()
-
-    def __repr__(self):
-        return f'<ContactMessage from {self.name} ({self.email})>'
+    def mark_as_replied(self, admin_user, reply_text):
+        """Mark message as replied with reply details"""
+        self.is_replied = True
+        self.admin_reply = reply_text
+        self.replied_by_id = admin_user.id
+        self.replied_at = datetime.utcnow()
+        db.session.commit()
