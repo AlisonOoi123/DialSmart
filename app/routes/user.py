@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from app import db
 from app.models import Brand, Phone, PhoneSpecification, UserPreference, Recommendation, Comparison
 from app.modules import AIRecommendationEngine
-from app.utils.helpers import parse_json_field
+from app.utils.helpers import parse_json_field, validate_password
 import json
 
 bp = Blueprint('user', __name__)
@@ -66,6 +66,12 @@ def profile():
         if new_password:
             current_password = request.form.get('current_password')
             if current_user.check_password(current_password):
+                # Validate new password strength
+                is_valid, error_message = validate_password(new_password)
+                if not is_valid:
+                    flash(error_message, 'danger')
+                    return render_template('user/profile.html')
+
                 current_user.set_password(new_password)
                 flash('Password updated successfully.', 'success')
             else:
@@ -206,8 +212,8 @@ def browse():
         query = query.order_by(Phone.price.desc())
     elif sort_by == 'name':
         query = query.order_by(Phone.model_name.asc())
-    else:  # created_at
-        query = query.order_by(Phone.created_at.desc())
+    else:  # newest - sort by launch date (release_date)
+        query = query.order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())
 
     # Paginate
     per_page = 12

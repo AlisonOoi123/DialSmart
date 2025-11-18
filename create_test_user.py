@@ -22,11 +22,13 @@ with app.app_context():
             user_category='Working Professional',
             age_range='26-35'
         )
-        test_user.set_password('password123')
+        # Secure password meeting all requirements:
+        # - 8+ characters, uppercase, lowercase, number, special character
+        test_user.set_password('TestUser123!')
         db.session.add(test_user)
         db.session.commit()
         print("✓ Test user created successfully!")
 
     print("\n✅ You can now login with:")
     print("Email: user@dialsmart.my")
-    print("Password: password123")
+    print("Password: TestUser123!")

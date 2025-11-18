@@ -4,6 +4,7 @@ Common utility functions used across the application
 """
 import os
 import json
+import re
 from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime
@@ -152,3 +153,45 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
         reasons.append("Good overall specifications for the price")
 
     return " • ".join(reasons)
+
+def validate_password(password):
+    """
+    Validate password strength according to security standards
+    Requirements:
+    - At least 8 characters long (maximum 12 recommended)
+    - Contains at least one uppercase letter
+    - Contains at least one lowercase letter
+    - Contains at least one digit
+    - Contains at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
+
+    Returns:
+        tuple: (is_valid: bool, error_message: str or None)
+    """
+    if not password:
+        return False, "Password is required."
+
+    # Check minimum length
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+
+    # Check maximum recommended length
+    if len(password) > 128:
+        return False, "Password is too long (maximum 128 characters)."
+
+    # Check for uppercase letter
+    if not re.search(r'[A-Z]', password):
+        return False, "Password must contain at least one uppercase letter."
+
+    # Check for lowercase letter
+    if not re.search(r'[a-z]', password):
+        return False, "Password must contain at least one lowercase letter."
+
+    # Check for digit
+    if not re.search(r'\d', password):
+        return False, "Password must contain at least one number."
+
+    # Check for special character
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', password):
+        return False, "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)."
+
+    return True, None
