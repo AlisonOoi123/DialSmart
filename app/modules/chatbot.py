@@ -77,21 +77,37 @@ class ChatbotEngine:
         """Detect user intent from message"""
         message_lower = message.lower()
 
+        # Special check: If user category is mentioned, treat as recommendation
+        user_category = self._detect_user_category(message_lower)
+        if user_category:
+            return 'recommendation'
+
+        # Special check: If usage type (photography, gaming, etc.) is mentioned, prioritize it over budget
+        usage_type = self._detect_usage_type(message_lower)
+        if usage_type:
+            return 'recommendation'
+
         # Check each intent with word boundary matching to avoid false matches
         # (e.g., "hi" shouldn't match "within")
-        for intent, keywords in self.intents.items():
+        # Priority order matters! More specific intents should be checked first
+        priority_intents = ['greeting', 'recommendation', 'comparison', 'specification', 'usage_type', 'budget_query', 'brand_query', 'help']
+
+        for intent_name in priority_intents:
+            if intent_name not in self.intents:
+                continue
+            keywords = self.intents[intent_name]
             for keyword in keywords:
                 # Use word boundaries for single words, direct match for phrases
                 if ' ' in keyword:
                     # Multi-word phrase - direct substring match
                     if keyword in message_lower:
-                        return intent
+                        return intent_name
                 else:
                     # Single word - use word boundary regex
                     import re
                     pattern = r'\b' + re.escape(keyword) + r'\b'
                     if re.search(pattern, message_lower):
-                        return intent
+                        return intent_name
 
         return 'general'
 
