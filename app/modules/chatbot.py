@@ -21,7 +21,6 @@ class ChatbotEngine:
             'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
             'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor', 'cpu'],
             'brand_query': ['brand', 'samsung', 'apple', 'iphone', 'xiaomi', 'huawei'],
-            'specific_phone_query': ['price', 'cost', 'how much', 'specs', 'specification', 'details', 'info', 'information'],
             'help': ['help', 'how', 'what can you do'],
             'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'photographer', 'gamer']
         }
@@ -99,11 +98,11 @@ class ChatbotEngine:
     def _generate_response(self, user_id, message, intent):
         """Generate appropriate response based on intent"""
 
-        # Check for specific phone model query ONLY if asking for price/spec/battery
+        # NEW: Check for specific phone model query ONLY if asking for price/spec/battery
         # and NOT asking for recommendations or features
         message_lower = message.lower()
 
-        # Skip phone model extraction if message contains recommendation/feature keywords
+        # Skip phone model extraction if message contains recommendation/feature/usage keywords
         skip_phone_model = any(keyword in message_lower for keyword in [
             'recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'best',
             'photographer', 'photography', 'gaming', 'gamer', 'business', 'work',
@@ -121,6 +120,7 @@ class ChatbotEngine:
                 phone_model = self._extract_phone_model(message)
                 if phone_model:
                     return self._handle_specific_phone_query(message, phone_model)
+        # END NEW CODE
 
         if intent == 'greeting':
             return {
@@ -441,6 +441,144 @@ Just ask me anything like:
                 'quick_replies': ['Find a phone', 'Budget options', 'Popular brands']
             }
 
+    # NEW METHODS for specific phone queries
+    def _extract_phone_model(self, message):
+        """Extract specific phone model name from message"""
+        message_lower = message.lower()
+
+        # Remove common query words to get the phone model
+        query_words = ['price', 'cost', 'how much', 'specs', 'specification', 'details', 'info', 'information',
+                      'about', 'tell me', 'show me', 'what is', 'whats', 'the', 'of', 'spec', 'battery']
+
+        cleaned_message = message_lower
+        for word in query_words:
+            cleaned_message = cleaned_message.replace(word, ' ')
+
+        # Clean up extra spaces
+        cleaned_message = ' '.join(cleaned_message.split()).strip()
+
+        if len(cleaned_message) < 3:  # Too short to be a phone model
+            return None
+
+        # Search strategy: Try exact model match first, then fuzzy
+        from sqlalchemy import or_, func
+
+        # Strategy 1: Search model_name directly (e.g., "galaxy s23 fe")
+        phones = Phone.query.join(Brand).filter(
+            Phone.is_active == True,
+            Phone.model_name.ilike(f'%{cleaned_message}%')
+        ).limit(5).all()
+
+        # If found, return them
+        if phones:
+            return phones
+
+        # Strategy 2: Search brand + model together (e.g., "samsung galaxy s23 fe")
+        phones = Phone.query.join(Brand).filter(
+            Phone.is_active == True,
+            or_(
+                func.concat(Brand.name, ' ', Phone.model_name).ilike(f'%{cleaned_message}%'),
+                func.concat(Phone.model_name, ' ', Brand.name).ilike(f'%{cleaned_message}%')
+            )
+        ).limit(5).all()
+
+        if phones:
+            return phones
+
+        return None
+
+    def _handle_specific_phone_query(self, message, phones):
+        """Handle query about specific phone model"""
+        message_lower = message.lower()
+
+        # Determine what information is being requested
+        is_price_query = any(word in message_lower for word in ['price', 'cost', 'how much', 'rm'])
+        is_spec_query = any(word in message_lower for word in ['specs', 'specification', 'spec'])
+        is_battery_query = 'battery' in message_lower
+
+        if len(phones) == 1:
+            phone = phones[0]
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+
+            response = f"📱 **{phone.brand.name} {phone.model_name}**\n\n"
+
+            # Always show price
+            response += f"💰 **Price:** RM{phone.price:,.2f}\n\n"
+
+            # Show specific information based on query
+            if is_price_query and not is_spec_query and not is_battery_query:
+                # Price only - already shown above
+                pass
+            elif is_battery_query and specs and specs.battery_capacity:
+                # Battery specific query
+                response += f"🔋 **Battery:** {specs.battery_capacity}mAh\n"
+                if specs.fast_charging_wattage:
+                    response += f"⚡ **Fast Charging:** {specs.fast_charging_wattage}W\n"
+            elif is_spec_query or (not is_price_query and not is_battery_query):
+                # Full specs
+                if specs:
+                    response += "📊 **Key Specifications:**\n"
+                    if specs.processor:
+                        response += f"   • Processor: {specs.processor}\n"
+                    if specs.ram_options:
+                        response += f"   • RAM: {specs.ram_options}\n"
+                    if specs.storage_options:
+                        response += f"   • Storage: {specs.storage_options}\n"
+                    if specs.screen_size and specs.screen_type:
+                        response += f"   • Display: {specs.screen_size}\" {specs.screen_type}\n"
+                    if specs.rear_camera_main:
+                        response += f"   • Main Camera: {specs.rear_camera_main}MP\n"
+                    if specs.battery_capacity:
+                        response += f"   • Battery: {specs.battery_capacity}mAh\n"
+                    if specs.has_5g:
+                        response += f"   • 5G: Yes ✅\n"
+
+            # Add View Details button
+            response += f"\n👉 [View Full Details](/phone/{phone.id})"
+
+            return {
+                'response': response,
+                'type': 'phone_details',
+                'metadata': {
+                    'phones': [{
+                        'id': phone.id,
+                        'name': phone.model_name,
+                        'brand': phone.brand.name,
+                        'price': phone.price,
+                        'image': phone.main_image,
+                        'url': f'/phone/{phone.id}'
+                    }]
+                }
+            }
+
+        elif len(phones) > 1:
+            # Multiple phones match - show all with prices and view details
+            response = f"I found {len(phones)} phones matching your query:\n\n"
+            phone_list = []
+
+            for phone in phones:
+                response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                response += f"   👉 [View Details](/phone/{phone.id})\n"
+                phone_list.append({
+                    'id': phone.id,
+                    'name': phone.model_name,
+                    'brand': phone.brand.name,
+                    'price': phone.price,
+                    'image': phone.main_image,
+                    'url': f'/phone/{phone.id}'
+                })
+
+            response += "\nClick any link above to see full details!"
+
+            return {
+                'response': response,
+                'type': 'recommendation',
+                'metadata': {'phones': phone_list}
+            }
+
+        return None
+    # END NEW METHODS
+
     def _extract_budget(self, message):
         """Extract budget range from message"""
         # Look for patterns like "RM1000", "1000", "under 2000", "within 3000", "near 3000", "between 1000 and 2000"
@@ -602,142 +740,6 @@ Just ask me anything like:
                     break
 
         return found_brands
-
-    def _extract_phone_model(self, message):
-        """Extract specific phone model name from message"""
-        message_lower = message.lower()
-
-        # Remove common query words to get the phone model
-        query_words = ['price', 'cost', 'how much', 'specs', 'specification', 'details', 'info', 'information',
-                      'about', 'tell me', 'show me', 'what is', 'whats', 'the', 'of', 'for', 'spec', 'battery']
-
-        cleaned_message = message_lower
-        for word in query_words:
-            cleaned_message = cleaned_message.replace(word, ' ')
-
-        # Clean up extra spaces
-        cleaned_message = ' '.join(cleaned_message.split()).strip()
-
-        if len(cleaned_message) < 3:  # Too short to be a phone model
-            return None
-
-        # Search strategy: Try exact model match first, then fuzzy
-        from sqlalchemy import or_, func
-
-        # Strategy 1: Search model_name directly (e.g., "galaxy s23 fe")
-        phones = Phone.query.join(Brand).filter(
-            Phone.is_active == True,
-            Phone.model_name.ilike(f'%{cleaned_message}%')
-        ).limit(5).all()
-
-        # If found, return them
-        if phones:
-            return phones
-
-        # Strategy 2: Search brand + model together (e.g., "samsung galaxy s23 fe")
-        phones = Phone.query.join(Brand).filter(
-            Phone.is_active == True,
-            or_(
-                func.concat(Brand.name, ' ', Phone.model_name).ilike(f'%{cleaned_message}%'),
-                func.concat(Phone.model_name, ' ', Brand.name).ilike(f'%{cleaned_message}%')
-            )
-        ).limit(5).all()
-
-        if phones:
-            return phones
-
-        return None
-
-    def _handle_specific_phone_query(self, message, phones):
-        """Handle query about specific phone model"""
-        message_lower = message.lower()
-
-        # Determine what information is being requested
-        is_price_query = any(word in message_lower for word in ['price', 'cost', 'how much', 'rm'])
-        is_spec_query = any(word in message_lower for word in ['specs', 'specification', 'spec'])
-        is_battery_query = 'battery' in message_lower
-
-        if len(phones) == 1:
-            phone = phones[0]
-            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
-
-            response = f"📱 **{phone.brand.name} {phone.model_name}**\n\n"
-
-            # Always show price
-            response += f"💰 **Price:** RM{phone.price:,.2f}\n\n"
-
-            # Show specific information based on query
-            if is_price_query and not is_spec_query and not is_battery_query:
-                # Price only - already shown above
-                pass
-            elif is_battery_query and specs and specs.battery_capacity:
-                # Battery specific query
-                response += f"🔋 **Battery:** {specs.battery_capacity}mAh\n"
-                if specs.fast_charging_wattage:
-                    response += f"⚡ **Fast Charging:** {specs.fast_charging_wattage}W\n"
-            elif is_spec_query or (not is_price_query and not is_battery_query):
-                # Full specs
-                if specs:
-                    response += "📊 **Key Specifications:**\n"
-                    if specs.processor:
-                        response += f"   • Processor: {specs.processor}\n"
-                    if specs.ram_options:
-                        response += f"   • RAM: {specs.ram_options}\n"
-                    if specs.storage_options:
-                        response += f"   • Storage: {specs.storage_options}\n"
-                    if specs.screen_size and specs.screen_type:
-                        response += f"   • Display: {specs.screen_size}\" {specs.screen_type}\n"
-                    if specs.rear_camera_main:
-                        response += f"   • Main Camera: {specs.rear_camera_main}MP\n"
-                    if specs.battery_capacity:
-                        response += f"   • Battery: {specs.battery_capacity}mAh\n"
-                    if specs.has_5g:
-                        response += f"   • 5G: Yes ✅\n"
-
-            # Add View Details button
-            response += f"\n👉 [View Full Details](/phone/{phone.id})"
-
-            return {
-                'response': response,
-                'type': 'phone_details',
-                'metadata': {
-                    'phones': [{
-                        'id': phone.id,
-                        'name': phone.model_name,
-                        'brand': phone.brand.name,
-                        'price': phone.price,
-                        'image': phone.main_image,
-                        'url': f'/phone/{phone.id}'
-                    }]
-                }
-            }
-
-        elif len(phones) > 1:
-            # Multiple phones match - show all with prices and view details
-            response = f"I found {len(phones)} phones matching your query:\n\n"
-            phone_list = []
-
-            for phone in phones:
-                response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
-                response += f"   👉 [View Details](/phone/{phone.id})\n"
-                phone_list.append({
-                    'id': phone.id,
-                    'name': phone.model_name,
-                    'brand': phone.brand.name,
-                    'price': phone.price,
-                    'image': phone.main_image,
-                    'url': f'/phone/{phone.id}'
-                })
-
-            response += "\nClick any link above to see full details!"
-
-            return {
-                'response': response,
-                'type': 'recommendation',
-                'metadata': {'phones': phone_list}
-            }
-
-        return None
 
     def _save_chat_history(self, user_id, message, response, intent, session_id, metadata):
         """Save conversation to database"""
