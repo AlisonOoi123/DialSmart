@@ -3,11 +3,64 @@
 {% block content %}
 <div class="container py-4">
     <h2>Browse Smartphones</h2>
+
+    <!-- Sorting and Filters -->
+    <div class="row mb-4 mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('user.browse') }}" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="brand_id" class="form-label">Brand</label>
+                            <select name="brand_id" id="brand_id" class="form-select">
+                                <option value="">All Brands</option>
+                                {% for brand in brands %}
+                                <option value="{{ brand.id }}" {% if current_filters.brand_id == brand.id %}selected{% endif %}>
+                                    {{ brand.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="sort_by" class="form-label">Sort By</label>
+                            <select name="sort_by" id="sort_by" class="form-select">
+                                <option value="created_at" {% if current_filters.sort_by == 'created_at' %}selected{% endif %}>Newest First</option>
+                                <option value="price_asc" {% if current_filters.sort_by == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+                                <option value="price_desc" {% if current_filters.sort_by == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+                                <option value="name" {% if current_filters.sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="min_price" class="form-label">Min Price (RM)</label>
+                            <input type="number" name="min_price" id="min_price" class="form-control" placeholder="Min" value="{{ current_filters.min_price or '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="max_price" class="form-label">Max Price (RM)</label>
+                            <input type="number" name="max_price" id="max_price" class="form-control" placeholder="Max" value="{{ current_filters.max_price or '' }}">
+                        </div>
+                        <div class="col-md-12 text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Apply Filters
+                            </button>
+                            <a href="{{ url_for('user.browse') }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Clear Filters
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         {% for phone in phones.items %}
         <div class="col-md-3 mb-4">
             <div class="card h-100">
-                <img src="{{ phone.main_image or 'https://via.placeholder.com/300x400?text=Phone' }}" class="card-img-top" alt="{{ phone.model_name }}" onerror="this.src='https://via.placeholder.com/300x400?text=Phone'">
+                {% if phone.main_image and phone.main_image != 'None' and phone.main_image != '' %}
+                <img src="{{ phone.main_image }}" class="card-img-top" alt="{{ phone.model_name }}" style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200/e0e0e0/666666?text={{ phone.model_name | urlencode }}'">
+                {% else %}
+                <img src="https://via.placeholder.com/300x200/e0e0e0/666666?text={{ phone.model_name | urlencode }}" class="card-img-top" alt="{{ phone.model_name }}" style="height: 200px; object-fit: cover;">
+                {% endif %}
                 <div class="card-body">
                     <h6>{{ phone.model_name }}</h6>
                     <p class="text-primary">RM {{ "{:,.0f}".format(phone.price) }}</p>
@@ -17,6 +70,25 @@
         </div>
         {% endfor %}
     </div>
+
+    <!-- Results Info -->
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <p class="text-muted">
+                Showing {{ phones.items|length }} of {{ phones.total }} phones
+                {% if current_filters.brand_id %}
+                    - Filtered by brand
+                {% endif %}
+                {% if current_filters.min_price or current_filters.max_price %}
+                    - Price range:
+                    {% if current_filters.min_price %}RM {{ current_filters.min_price }}{% else %}Any{% endif %}
+                    to
+                    {% if current_filters.max_price %}RM {{ current_filters.max_price }}{% else %}Any{% endif %}
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
     <!-- Pagination -->
     {% if phones.pages > 1 %}
     <nav>
@@ -24,7 +96,7 @@
             {% for page_num in phones.iter_pages() %}
             {% if page_num %}
             <li class="page-item {% if page_num == phones.page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('user.browse', page=page_num) }}">{{ page_num }}</a>
+                <a class="page-link" href="{{ url_for('user.browse', page=page_num, brand_id=current_filters.brand_id, min_price=current_filters.min_price, max_price=current_filters.max_price, sort_by=current_filters.sort_by) }}">{{ page_num }}</a>
             </li>
             {% endif %}
             {% endfor %}

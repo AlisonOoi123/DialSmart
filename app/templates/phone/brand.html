@@ -21,12 +21,53 @@
         </div>
     </div>
 
+    <!-- Sorting and Filters -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('phone.brand_page', brand_id=brand.id) }}" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="sort_by" class="form-label">Sort By</label>
+                            <select name="sort_by" id="sort_by" class="form-select" onchange="this.form.submit()">
+                                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Newest First</option>
+                                <option value="price_asc" {% if sort_by == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+                                <option value="price_desc" {% if sort_by == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+                                <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="min_price" class="form-label">Min Price (RM)</label>
+                            <input type="number" name="min_price" id="min_price" class="form-control" placeholder="Min" value="{{ request.args.get('min_price', '') }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="max_price" class="form-label">Max Price (RM)</label>
+                            <input type="number" name="max_price" id="max_price" class="form-control" placeholder="Max" value="{{ request.args.get('max_price', '') }}">
+                        </div>
+                        <div class="col-md-12 text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Apply Filters
+                            </button>
+                            <a href="{{ url_for('phone.brand_page', brand_id=brand.id) }}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Clear Filters
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Phones Grid -->
     <div class="row">
         {% for phone in phones.items %}
         <div class="col-md-3 mb-4">
             <div class="card h-100">
-                <img src="{{ phone.main_image or 'https://via.placeholder.com/300x400?text=Phone' }}" class="card-img-top" alt="{{ phone.model_name }}" onerror="this.src='https://via.placeholder.com/300x400?text=Phone'">
+                {% if phone.main_image and phone.main_image != 'None' and phone.main_image != '' %}
+                <img src="{{ phone.main_image }}" class="card-img-top" alt="{{ phone.model_name }}" style="height: 200px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/300x200/e0e0e0/666666?text={{ phone.model_name | urlencode }}'">
+                {% else %}
+                <img src="https://via.placeholder.com/300x200/e0e0e0/666666?text={{ phone.model_name | urlencode }}" class="card-img-top" alt="{{ phone.model_name }}" style="height: 200px; object-fit: cover;">
+                {% endif %}
                 <div class="card-body">
                     <h6>{{ phone.model_name }}</h6>
                     <h5 class="text-primary">RM {{ "{:,.0f}".format(phone.price) }}</h5>

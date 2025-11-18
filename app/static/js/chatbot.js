@@ -113,15 +113,29 @@ $(document).ready(function() {
         var cardsHtml = '<div class="phone-recommendations mt-2">';
 
         phones.forEach(function(phone) {
+            // Handle missing or invalid image URLs
+            var imageUrl = phone.image;
+            if (!imageUrl || imageUrl === 'None' || imageUrl === '' || imageUrl === 'null') {
+                imageUrl = 'https://via.placeholder.com/300x300/e0e0e0/666666?text=' + encodeURIComponent(phone.name);
+            }
+
             cardsHtml += `
                 <div class="card mb-2" style="max-width: 100%;">
-                    <div class="card-body p-2">
-                        <h6 class="card-title mb-1">${escapeHtml(phone.name)}</h6>
-                        <p class="card-text mb-1 small">
-                            <strong class="text-primary">RM ${phone.price.toFixed(2)}</strong>
-                            ${phone.match_score ? `<span class="badge bg-success ms-2">${phone.match_score}% Match</span>` : ''}
-                        </p>
-                        <a href="/phone/${phone.id}" class="btn btn-sm btn-primary" target="_blank">View Details</a>
+                    <div class="row g-0">
+                        <div class="col-4">
+                            <img src="${imageUrl}" class="img-fluid rounded-start" alt="${escapeHtml(phone.name)}" style="object-fit: cover; height: 120px; width: 100%;" onerror="this.src='https://via.placeholder.com/300x300/e0e0e0/666666?text=${encodeURIComponent(phone.name)}'">
+                        </div>
+                        <div class="col-8">
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1">${escapeHtml(phone.name)}</h6>
+                                <p class="card-text mb-1 small">
+                                    <strong class="text-primary">RM ${phone.price.toFixed(2)}</strong>
+                                    ${phone.match_score ? `<span class="badge bg-success ms-2">${phone.match_score}% Match</span>` : ''}
+                                    ${phone.score ? `<span class="badge bg-info ms-2">${phone.score}% Match</span>` : ''}
+                                </p>
+                                <a href="/phone/${phone.id}" class="btn btn-sm btn-primary" target="_blank">View Details</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;

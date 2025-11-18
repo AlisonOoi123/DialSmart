@@ -6,6 +6,8 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from app.models import Phone, PhoneSpecification, Brand
 from app.modules import PhoneComparison, AIRecommendationEngine
+from datetime import datetime
+import re
 
 bp = Blueprint('phone', __name__, url_prefix='/phone')
 
@@ -32,9 +34,17 @@ def brand_page(brand_id):
     # Get filter parameters
     sort_by = request.args.get('sort_by', 'created_at')
     page = request.args.get('page', 1, type=int)
+    min_price = request.args.get('min_price', type=float)
+    max_price = request.args.get('max_price', type=float)
 
     # Build query
     query = Phone.query.filter_by(brand_id=brand_id, is_active=True)
+
+    # Apply price filters
+    if min_price is not None:
+        query = query.filter(Phone.price >= min_price)
+    if max_price is not None:
+        query = query.filter(Phone.price <= max_price)
 
     # Apply sorting
     if sort_by == 'price_asc':
@@ -43,12 +53,63 @@ def brand_page(brand_id):
         query = query.order_by(Phone.price.desc())
     elif sort_by == 'name':
         query = query.order_by(Phone.model_name.asc())
-    else:  # created_at
-        query = query.order_by(Phone.created_at.desc())
+    else:  # created_at / newest - use release_date (launch date from CSV)
+        # For better sorting of models with numbers (e.g., Xiaomi 17 before 15s Pro)
+        # We'll fetch all and sort in Python for this brand
+        all_phones = query.all()
 
-    # Paginate
-    per_page = 12
-    phones = query.paginate(page=page, per_page=per_page, error_out=False)
+        # Sort using smart numeric extraction
+        def extract_model_number(phone):
+            """Extract primary model number for sorting (e.g., '17' from 'Xiaomi 17')"""
+            match = re.search(r'\b(\d+)\b', phone.model_name)
+            if match:
+                return int(match.group(1))
+            return 0
+
+        # Sort by: release_date desc (if available), then model number desc, then created_at desc
+        # Use datetime.min for null dates so they appear last when sorted descending
+        all_phones.sort(key=lambda p: (
+            p.release_date if p.release_date else datetime(1900, 1, 1),
+            extract_model_number(p),
+            p.created_at if p.created_at else datetime(1900, 1, 1)
+        ), reverse=True)
+
+        # Manual pagination since we sorted in Python
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        phones_items = all_phones[start_idx:end_idx]
+        total_phones = len(all_phones)
+
+        # Create a pagination object manually
+        class ManualPagination:
+            def __init__(self, items, page, per_page, total):
+                self.items = items
+                self.page = page
+                self.per_page = per_page
+                self.total = total
+                self.pages = (total + per_page - 1) // per_page
+                self.has_prev = page > 1
+                self.has_next = page < self.pages
+                self.prev_num = page - 1 if self.has_prev else None
+                self.next_num = page + 1 if self.has_next else None
+
+            def iter_pages(self, left_edge=2, left_current=2, right_current=3, right_edge=2):
+                last = 0
+                for num in range(1, self.pages + 1):
+                    if num <= left_edge or \
+                       (num >= self.page - left_current and num <= self.page + right_current) or \
+                       num > self.pages - right_edge:
+                        if last + 1 != num:
+                            yield None
+                        yield num
+                        last = num
+
+        phones = ManualPagination(phones_items, page, per_page, total_phones)
+
+    # Paginate (only for non-newest sorting)
+    if sort_by != 'created_at' and query is not None:
+        per_page = 12
+        phones = query.paginate(page=page, per_page=per_page, error_out=False)
 
     # Get brand statistics
     phone_count = brand.get_phone_count()

@@ -3,92 +3,310 @@
 {% block content %}
 <div class="container-fluid py-4">
     <h2>{% if phone %}Edit{% else %}Add New{% endif %} Phone</h2>
+    <p class="text-muted">All fields can accept None or N/A values. Only Brand, Model Name, and Price are required.</p>
 
     <form method="POST" enctype="multipart/form-data">
         <div class="row">
+            <!-- LEFT COLUMN -->
             <div class="col-md-6">
+                <!-- Basic Information -->
                 <div class="card mb-4">
-                    <div class="card-header"><h5>Basic Information</h5></div>
+                    <div class="card-header bg-primary text-white"><h5>Basic Information</h5></div>
                     <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">Model Name *</label>
-                            <input type="text" name="model_name" class="form-control" value="{{ phone.model_name if phone else '' }}" required>
-                        </div>
                         <div class="mb-3">
                             <label class="form-label">Brand *</label>
                             <select name="brand_id" class="form-select" required>
+                                <option value="">Select Brand</option>
                                 {% for brand in brands %}
                                 <option value="{{ brand.id }}" {% if phone and phone.brand_id == brand.id %}selected{% endif %}>{{ brand.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Model Name *</label>
+                            <input type="text" name="model_name" class="form-control" value="{{ phone.model_name if phone else '' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Model Number</label>
+                            <input type="text" name="model_number" class="form-control" value="{{ phone.model_number if phone else '' }}">
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Price (RM) *</label>
                             <input type="number" name="price" step="0.01" class="form-control" value="{{ phone.price if phone else '' }}" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Main Image</label>
-                            <input type="file" name="main_image" class="form-control" accept="image/*">
+                            <label class="form-label">Status</label>
+                            <select name="availability_status" class="form-select">
+                                <option value="Available" {% if phone and phone.availability_status == 'Available' %}selected{% endif %}>Available</option>
+                                <option value="Out of Stock" {% if phone and phone.availability_status == 'Out of Stock' %}selected{% endif %}>Out of Stock</option>
+                                <option value="Pre-order" {% if phone and phone.availability_status == 'Pre-order' %}selected{% endif %}>Pre-order</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Release Date (Date)</label>
+                            <input type="date" name="release_date" class="form-control" value="{{ phone.release_date if phone and phone.release_date else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Image URL</label>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">Option 1: Enter Image URL</label>
+                                <input type="url" name="main_image_url" class="form-control"
+                                       placeholder="https://example.com/image.jpg"
+                                       value="{{ phone.main_image if phone and phone.main_image and not phone.main_image.startswith('/static') else '' }}">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">Option 2: Upload from Computer</label>
+                                <input type="file" name="main_image" class="form-control" accept="image/*">
+                            </div>
                             {% if phone and phone.main_image %}
-                            <small class="text-muted">Current: {{ phone.main_image }}</small>
+                            <div class="mt-2">
+                                <small class="text-muted">Current image:</small><br>
+                                <img src="{{ phone.main_image }}" alt="Current image"
+                                     style="max-width: 200px; max-height: 150px;" class="img-thumbnail mt-1"
+                                     onerror="this.src='https://via.placeholder.com/200x150/e0e0e0/666666?text=No+Image'">
+                            </div>
                             {% endif %}
+                            <small class="form-text text-muted">URL takes priority over file upload</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Product URL</label>
+                            <input type="url" name="product_url" class="form-control" value="{{ specs.product_url if specs else '' }}" placeholder="https://example.com/product">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display Specifications -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white"><h5>Display Specifications</h5></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Screen Size (inches)</label>
+                                <input type="text" name="screen_size" class="form-control" value="{{ specs.screen_size if specs else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">PPI</label>
+                                <input type="text" name="ppi" class="form-control" value="{{ specs.ppi if specs else '' }}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Display Type</label>
+                            <input type="text" name="display_type" class="form-control" value="{{ specs.display_type if specs else '' }}" placeholder="AMOLED, IPS LCD, etc.">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Resolution</label>
+                            <input type="text" name="screen_resolution" class="form-control" value="{{ specs.screen_resolution if specs else '' }}" placeholder="1080x2400">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Multi-touch</label>
+                            <input type="text" name="multitouch" class="form-control" value="{{ specs.multitouch if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Protection</label>
+                            <input type="text" name="protection" class="form-control" value="{{ specs.protection if specs else '' }}" placeholder="Corning Gorilla Glass">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network & Connectivity -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white"><h5>Network & Connectivity</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">SIM</label>
+                            <input type="text" name="sim" class="form-control" value="{{ specs.sim if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Technology</label>
+                            <input type="text" name="technology" class="form-control" value="{{ specs.technology if specs else '' }}" placeholder="GSM / HSPA / LTE / 5G">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">5G Networks</label>
+                            <textarea name="network_5g" class="form-control" rows="2">{{ specs.network_5g if specs else '' }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">4G Networks</label>
+                            <textarea name="network_4g" class="form-control" rows="2">{{ specs.network_4g if specs else '' }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">3G Networks</label>
+                            <input type="text" name="network_3g" class="form-control" value="{{ specs.network_3g if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">2G Networks</label>
+                            <input type="text" name="network_2g" class="form-control" value="{{ specs.network_2g if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Network Speed</label>
+                            <input type="text" name="network_speed" class="form-control" value="{{ specs.network_speed if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Wi-Fi</label>
+                            <input type="text" name="wifi_standard" class="form-control" value="{{ specs.wifi_standard if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Bluetooth</label>
+                            <input type="text" name="bluetooth_version" class="form-control" value="{{ specs.bluetooth_version if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">GPS</label>
+                            <input type="text" name="gps" class="form-control" value="{{ specs.gps if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">NFC</label>
+                            <input type="text" name="nfc" class="form-control" value="{{ specs.nfc if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">USB</label>
+                            <input type="text" name="usb" class="form-control" value="{{ specs.usb if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Radio</label>
+                            <input type="text" name="radio" class="form-control" value="{{ specs.radio if specs else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Physical Characteristics -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark"><h5>Physical Characteristics</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Dimensions</label>
+                            <input type="text" name="dimensions" class="form-control" value="{{ specs.dimensions if specs else '' }}" placeholder="160.5 x 74.8 x 8.4 mm">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Weight</label>
+                            <input type="text" name="weight" class="form-control" value="{{ specs.weight if specs else '' }}" placeholder="201 g">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Color (Colors Available)</label>
+                            <input type="text" name="colors_available" class="form-control" value="{{ specs.colors_available if specs else '' }}" placeholder="Black, White, Blue">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Body Material</label>
+                            <input type="text" name="body_material" class="form-control" value="{{ specs.body_material if specs else '' }}" placeholder="Glass front, plastic back">
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- RIGHT COLUMN -->
             <div class="col-md-6">
+                <!-- Performance -->
                 <div class="card mb-4">
-                    <div class="card-header"><h5>Specifications</h5></div>
+                    <div class="card-header bg-danger text-white"><h5>Performance</h5></div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Screen Size (inches)</label>
-                                <input type="number" name="screen_size" step="0.1" class="form-control" value="{{ specs.screen_size if specs else '' }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Screen Type</label>
-                                <input type="text" name="screen_type" class="form-control" value="{{ specs.screen_type if specs else '' }}">
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">Operating System (OS)</label>
+                            <input type="text" name="operating_system" class="form-control" value="{{ specs.operating_system if specs else '' }}" placeholder="Android 13, iOS 16">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Processor</label>
-                            <input type="text" name="processor" class="form-control" value="{{ specs.processor if specs else '' }}">
+                            <label class="form-label">Chipset</label>
+                            <input type="text" name="chipset" class="form-control" value="{{ specs.chipset if specs else '' }}">
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">RAM Options (e.g., 8GB, 12GB)</label>
-                                <input type="text" name="ram_options" class="form-control" value="{{ specs.ram_options if specs else '' }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Storage Options</label>
-                                <input type="text" name="storage_options" class="form-control" value="{{ specs.storage_options if specs else '' }}">
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">CPU</label>
+                            <input type="text" name="cpu" class="form-control" value="{{ specs.cpu if specs else '' }}">
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Rear Camera Main (MP)</label>
-                                <input type="number" name="rear_camera_main" class="form-control" value="{{ specs.rear_camera_main if specs else '' }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Battery (mAh)</label>
-                                <input type="number" name="battery_capacity" class="form-control" value="{{ specs.battery_capacity if specs else '' }}">
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">GPU</label>
+                            <input type="text" name="gpu" class="form-control" value="{{ specs.gpu if specs else '' }}">
                         </div>
-                        <div class="form-check mb-3">
-                            <input type="checkbox" name="has_5g" class="form-check-input" {% if specs and specs.has_5g %}checked{% endif %}>
-                            <label class="form-check-label">5G Support</label>
+                        <div class="mb-3">
+                            <label class="form-label">RAM (RAM Options)</label>
+                            <input type="text" name="ram_options" class="form-control" value="{{ specs.ram_options if specs else '' }}" placeholder="8GB, 12GB">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Storage (Storage Options)</label>
+                            <input type="text" name="storage_options" class="form-control" value="{{ specs.storage_options if specs else '' }}" placeholder="128GB, 256GB">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Card Slot (Expandable Storage)</label>
+                            <input type="text" name="card_slot" class="form-control" value="{{ specs.card_slot if specs else '' }}" placeholder="microSD up to 1TB">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Camera -->
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white"><h5>Camera</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Rear Camera</label>
+                            <textarea name="rear_camera" class="form-control" rows="3">{{ specs.rear_camera if specs else '' }}</textarea>
+                            <small class="form-text text-muted">Full rear camera specifications</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Front Camera</label>
+                            <input type="text" name="front_camera" class="form-control" value="{{ specs.front_camera if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Flash</label>
+                            <input type="text" name="flash" class="form-control" value="{{ specs.flash if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Camera Features</label>
+                            <textarea name="camera_features" class="form-control" rows="2">{{ specs.camera_features if specs else '' }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Video Recording</label>
+                            <input type="text" name="video_recording" class="form-control" value="{{ specs.video_recording if specs else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Battery -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white"><h5>Battery</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Battery (Full Description)</label>
+                            <input type="text" name="battery" class="form-control" value="{{ specs.battery if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Battery Capacity (mAh)</label>
+                            <input type="text" name="battery_capacity" class="form-control" value="{{ specs.battery_capacity if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fast Charging</label>
+                            <input type="text" name="fast_charging" class="form-control" value="{{ specs.fast_charging if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Wireless Charging</label>
+                            <input type="text" name="wireless_charging" class="form-control" value="{{ specs.wireless_charging if specs else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Removable Battery</label>
+                            <input type="text" name="removable_battery" class="form-control" value="{{ specs.removable_battery if specs else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sensors & Additional Features -->
+                <div class="card mb-4">
+                    <div class="card-header" style="background-color: #6f42c1; color: white;"><h5>Sensors & Features</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Sensors</label>
+                            <textarea name="sensors" class="form-control" rows="3">{{ specs.sensors if specs else '' }}</textarea>
+                            <small class="form-text text-muted">All sensors comma-separated</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Water Resistance</label>
+                            <input type="text" name="water_resistance" class="form-control" value="{{ specs.water_resistance if specs else '' }}" placeholder="IP68">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="text-center">
-            <button type="submit" class="btn btn-primary btn-lg">
+        <!-- Submit Buttons -->
+        <div class="text-center my-4">
+            <button type="submit" class="btn btn-primary btn-lg px-5">
                 <i class="bi bi-save"></i> {% if phone %}Update{% else %}Add{% endif %} Phone
             </button>
-            <a href="{{ url_for('admin.phones') }}" class="btn btn-secondary btn-lg">Cancel</a>
+            <a href="{{ url_for('admin.phones') }}" class="btn btn-secondary btn-lg px-5 ms-3">Cancel</a>
         </div>
     </form>
 </div>
