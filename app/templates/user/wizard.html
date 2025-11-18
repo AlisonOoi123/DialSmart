@@ -44,7 +44,7 @@
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Photography" id="usage1">
+                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Photography" id="usage1" {% if preferences and 'Photography' in (preferences.primary_usage or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="usage1">
                                         <i class="bi bi-camera"></i> Photography
                                     </label>
@@ -52,7 +52,7 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Gaming" id="usage2">
+                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Gaming" id="usage2" {% if preferences and 'Gaming' in (preferences.primary_usage or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="usage2">
                                         <i class="bi bi-controller"></i> Gaming
                                     </label>
@@ -60,7 +60,7 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Work" id="usage3">
+                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Work" id="usage3" {% if preferences and 'Work' in (preferences.primary_usage or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="usage3">
                                         <i class="bi bi-briefcase"></i> Work/Productivity
                                     </label>
@@ -68,7 +68,7 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Social Media" id="usage4">
+                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Social Media" id="usage4" {% if preferences and 'Social Media' in (preferences.primary_usage or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="usage4">
                                         <i class="bi bi-share"></i> Social Media
                                     </label>
@@ -76,7 +76,7 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Entertainment" id="usage5">
+                                    <input class="form-check-input" type="checkbox" name="primary_usage" value="Entertainment" id="usage5" {% if preferences and 'Entertainment' in (preferences.primary_usage or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="usage5">
                                         <i class="bi bi-play-circle"></i> Entertainment
                                     </label>
@@ -95,37 +95,37 @@
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="important_features" value="Battery" id="feat1">
+                                    <input class="form-check-input" type="checkbox" name="important_features" value="Battery" id="feat1" {% if preferences and 'Battery' in (preferences.important_features or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="feat1">Long Battery Life</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="important_features" value="Camera" id="feat2">
+                                    <input class="form-check-input" type="checkbox" name="important_features" value="Camera" id="feat2" {% if preferences and 'Camera' in (preferences.important_features or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="feat2">Great Camera</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="important_features" value="Performance" id="feat3">
+                                    <input class="form-check-input" type="checkbox" name="important_features" value="Performance" id="feat3" {% if preferences and 'Performance' in (preferences.important_features or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="feat3">Fast Performance</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="important_features" value="Storage" id="feat4">
+                                    <input class="form-check-input" type="checkbox" name="important_features" value="Storage" id="feat4" {% if preferences and 'Storage' in (preferences.important_features or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="feat4">Large Storage</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="important_features" value="5G" id="feat5">
+                                    <input class="form-check-input" type="checkbox" name="important_features" value="5G" id="feat5" {% if preferences and '5G' in (preferences.important_features or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="feat5">5G Connectivity</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="important_features" value="Design" id="feat6">
+                                    <input class="form-check-input" type="checkbox" name="important_features" value="Design" id="feat6" {% if preferences and 'Design' in (preferences.important_features or '') %}checked{% endif %}>
                                     <label class="form-check-label" for="feat6">Premium Design</label>
                                 </div>
                             </div>
@@ -143,7 +143,8 @@
                             {% for brand in brands %}
                             <div class="col-md-3">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="preferred_brands" value="{{ brand.id }}" id="brand{{ brand.id }}">
+                                    <input class="form-check-input" type="checkbox" name="preferred_brands" value="{{ brand.id }}" id="brand{{ brand.id }}"
+                                        {% if preferences and preferences.preferred_brands and brand.id|string in preferences.preferred_brands %}checked{% endif %}>
                                     <label class="form-check-label" for="brand{{ brand.id }}">
                                         {{ brand.name }}
                                     </label>
