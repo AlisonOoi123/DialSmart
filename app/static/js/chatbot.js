@@ -82,8 +82,8 @@ $(document).ready(function() {
                         appendQuickReplies(response.quick_replies);
                     }
 
-                    // Handle phone recommendations
-                    if (response.type === 'recommendation' && response.metadata.phones) {
+                    // Handle phone recommendations and phone details
+                    if ((response.type === 'recommendation' || response.type === 'phone_details') && response.metadata.phones) {
                         appendPhoneCards(response.metadata.phones);
                     }
                 } else {
@@ -99,9 +99,25 @@ $(document).ready(function() {
 
     function appendMessage(message, type) {
         var messageClass = type === 'user' ? 'user-message' : 'bot-message';
+
+        // Convert markdown links to HTML for bot messages
+        var processedMessage = message;
+        if (type === 'bot') {
+            // Convert [text](url) to <a href="url">text</a>
+            processedMessage = processedMessage.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
+                return `<a href="${escapeHtml(url)}" class="text-primary text-decoration-underline" target="_blank">${escapeHtml(text)}</a>`;
+            });
+            // Convert **text** to <strong>text</strong>
+            processedMessage = processedMessage.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Convert line breaks
+            processedMessage = processedMessage.replace(/\n/g, '<br>');
+        } else {
+            processedMessage = escapeHtml(message);
+        }
+
         var messageHtml = `
             <div class="chat-message ${messageClass}">
-                <div class="message-content">${escapeHtml(message)}</div>
+                <div class="message-content">${processedMessage}</div>
             </div>
         `;
 
@@ -113,29 +129,15 @@ $(document).ready(function() {
         var cardsHtml = '<div class="phone-recommendations mt-2">';
 
         phones.forEach(function(phone) {
-            // Handle missing or invalid image URLs
-            var imageUrl = phone.image;
-            if (!imageUrl || imageUrl === 'None' || imageUrl === '' || imageUrl === 'null') {
-                imageUrl = 'https://via.placeholder.com/300x300/e0e0e0/666666?text=' + encodeURIComponent(phone.name);
-            }
-
             cardsHtml += `
                 <div class="card mb-2" style="max-width: 100%;">
-                    <div class="row g-0">
-                        <div class="col-4">
-                            <img src="${imageUrl}" class="img-fluid rounded-start" alt="${escapeHtml(phone.name)}" style="object-fit: cover; height: 120px; width: 100%;" onerror="this.src='https://via.placeholder.com/300x300/e0e0e0/666666?text=${encodeURIComponent(phone.name)}'">
-                        </div>
-                        <div class="col-8">
-                            <div class="card-body p-2">
-                                <h6 class="card-title mb-1">${escapeHtml(phone.name)}</h6>
-                                <p class="card-text mb-1 small">
-                                    <strong class="text-primary">RM ${phone.price.toFixed(2)}</strong>
-                                    ${phone.match_score ? `<span class="badge bg-success ms-2">${phone.match_score}% Match</span>` : ''}
-                                    ${phone.score ? `<span class="badge bg-info ms-2">${phone.score}% Match</span>` : ''}
-                                </p>
-                                <a href="/phone/${phone.id}" class="btn btn-sm btn-primary" target="_blank">View Details</a>
-                            </div>
-                        </div>
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-1">${escapeHtml(phone.name)}</h6>
+                        <p class="card-text mb-1 small">
+                            <strong class="text-primary">RM ${phone.price.toFixed(2)}</strong>
+                            ${phone.match_score ? `<span class="badge bg-success ms-2">${phone.match_score}% Match</span>` : ''}
+                        </p>
+                        <a href="/phone/${phone.id}" class="btn btn-sm btn-primary" target="_blank">View Details</a>
                     </div>
                 </div>
             `;
