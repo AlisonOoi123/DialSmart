@@ -155,7 +155,7 @@
                 </div>
 
                 <div class="text-center">
-                    <button type="submit" class="btn btn-primary btn-lg">
+                    <button type="submit" class="btn btn-primary btn-lg" onclick="return validateBudget()">
                         <i class="bi bi-search"></i> Get Recommendations
                     </button>
                 </div>
@@ -168,6 +168,23 @@
 function setBudget(min, max) {
     document.querySelector('input[name="min_budget"]').value = min;
     document.querySelector('input[name="max_budget"]').value = max;
+}
+
+function validateBudget() {
+    const minBudget = parseInt(document.querySelector('input[name="min_budget"]').value);
+    const maxBudget = parseInt(document.querySelector('input[name="max_budget"]').value);
+
+    if (minBudget > maxBudget) {
+        alert('⚠️ Warning: Minimum budget (RM' + minBudget + ') cannot be greater than maximum budget (RM' + maxBudget + ').\n\nPlease adjust your budget range.');
+        return false;
+    }
+
+    if (minBudget < 0 || maxBudget < 0) {
+        alert('⚠️ Warning: Budget values cannot be negative.');
+        return false;
+    }
+
+    return true;
 }
 </script>
 {% endblock %}
