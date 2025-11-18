@@ -77,13 +77,13 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     """
     Calculate how well a phone matches user preferences
     Returns a score from 0-100
-    Priority: Brand > Budget > Features > Specs
+    Priority: Brand > Budget > Usage Type > Features > Specs
     """
     score = 0
     max_score = 0
 
-    # Brand preference (weight: 50 - HIGHEST PRIORITY)
-    max_score += 50
+    # Brand preference (weight: 40 - HIGHEST PRIORITY)
+    max_score += 40
     preferred_brands = []
 
     # Handle both list and JSON string formats
@@ -106,62 +106,194 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     # If user selected specific brands, heavily prioritize them
     if preferred_brands:
         if phone.brand_id in preferred_brands:
-            score += 50  # Full points for matching brand
+            score += 40  # Full points for matching brand
         # else: 0 points - phone doesn't match preferred brands
     else:
-        score += 50  # No brand preference, give full points to all
+        score += 40  # No brand preference, give full points to all
 
-    # Budget match (weight: 25)
-    max_score += 25
+    # Budget match (weight: 20)
+    max_score += 20
     if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
-        score += 25
+        score += 20
     elif phone.price < user_prefs.min_budget:
         # Slight penalty for cheaper phones
-        score += 18
+        score += 15
     else:
         # Penalty for over-budget phones
         over_budget = phone.price - user_prefs.max_budget
-        penalty = min(25, (over_budget / user_prefs.max_budget) * 25)
-        score += max(0, 25 - penalty)
+        penalty = min(20, (over_budget / user_prefs.max_budget) * 20)
+        score += max(0, 20 - penalty)
+
+    # Usage type match (weight: 30 - HIGH PRIORITY for differentiation)
+    max_score += 30
+    usage_score = 0
+    primary_usage = []
+
+    # Parse primary_usage from user preferences
+    if hasattr(user_prefs, 'primary_usage') and user_prefs.primary_usage:
+        if isinstance(user_prefs.primary_usage, list):
+            primary_usage = user_prefs.primary_usage
+        elif isinstance(user_prefs.primary_usage, str):
+            try:
+                import json
+                primary_usage = json.loads(user_prefs.primary_usage)
+            except (json.JSONDecodeError, ValueError):
+                primary_usage = []
+
+    if primary_usage and phone_specs:
+        # Score based on usage type (can have multiple usage types)
+        for usage_type in primary_usage:
+            if usage_type == 'Gaming':
+                # Gaming needs: HIGH RAM, high refresh rate, good processor
+                ram_values = extract_numbers_from_text(phone_specs.ram_options)
+                if ram_values:
+                    max_ram = max(ram_values)
+                    if max_ram >= 12:
+                        usage_score += 12
+                    elif max_ram >= 8:
+                        usage_score += 8
+                    elif max_ram >= 6:
+                        usage_score += 4
+
+                # High refresh rate is critical for gaming
+                if phone_specs.refresh_rate and phone_specs.refresh_rate >= 120:
+                    usage_score += 10
+                elif phone_specs.refresh_rate and phone_specs.refresh_rate >= 90:
+                    usage_score += 6
+
+                # Good processor for gaming
+                if phone_specs.processor:
+                    if any(chip in phone_specs.processor.lower() for chip in ['snapdragon 8', 'dimensity 9', 'a17', 'a16']):
+                        usage_score += 8
+                    elif any(chip in phone_specs.processor.lower() for chip in ['snapdragon 7', 'dimensity 8']):
+                        usage_score += 4
+
+            elif usage_type in ['Business', 'Work']:
+                # Business needs: LONG BATTERY, big storage, good performance
+                if phone_specs.battery_capacity:
+                    if phone_specs.battery_capacity >= 5000:
+                        usage_score += 12
+                    elif phone_specs.battery_capacity >= 4500:
+                        usage_score += 8
+                    elif phone_specs.battery_capacity >= 4000:
+                        usage_score += 4
+
+                # Large storage for work files
+                storage_values = extract_numbers_from_text(phone_specs.storage_options)
+                if storage_values:
+                    max_storage = max(storage_values)
+                    if max_storage >= 256:
+                        usage_score += 10
+                    elif max_storage >= 128:
+                        usage_score += 6
+                    elif max_storage >= 64:
+                        usage_score += 3
+
+                # Decent RAM for multitasking
+                ram_values = extract_numbers_from_text(phone_specs.ram_options)
+                if ram_values:
+                    max_ram = max(ram_values)
+                    if max_ram >= 8:
+                        usage_score += 8
+                    elif max_ram >= 6:
+                        usage_score += 4
+
+            elif usage_type == 'Photography':
+                # Photography needs: HIGH CAMERA MP
+                if phone_specs.rear_camera_main:
+                    if phone_specs.rear_camera_main >= 108:
+                        usage_score += 15
+                    elif phone_specs.rear_camera_main >= 64:
+                        usage_score += 12
+                    elif phone_specs.rear_camera_main >= 48:
+                        usage_score += 8
+                    elif phone_specs.rear_camera_main >= 32:
+                        usage_score += 4
+
+                # Good front camera for selfies
+                if phone_specs.front_camera_mp and phone_specs.front_camera_mp >= 32:
+                    usage_score += 8
+                elif phone_specs.front_camera_mp and phone_specs.front_camera_mp >= 16:
+                    usage_score += 4
+
+                # Good display for photo review
+                if phone_specs.screen_type and ('amoled' in phone_specs.screen_type.lower() or 'oled' in phone_specs.screen_type.lower()):
+                    usage_score += 7
+
+            elif usage_type == 'Entertainment':
+                # Entertainment needs: Large screen, good battery
+                if phone_specs.screen_size and phone_specs.screen_size >= 6.7:
+                    usage_score += 10
+                elif phone_specs.screen_size and phone_specs.screen_size >= 6.5:
+                    usage_score += 7
+                elif phone_specs.screen_size and phone_specs.screen_size >= 6.3:
+                    usage_score += 4
+
+                if phone_specs.battery_capacity and phone_specs.battery_capacity >= 5000:
+                    usage_score += 10
+                elif phone_specs.battery_capacity and phone_specs.battery_capacity >= 4500:
+                    usage_score += 6
+
+                # AMOLED display for better viewing
+                if phone_specs.screen_type and ('amoled' in phone_specs.screen_type.lower() or 'oled' in phone_specs.screen_type.lower()):
+                    usage_score += 10
+
+            elif usage_type == 'Social Media':
+                # Social media needs: Good camera, decent battery
+                if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= 48:
+                    usage_score += 10
+                elif phone_specs.rear_camera_main and phone_specs.rear_camera_main >= 32:
+                    usage_score += 6
+
+                if phone_specs.battery_capacity and phone_specs.battery_capacity >= 4500:
+                    usage_score += 10
+                elif phone_specs.battery_capacity and phone_specs.battery_capacity >= 4000:
+                    usage_score += 6
+
+        # Normalize usage score to 0-30 range
+        score += min(30, usage_score)
+    else:
+        # No usage type specified, give half points
+        score += 15
 
     if phone_specs:
-        # RAM match (weight: 10)
-        max_score += 10
+        # RAM match (weight: 8)
+        max_score += 8
         if phone_specs.ram_options:
             ram_values = extract_numbers_from_text(phone_specs.ram_options)
             if ram_values and max(ram_values) >= user_prefs.min_ram:
-                score += 10
+                score += 8
 
-        # Storage match (weight: 10)
-        max_score += 10
+        # Storage match (weight: 8)
+        max_score += 8
         if phone_specs.storage_options:
             storage_values = extract_numbers_from_text(phone_specs.storage_options)
             if storage_values and max(storage_values) >= user_prefs.min_storage:
-                score += 10
+                score += 8
 
-        # Camera match (weight: 15)
-        max_score += 15
-        if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= user_prefs.min_camera:
-            score += 15
-
-        # Battery match (weight: 15)
-        max_score += 15
-        if phone_specs.battery_capacity and phone_specs.battery_capacity >= user_prefs.min_battery:
-            score += 15
-
-        # 5G requirement (weight: 10)
+        # Camera match (weight: 10)
         max_score += 10
+        if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= user_prefs.min_camera:
+            score += 10
+
+        # Battery match (weight: 10)
+        max_score += 10
+        if phone_specs.battery_capacity and phone_specs.battery_capacity >= user_prefs.min_battery:
+            score += 10
+
+        # 5G requirement (weight: 8)
+        max_score += 8
         if user_prefs.requires_5g:
             if phone_specs.has_5g:
-                score += 10
+                score += 8
         else:
-            score += 10  # No requirement, so full points
+            score += 8  # No requirement, so full points
 
-        # Screen size match (weight: 10)
-        max_score += 10
+        # Screen size match (weight: 6)
+        max_score += 6
         if phone_specs.screen_size:
             if user_prefs.min_screen_size <= phone_specs.screen_size <= user_prefs.max_screen_size:
-                score += 10
+                score += 6
 
     # Calculate final percentage
     if max_score > 0:
