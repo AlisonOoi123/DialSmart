@@ -20,7 +20,7 @@ class ChatbotEngine:
             'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'i want', 'show me', 'best'],
             'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
             'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor', 'cpu'],
-            'brand_query': ['brand', 'samsung', 'apple', 'iphone', 'xiaomi', 'huawei'],
+            'brand_query': ['brand', 'samsung', 'galaxy', 'apple', 'iphone', 'xiaomi', 'huawei', 'honor', 'oppo', 'vivo', 'realme', 'google', 'pixel', 'asus', 'rog', 'infinix', 'poco', 'redmi'],
             'help': ['help', 'how', 'what can you do'],
             'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'photographer', 'gamer']
         }
@@ -114,28 +114,23 @@ class ChatbotEngine:
     def _generate_response(self, user_id, message, intent):
         """Generate appropriate response based on intent"""
 
-        # NEW: Check for specific phone model query ONLY if asking for price/spec/battery
-        # and NOT asking for recommendations or features
+        # NEW: Check for specific phone model query
+        # Skip phone model extraction ONLY if asking for recommendations with specific requirements
         message_lower = message.lower()
 
-        # Skip phone model extraction if message contains recommendation/feature/usage keywords
+        # Skip phone model extraction if message contains recommendation keywords with requirements
         skip_phone_model = any(keyword in message_lower for keyword in [
-            'recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'best',
-            'photographer', 'photography', 'gaming', 'gamer', 'business', 'work',
-            'social media', 'entertainment', 'long lasting', 'amoled', 'display',
-            'i want', 'show me', 'within', 'under', 'for'
+            'recommend', 'suggest', 'find me', 'looking for', 'need a phone', 'want a phone', 'best phone',
+            'photographer', 'photography phone', 'gaming phone', 'gamer phone', 'business phone',
+            'social media', 'entertainment', 'long lasting', 'amoled',
+            'i want a phone', 'show me phones', 'within', 'under rm'
         ])
 
-        # Only check phone model if asking specifically about a phone
+        # Try to extract phone model if NOT asking for recommendations
         if not skip_phone_model:
-            is_specific_query = any(keyword in message_lower for keyword in [
-                'price', 'cost', 'how much', 'spec', 'specification', 'battery'
-            ])
-
-            if is_specific_query:
-                phone_model = self._extract_phone_model(message)
-                if phone_model:
-                    return self._handle_specific_phone_query(message, phone_model)
+            phone_model = self._extract_phone_model(message)
+            if phone_model:
+                return self._handle_specific_phone_query(message, phone_model)
         # END NEW CODE
 
         if intent == 'greeting':
@@ -471,11 +466,17 @@ Just ask me anything like:
         brand_keywords = {
             'apple': ['apple', 'iphone'],
             'samsung': ['samsung', 'galaxy'],
-            'xiaomi': ['xiaomi', 'redmi', 'poco', 'mi '],  # 'mi ' with space to avoid matching in 'premium'
-            'huawei': ['huawei', 'honor'],
+            'xiaomi': ['xiaomi', 'mi '],  # 'mi ' with space to avoid matching in 'premium'
+            'redmi': ['redmi'],
+            'poco': ['poco'],
+            'huawei': ['huawei'],
+            'honor': ['honor'],
             'oppo': ['oppo'],
             'vivo': ['vivo'],
             'realme': ['realme'],
+            'google': ['google', 'pixel'],
+            'asus': ['asus', 'rog'],
+            'infinix': ['infinix'],
             'nokia': ['nokia'],
             'lenovo': ['lenovo'],
             'oneplus': ['oneplus', 'one plus']
