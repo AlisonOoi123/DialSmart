@@ -127,18 +127,39 @@ $(document).ready(function() {
 
     function appendPhoneCards(phones) {
         var cardsHtml = '<div class="phone-recommendations mt-2">';
+        var timestamp = Date.now();
+        var cardIds = [];
 
-        phones.forEach(function(phone) {
+        phones.forEach(function(phone, index) {
             // Get image URL or use placeholder
-            var imageUrl = phone.image || 'https://via.placeholder.com/120x120/e0e0e0/666666?text=No+Image';
+            var placeholderUrl = 'https://via.placeholder.com/120x120/e0e0e0/666666?text=No+Image';
+            var imageUrl = phone.image || placeholderUrl;
             var brandName = phone.brand || '';
             var displayName = brandName ? `${brandName} ${phone.name}` : phone.name;
+
+            // Generate unique ID for this card
+            var cardId = 'phone-card-' + phone.id + '-' + timestamp + '-' + index;
+            cardIds.push(cardId);
 
             cardsHtml += `
                 <div class="card mb-2" style="max-width: 100%;">
                     <div class="row g-0">
-                        <div class="col-4">
-                            <img src="${escapeHtml(imageUrl)}" class="img-fluid rounded-start" alt="${escapeHtml(displayName)}" style="object-fit: cover; height: 100%; min-height: 100px;" onerror="this.src='https://via.placeholder.com/120x120/e0e0e0/666666?text=No+Image'">
+                        <div class="col-4 position-relative">
+                            <div class="phone-img-wrapper" style="position: relative; min-height: 100px; background: #f5f5f5;">
+                                <div class="phone-img-loader-${cardId}" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                                <img
+                                    id="${cardId}"
+                                    data-src="${escapeHtml(imageUrl)}"
+                                    src="${escapeHtml(placeholderUrl)}"
+                                    class="img-fluid rounded-start phone-card-img"
+                                    alt="${escapeHtml(displayName)}"
+                                    style="object-fit: cover; height: 100%; width: 100%; min-height: 100px; opacity: 0; transition: opacity 0.3s ease;"
+                                    onerror="this.style.opacity='1'; this.src='${placeholderUrl}';">
+                            </div>
                         </div>
                         <div class="col-8">
                             <div class="card-body p-2">
@@ -157,6 +178,34 @@ $(document).ready(function() {
 
         cardsHtml += '</div>';
         $('#chat-messages').append(cardsHtml);
+
+        // Load images progressively to prevent blinking
+        cardIds.forEach(function(cardId) {
+            var imgElement = document.getElementById(cardId);
+            if (imgElement) {
+                var actualImageUrl = imgElement.getAttribute('data-src');
+                var loader = document.querySelector('.phone-img-loader-' + cardId);
+
+                // Show loader
+                if (loader) loader.style.display = 'block';
+
+                // Create a new image to preload
+                var img = new Image();
+                img.onload = function() {
+                    imgElement.src = actualImageUrl;
+                    imgElement.style.opacity = '1';
+                    if (loader) loader.style.display = 'none';
+                };
+                img.onerror = function() {
+                    imgElement.style.opacity = '1';
+                    if (loader) loader.style.display = 'none';
+                };
+
+                // Start loading
+                img.src = actualImageUrl;
+            }
+        });
+
         scrollToBottom();
     }
 
@@ -277,6 +326,20 @@ $(document).ready(function() {
             .phone-recommendations .card:hover {
                 box-shadow: 0 2px 8px rgba(0,0,0,0.15);
                 transform: translateY(-2px);
+            }
+
+            .phone-img-wrapper {
+                overflow: hidden;
+            }
+
+            .phone-card-img {
+                display: block;
+                width: 100%;
+            }
+
+            .phone-card-img[src*="placeholder"] {
+                background: linear-gradient(45deg, #f5f5f5 25%, #e8e8e8 25%, #e8e8e8 50%, #f5f5f5 50%, #f5f5f5 75%, #e8e8e8 75%, #e8e8e8);
+                background-size: 40px 40px;
             }
         `)
         .appendTo('head');
