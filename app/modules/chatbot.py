@@ -254,8 +254,65 @@ class ChatbotEngine:
                         }
                     }
 
-            # Fall back to general recommendations if no features detected
-            if criteria or budget or usage:
+            # Fall back to usage-based or general recommendations if no features detected
+            if usage:
+                # If usage type is detected, use get_phones_by_usage which supports brand filtering
+                phones = self.ai_engine.get_phones_by_usage(usage, budget, brands, top_n=5)
+
+                if phones:
+                    budget_text = ""
+                    if budget:
+                        min_b, max_b = budget
+                        budget_text = f" within RM{min_b:,.0f} - RM{max_b:,.0f}"
+
+                    brand_text = ""
+                    if brands:
+                        if len(brands) == 1:
+                            brand_text = f" from {brands[0]}"
+                        else:
+                            brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}"
+                            brand_text = f" from {brands_list}"
+
+                    response = f"Great choice! Here are the best phones for {usage}{brand_text}{budget_text}: 📱\n\n"
+                    phone_list = []
+
+                    for item in phones:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+
+                        # Add RAM and storage info if available
+                        if specs and specs.ram_options:
+                            response += f"   {specs.ram_options} RAM"
+                            if specs.storage_options:
+                                response += f" - {specs.storage_options} Storage"
+                            response += f" - Great for {usage.lower()}\n"
+
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'ram': specs.ram_options if specs else None,
+                            'storage': specs.storage_options if specs else None
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {
+                            'phones': phone_list,
+                            'usage': usage,
+                            'budget': budget,
+                            'brands': brands
+                        }
+                    }
+            elif criteria or budget:
+                # No usage type but has criteria or budget
                 recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=5)
 
                 if recommendations:
