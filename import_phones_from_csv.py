@@ -38,20 +38,6 @@ brands = cursor.fetchall()
 brand_map = {row[1].upper(): row[0] for row in brands}
 print(f"✓ Found {len(brand_map)} brands")
 
-if not brands:
-    print("⚠️ Creating brands...")
-    unique_brands = df['Brand'].unique()
-    for brand in unique_brands:
-        brand_name = str(brand).strip()
-        cursor.execute(
-            "INSERT INTO brands (id, name, is_active) VALUES (brands_seq.NEXTVAL, :name, 1)",
-            {'name': brand_name}
-        )
-    connection.commit()
-    cursor.execute("SELECT id, name FROM brands")
-    brand_map = {row[1].upper(): row[0] for row in cursor.fetchall()}
-    print(f"✓ Created {len(brand_map)} brands")
-
 # Clear old data
 print("\n🗑️ Clearing old data...")
 cursor.execute("DELETE FROM phone_specifications")
@@ -90,7 +76,7 @@ for index, row in df.iterrows():
         except:
             release_date = None
         
-        # Insert phone - Use sequence to get ID
+        # Insert phone
         cursor.execute("""
             INSERT INTO phones (
                 id, brand_id, model_name, price, main_image,
@@ -108,66 +94,119 @@ for index, row in df.iterrows():
             'status': status
         })
         
-        # Get the phone_id that was just inserted
+        # Get phone_id
         cursor.execute("SELECT phones_seq.CURRVAL FROM dual")
         phone_id = cursor.fetchone()[0]
         
-        # Insert specifications
+        # Helper function to safely get string value
+        def get_str(col, max_len=None):
+            val = row.get(col)
+            if pd.isna(val):
+                return None
+            val_str = str(val).strip()
+            if max_len and len(val_str) > max_len:
+                return val_str[:max_len]
+            return val_str if val_str else None
+        
+        # Helper to extract numeric values
+        def extract_number(text):
+            if pd.isna(text):
+                return None
+            import re
+            match = re.search(r'(\d+(?:\.\d+)?)', str(text))
+            return float(match.group(1)) if match else None
+        
+        # Insert specifications - matching YOUR database columns
         cursor.execute("""
             INSERT INTO phone_specifications (
-                id, phone_id, 
-                dimensions, weight, colors, body_material,
-                screen_size, display_type, resolution, ppi,
-                network_technology, os, chipset, cpu, gpu,
+                id, phone_id,
+                screen_size, screen_resolution, screen_type, display_type,
+                ppi, multitouch, protection,
+                processor, chipset, cpu, gpu,
                 ram_options, storage_options, card_slot,
-                rear_camera, front_camera, camera_features, video_recording,
-                battery_capacity, fast_charging, wireless_charging,
-                wifi, bluetooth, gps, nfc, usb_type, radio,
+                rear_camera, front_camera, camera_features,
+                flash, video_recording,
+                battery_capacity, battery, charging_speed, fast_charging, wireless_charging, removable_battery,
+                sim, technology,
+                network_5g, network_4g, network_3g, network_2g, network_speed,
+                wifi_standard, bluetooth_version, gps, nfc, usb, audio_jack, radio,
+                operating_system,
+                weight, dimensions, colors_available, body_material,
                 sensors, product_url
             ) VALUES (
                 phone_specifications_seq.NEXTVAL, :phone_id,
-                :dimensions, :weight, :colors, :body_material,
-                :screen_size, :display_type, :resolution, :ppi,
-                :technology, :os, :chipset, :cpu, :gpu,
-                :ram, :storage, :card_slot,
-                :rear_camera, :front_camera, :camera_features, :video,
-                :battery, :fast_charging, :wireless_charging,
-                :wifi, :bluetooth, :gps, :nfc, :usb, :radio,
-                :sensors, :url
+                :screen_size, :screen_resolution, :screen_type, :display_type,
+                :ppi, :multitouch, :protection,
+                :processor, :chipset, :cpu, :gpu,
+                :ram_options, :storage_options, :card_slot,
+                :rear_camera, :front_camera, :camera_features,
+                :flash, :video_recording,
+                :battery_capacity, :battery, :charging_speed, :fast_charging, :wireless_charging, :removable_battery,
+                :sim, :technology,
+                :network_5g, :network_4g, :network_3g, :network_2g, :network_speed,
+                :wifi_standard, :bluetooth_version, :gps, :nfc, :usb, :audio_jack, :radio,
+                :operating_system,
+                :weight, :dimensions, :colors_available, :body_material,
+                :sensors, :product_url
             )
         """, {
             'phone_id': phone_id,
-            'dimensions': str(row.get('Dimensions', ''))[:100] if pd.notna(row.get('Dimensions')) else None,
-            'weight': str(row.get('Weight', ''))[:50] if pd.notna(row.get('Weight')) else None,
-            'colors': str(row.get('Color', ''))[:200] if pd.notna(row.get('Color')) else None,
-            'body_material': str(row.get('BodyMaterial', ''))[:200] if pd.notna(row.get('BodyMaterial')) else None,
-            'screen_size': str(row.get('ScreenSize', ''))[:50] if pd.notna(row.get('ScreenSize')) else None,
-            'display_type': str(row.get('DisplayType', ''))[:200] if pd.notna(row.get('DisplayType')) else None,
-            'resolution': str(row.get('Resolution', ''))[:100] if pd.notna(row.get('Resolution')) else None,
-            'ppi': str(row.get('PPI', ''))[:50] if pd.notna(row.get('PPI')) else None,
-            'technology': str(row.get('Technology', ''))[:200] if pd.notna(row.get('Technology')) else None,
-            'os': str(row.get('OS', ''))[:100] if pd.notna(row.get('OS')) else None,
-            'chipset': str(row.get('Chipset', ''))[:100] if pd.notna(row.get('Chipset')) else None,
-            'cpu': str(row.get('CPU', ''))[:200] if pd.notna(row.get('CPU')) else None,
-            'gpu': str(row.get('GPU', ''))[:100] if pd.notna(row.get('GPU')) else None,
-            'ram': str(row.get('RAM', ''))[:100] if pd.notna(row.get('RAM')) else None,
-            'storage': str(row.get('Storage', ''))[:200] if pd.notna(row.get('Storage')) else None,
-            'card_slot': str(row.get('Card Slot', ''))[:100] if pd.notna(row.get('Card Slot')) else None,
-            'rear_camera': str(row.get('RearCamera', ''))[:500] if pd.notna(row.get('RearCamera')) else None,
-            'front_camera': str(row.get('FrontCamera', ''))[:200] if pd.notna(row.get('FrontCamera')) else None,
-            'camera_features': str(row.get('Camera Features', ''))[:300] if pd.notna(row.get('Camera Features')) else None,
-            'video': str(row.get('VideoRecording', ''))[:300] if pd.notna(row.get('VideoRecording')) else None,
-            'battery': str(row.get('BatteryCapacity', ''))[:50] if pd.notna(row.get('BatteryCapacity')) else None,
-            'fast_charging': str(row.get('FastCharging', ''))[:200] if pd.notna(row.get('FastCharging')) else None,
-            'wireless_charging': str(row.get('WirelessCharging', ''))[:100] if pd.notna(row.get('WirelessCharging')) else None,
-            'wifi': str(row.get('Wi-Fi', ''))[:100] if pd.notna(row.get('Wi-Fi')) else None,
-            'bluetooth': str(row.get('Bluetooth', ''))[:50] if pd.notna(row.get('Bluetooth')) else None,
-            'gps': str(row.get('GPS', ''))[:100] if pd.notna(row.get('GPS')) else None,
-            'nfc': str(row.get('NFC', ''))[:50] if pd.notna(row.get('NFC')) else None,
-            'usb': str(row.get('USB', ''))[:100] if pd.notna(row.get('USB')) else None,
-            'radio': str(row.get('Radio', ''))[:50] if pd.notna(row.get('Radio')) else None,
-            'sensors': str(row.get('Sensors', ''))[:300] if pd.notna(row.get('Sensors')) else None,
-            'url': str(row.get('URL', ''))[:500] if pd.notna(row.get('URL')) else None
+            # Display
+            'screen_size': extract_number(row.get('ScreenSize')),
+            'screen_resolution': get_str('Resolution', 350),
+            'screen_type': get_str('DisplayType', 350),
+            'display_type': get_str('DisplayType', 350),
+            'ppi': extract_number(row.get('PPI')),
+            'multitouch': get_str('Multi-touch', 350),
+            'protection': get_str('Protection', 350),
+            # Performance
+            'processor': get_str('Chipset', 350),
+            'chipset': get_str('Chipset', 350),
+            'cpu': get_str('CPU', 350),
+            'gpu': get_str('GPU', 350),
+            # Memory
+            'ram_options': get_str('RAM', 350),
+            'storage_options': get_str('Storage', 350),
+            'card_slot': get_str('Card Slot', 350),
+            # Camera
+            'rear_camera': get_str('RearCamera', 500),
+            'front_camera': get_str('FrontCamera', 200),
+            'camera_features': get_str('Camera Features', 4000),  # CLOB
+            'flash': get_str('Flash', 350),
+            'video_recording': get_str('VideoRecording', 350),
+            # Battery
+            'battery_capacity': extract_number(row.get('BatteryCapacity')),
+            'battery': get_str('Battery', 350),
+            'charging_speed': get_str('FastCharging', 350),
+            'fast_charging': get_str('FastCharging', 350),
+            'wireless_charging': get_str('WirelessCharging', 350),
+            'removable_battery': get_str('RemovableBattery', 350),
+            # Network
+            'sim': get_str('SIM', 350),
+            'technology': get_str('Technology', 350),
+            'network_5g': get_str('5GNetworks', 500),
+            'network_4g': get_str('4GNetworks', 500),
+            'network_3g': get_str('3GNetworks', 300),
+            'network_2g': get_str('2GNetworks', 300),
+            'network_speed': get_str('NetworkSpeed', 350),
+            # Connectivity
+            'wifi_standard': get_str('Wi-Fi', 350),
+            'bluetooth_version': get_str('Bluetooth', 350),
+            'gps': get_str('GPS', 350),
+            'nfc': get_str('NFC', 350),
+            'usb': get_str('USB', 350),
+            'audio_jack': None,  # Not in CSV
+            'radio': get_str('Radio', 350),
+            # Software
+            'operating_system': get_str('OS', 350),
+            # Physical
+            'weight': get_str('Weight', 350),
+            'dimensions': get_str('Dimensions', 350),
+            'colors_available': get_str('Color', 350),
+            'body_material': get_str('BodyMaterial', 300),
+            # Other
+            'sensors': get_str('Sensors', 4000),  # CLOB
+            'product_url': get_str('URL', 500)
         })
         
         imported += 1
@@ -211,3 +250,5 @@ for row in cursor.fetchall():
 
 cursor.close()
 connection.close()
+
+print(f"\n✓ Done! Check your website at http://localhost:5000/browse")
