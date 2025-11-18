@@ -7,7 +7,7 @@ Flask-Mail==0.9.1
 
 # Database
 SQLAlchemy==2.0.36
-cx-Oracle>=8.3.0
+oracledb==3.4.1
 
 # Security
 Werkzeug==3.0.1

@@ -37,7 +37,7 @@ def dashboard():
     # Today's recommendations
     today = datetime.utcnow().date()
     today_recommendations = Recommendation.query.filter(
-        db.func.date(Recommendation.created_at) == today
+        db.func.trunc(Recommendation.created_at) == today
     ).count()
 
     # Recent activity (last 7 days)
