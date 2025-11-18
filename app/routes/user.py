@@ -5,7 +5,7 @@ Main user-facing pages and functionality
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from app import db
-from app.models import Brand, Phone, PhoneSpecification, UserPreference, Recommendation, Comparison
+from app.models import Brand, Phone, PhoneSpecification, UserPreference, Recommendation, Comparison, ContactMessage
 from app.modules import AIRecommendationEngine
 from app.utils.helpers import parse_json_field, validate_password
 import json
@@ -245,10 +245,30 @@ def contact():
         # Process contact form
         name = request.form.get('name')
         email = request.form.get('email')
+        subject = request.form.get('subject', 'General Inquiry')
         message = request.form.get('message')
 
-        # In production, send email or store in database
-        flash('Thank you for contacting us. We will get back to you soon.', 'success')
+        # Validate required fields
+        if not all([name, email, message]):
+            flash('Please fill in all required fields.', 'danger')
+            return render_template('user/contact.html')
+
+        # Create and save contact message
+        contact_msg = ContactMessage(
+            name=name,
+            email=email,
+            subject=subject,
+            message=message
+        )
+
+        try:
+            db.session.add(contact_msg)
+            db.session.commit()
+            flash('Thank you for contacting us. We will get back to you soon.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred. Please try again later.', 'danger')
+
         return redirect(url_for('user.contact'))
 
     return render_template('user/contact.html')
