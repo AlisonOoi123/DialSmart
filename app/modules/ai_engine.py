@@ -369,6 +369,49 @@ class AIRecommendationEngine:
         # Sort by usage score
         results.sort(key=lambda x: x['usage_score'], reverse=True)
 
+        # If multiple brands requested, distribute results evenly across brands
+        if brand_names and len(brand_names) > 1:
+            from app.models import Brand
+            # Get brand IDs for requested brands
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+
+            if len(brand_ids) > 1:
+                # Group results by brand
+                results_by_brand = {brand_id: [] for brand_id in brand_ids}
+                for result in results:
+                    brand_id = result['phone'].brand_id
+                    if brand_id in results_by_brand:
+                        results_by_brand[brand_id].append(result)
+
+                # Remove empty brands
+                results_by_brand = {k: v for k, v in results_by_brand.items() if v}
+
+                if results_by_brand:
+                    # Distribute evenly using round-robin
+                    balanced_results = []
+                    brand_ids_list = list(results_by_brand.keys())
+                    brand_pointers = {brand_id: 0 for brand_id in brand_ids_list}
+
+                    while len(balanced_results) < top_n:
+                        added_this_round = False
+                        for brand_id in brand_ids_list:
+                            if brand_pointers[brand_id] < len(results_by_brand[brand_id]):
+                                balanced_results.append(results_by_brand[brand_id][brand_pointers[brand_id]])
+                                brand_pointers[brand_id] += 1
+                                added_this_round = True
+                                if len(balanced_results) >= top_n:
+                                    break
+
+                        # If no phones added this round, all brands exhausted
+                        if not added_this_round:
+                            break
+
+                    return balanced_results[:top_n]
+
         return results[:top_n]
 
     def get_phones_by_features(self, features, budget_range=None, usage_type=None, brand_names=None, user_category=None, top_n=5):
@@ -528,6 +571,49 @@ class AIRecommendationEngine:
 
         # Sort by feature score
         results.sort(key=lambda x: x['feature_score'], reverse=True)
+
+        # If multiple brands requested, distribute results evenly across brands
+        if brand_names and len(brand_names) > 1:
+            from app.models import Brand
+            # Get brand IDs for requested brands
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+
+            if len(brand_ids) > 1:
+                # Group results by brand
+                results_by_brand = {brand_id: [] for brand_id in brand_ids}
+                for result in results:
+                    brand_id = result['phone'].brand_id
+                    if brand_id in results_by_brand:
+                        results_by_brand[brand_id].append(result)
+
+                # Remove empty brands
+                results_by_brand = {k: v for k, v in results_by_brand.items() if v}
+
+                if results_by_brand:
+                    # Distribute evenly using round-robin
+                    balanced_results = []
+                    brand_ids_list = list(results_by_brand.keys())
+                    brand_pointers = {brand_id: 0 for brand_id in brand_ids_list}
+
+                    while len(balanced_results) < top_n:
+                        added_this_round = False
+                        for brand_id in brand_ids_list:
+                            if brand_pointers[brand_id] < len(results_by_brand[brand_id]):
+                                balanced_results.append(results_by_brand[brand_id][brand_pointers[brand_id]])
+                                brand_pointers[brand_id] += 1
+                                added_this_round = True
+                                if len(balanced_results) >= top_n:
+                                    break
+
+                        # If no phones added this round, all brands exhausted
+                        if not added_this_round:
+                            break
+
+                    return balanced_results[:top_n]
 
         return results[:top_n]
 
