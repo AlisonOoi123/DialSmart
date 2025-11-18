@@ -11,7 +11,7 @@ class AIRecommendationEngine:
     """AI-powered recommendation engine for smartphones"""
 
     def __init__(self):
-        self.min_match_threshold = 50  # Minimum match percentage to recommend
+        self.min_match_threshold = 30  # Minimum match percentage to recommend (lowered for better results)
 
     def _extract_ram_values(self, ram_string):
         """
@@ -36,58 +36,65 @@ class AIRecommendationEngine:
         Get top N phone recommendations for a user
 
         Args:
-            user_id: User ID to get recommendations for
+            user_id: User ID to get recommendations for (can be None for anonymous users)
             criteria: Optional dictionary of criteria to override user preferences
             top_n: Number of recommendations to return
 
         Returns:
             List of recommended phones with match scores
         """
-        from app.models import User
-
-        user = User.query.get(user_id)
-        if not user:
-            return []
-
-        # Get or create user preferences
-        user_prefs = UserPreference.query.filter_by(user_id=user_id).first()
-
-        # If criteria provided, create temporary preference object
+        # If criteria provided, use temporary preference object (for anonymous users or wizard)
         if criteria:
             user_prefs = self._create_temp_preferences(criteria)
-        elif not user_prefs:
-            # Create default preferences if none exist
-            user_prefs = self._create_default_preferences(user_id)
+        elif user_id:
+            # Get or create user preferences for authenticated users
+            from app.models import User
+            user = User.query.get(user_id)
+            if not user:
+                return []
+
+            user_prefs = UserPreference.query.filter_by(user_id=user_id).first()
+            if not user_prefs:
+                # Create default preferences if none exist
+                user_prefs = self._create_default_preferences(user_id)
+        else:
+            # Anonymous user without criteria - use defaults
+            user_prefs = self._create_temp_preferences({})
 
         # Get all active phones with their specifications
         phones = Phone.query.filter_by(is_active=True).all()
 
         # Calculate match scores for each phone
-        recommendations = []
+        all_scored_phones = []
         for phone in phones:
             phone_specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
 
             # Calculate match score
             match_score = calculate_match_score(user_prefs, phone, phone_specs)
 
-            # Only include if above threshold
-            if match_score >= self.min_match_threshold:
-                reasoning = generate_recommendation_reasoning(
-                    match_score, user_prefs, phone, phone_specs
-                )
+            reasoning = generate_recommendation_reasoning(
+                match_score, user_prefs, phone, phone_specs
+            )
 
-                recommendations.append({
-                    'phone': phone,
-                    'specifications': phone_specs,
-                    'match_score': match_score,
-                    'reasoning': reasoning
-                })
+            all_scored_phones.append({
+                'phone': phone,
+                'specifications': phone_specs,
+                'match_score': match_score,
+                'reasoning': reasoning
+            })
 
         # Sort by match score (descending)
-        recommendations.sort(key=lambda x: x['match_score'], reverse=True)
+        all_scored_phones.sort(key=lambda x: x['match_score'], reverse=True)
+
+        # Filter by threshold, but if no matches, return top N anyway
+        recommendations = [p for p in all_scored_phones if p['match_score'] >= self.min_match_threshold]
+
+        if not recommendations and all_scored_phones:
+            # No phones meet threshold, return top N best matches anyway
+            recommendations = all_scored_phones[:top_n]
 
         # Save recommendations to database if using actual user preferences
-        if not criteria and user_prefs and hasattr(user_prefs, 'user_id'):
+        if not criteria and user_prefs and hasattr(user_prefs, 'user_id') and user_id:
             self._save_recommendations(user_id, recommendations[:top_n], user_prefs)
 
         return recommendations[:top_n]
