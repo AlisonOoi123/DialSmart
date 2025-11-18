@@ -162,8 +162,14 @@ def recommendation_wizard():
             'primary_usage': request.form.getlist('primary_usage'),
             'important_features': request.form.getlist('important_features'),
             'preferred_brands': request.form.getlist('preferred_brands'),
-            'min_ram': int(request.form.get('min_ram', 4)),
-            'requires_5g': bool(request.form.get('requires_5g'))
+            # Add reasonable defaults for specs not collected by wizard
+            'min_ram': 4,  # 4GB minimum
+            'min_storage': 64,  # 64GB minimum
+            'min_camera': 12,  # 12MP minimum
+            'min_battery': 3000,  # 3000mAh minimum
+            'requires_5g': '5G' in request.form.getlist('important_features'),  # Check if 5G was selected
+            'min_screen_size': 5.5,
+            'max_screen_size': 7.0
         }
 
         # Get AI recommendations
@@ -171,7 +177,7 @@ def recommendation_wizard():
         recommendations = ai_engine.get_recommendations(
             current_user.id if current_user.is_authenticated else None,
             criteria=criteria,
-            top_n=3
+            top_n=5  # Get top 5 instead of 3 for better results
         )
 
         return render_template('user/wizard_results.html',
