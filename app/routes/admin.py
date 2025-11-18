@@ -528,7 +528,10 @@ def reply_message(message_id):
         flash('Reply message cannot be empty.', 'danger')
         return redirect(url_for('admin.message_details', message_id=message_id))
 
-    # Send email reply
+    # Save reply to database first (regardless of email success)
+    message.mark_as_replied(current_user, reply_text)
+
+    # Try to send email notification
     success, email_message = send_admin_reply_email(
         user_email=message.email,
         user_name=message.name,
@@ -537,11 +540,9 @@ def reply_message(message_id):
     )
 
     if success:
-        # Mark message as replied
-        message.mark_as_replied(current_user, reply_text)
-        flash('Reply sent successfully via email.', 'success')
+        flash('Reply saved and sent successfully via email.', 'success')
     else:
-        flash(f'Failed to send reply: {email_message}', 'danger')
+        flash(f'Reply saved to database, but email failed: {email_message}. Please configure email settings in .env file.', 'warning')
 
     return redirect(url_for('admin.message_details', message_id=message_id))
 
