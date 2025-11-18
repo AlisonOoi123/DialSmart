@@ -77,22 +77,52 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     """
     Calculate how well a phone matches user preferences
     Returns a score from 0-100
+    Priority: Brand > Budget > Features > Specs
     """
     score = 0
     max_score = 0
 
-    # Budget match (weight: 30)
-    max_score += 30
+    # Brand preference (weight: 50 - HIGHEST PRIORITY)
+    max_score += 50
+    preferred_brands = []
+
+    # Handle both list and JSON string formats
+    if hasattr(user_prefs, 'preferred_brands'):
+        if isinstance(user_prefs.preferred_brands, list):
+            preferred_brands = user_prefs.preferred_brands
+        elif isinstance(user_prefs.preferred_brands, str) and user_prefs.preferred_brands:
+            try:
+                import json
+                preferred_brands = json.loads(user_prefs.preferred_brands)
+            except (json.JSONDecodeError, ValueError):
+                preferred_brands = []
+
+    # Convert brand IDs to integers if they're strings
+    try:
+        preferred_brands = [int(b) for b in preferred_brands if b]
+    except (ValueError, TypeError):
+        preferred_brands = []
+
+    # If user selected specific brands, heavily prioritize them
+    if preferred_brands:
+        if phone.brand_id in preferred_brands:
+            score += 50  # Full points for matching brand
+        # else: 0 points - phone doesn't match preferred brands
+    else:
+        score += 50  # No brand preference, give full points to all
+
+    # Budget match (weight: 25)
+    max_score += 25
     if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
-        score += 30
+        score += 25
     elif phone.price < user_prefs.min_budget:
         # Slight penalty for cheaper phones
-        score += 20
+        score += 18
     else:
         # Penalty for over-budget phones
         over_budget = phone.price - user_prefs.max_budget
-        penalty = min(30, (over_budget / user_prefs.max_budget) * 30)
-        score += max(0, 30 - penalty)
+        penalty = min(25, (over_budget / user_prefs.max_budget) * 25)
+        score += max(0, 25 - penalty)
 
     if phone_specs:
         # RAM match (weight: 10)
@@ -141,6 +171,28 @@ def calculate_match_score(user_prefs, phone, phone_specs):
 def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_specs):
     """Generate human-readable reasoning for recommendation"""
     reasons = []
+
+    # Brand preference (HIGHEST PRIORITY)
+    preferred_brands = []
+    if hasattr(user_prefs, 'preferred_brands'):
+        if isinstance(user_prefs.preferred_brands, list):
+            preferred_brands = user_prefs.preferred_brands
+        elif isinstance(user_prefs.preferred_brands, str) and user_prefs.preferred_brands:
+            try:
+                import json
+                preferred_brands = json.loads(user_prefs.preferred_brands)
+            except (json.JSONDecodeError, ValueError):
+                preferred_brands = []
+
+    # Convert to integers
+    try:
+        preferred_brands = [int(b) for b in preferred_brands if b]
+    except (ValueError, TypeError):
+        preferred_brands = []
+
+    # Mention brand match if user selected specific brands
+    if preferred_brands and phone.brand_id in preferred_brands:
+        reasons.append(f"✓ From your preferred brand: {phone.brand.name}")
 
     # Budget
     if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
