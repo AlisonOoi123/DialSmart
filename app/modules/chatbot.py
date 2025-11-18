@@ -163,7 +163,8 @@ class ChatbotEngine:
             usage = self._detect_usage_type(message)
             if usage:
                 budget = self._extract_budget(message)
-                phones = self.ai_engine.get_phones_by_usage(usage, budget, top_n=5)
+                brand_names = self._extract_multiple_brands(message)
+                phones = self.ai_engine.get_phones_by_usage(usage, budget, brand_names, top_n=5)
 
                 if phones:
                     budget_text = ""
@@ -171,7 +172,15 @@ class ChatbotEngine:
                         min_b, max_b = budget
                         budget_text = f" within RM{min_b:,.0f} - RM{max_b:,.0f}"
 
-                    response = f"Great choice! Here are the best phones for {usage}{budget_text}: 📱\n\n"
+                    brand_text = ""
+                    if brand_names:
+                        if len(brand_names) == 1:
+                            brand_text = f" from {brand_names[0]}"
+                        else:
+                            brands_list = ", ".join(brand_names[:-1]) + f" and {brand_names[-1]}"
+                            brand_text = f" from {brands_list}"
+
+                    response = f"Great choice! Here are the best phones for {usage}{brand_text}{budget_text}: 📱\n\n"
                     phone_list = []
 
                     for item in phones:
@@ -200,7 +209,12 @@ class ChatbotEngine:
                     return {
                         'response': response,
                         'type': 'recommendation',
-                        'metadata': {'phones': phone_list, 'usage': usage, 'budget': budget}
+                        'metadata': {
+                            'phones': phone_list,
+                            'usage': usage,
+                            'budget': budget,
+                            'brands': brand_names
+                        }
                     }
 
             return {
@@ -209,31 +223,68 @@ class ChatbotEngine:
             }
 
         elif intent == 'brand_query':
-            # Extract brand name
-            brand_name = self._extract_brand(message)
-            if brand_name:
-                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
-                if brand:
-                    phones = Phone.query.filter_by(brand_id=brand.id, is_active=True).limit(5).all()
-                    response = f"Here are some popular {brand.name} phones:\n\n"
+            # Extract all mentioned brands
+            brand_names = self._extract_multiple_brands(message)
+
+            if brand_names:
+                # Check if budget is mentioned
+                budget = self._extract_budget(message)
+                usage = self._detect_usage_type(message)
+
+                all_phones = []
+                found_brands = []
+
+                for brand_name in brand_names:
+                    brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                    if brand:
+                        query = Phone.query.filter_by(brand_id=brand.id, is_active=True)
+
+                        # Apply budget filter if specified
+                        if budget:
+                            min_b, max_b = budget
+                            query = query.filter(Phone.price >= min_b, Phone.price <= max_b)
+
+                        phones = query.limit(5).all()
+
+                        if phones:
+                            found_brands.append(brand.name)
+                            all_phones.extend([(phone, brand.name) for phone in phones])
+
+                if all_phones:
+                    # Build response
+                    if len(found_brands) == 1:
+                        budget_text = f" within RM{min_b:,.0f} - RM{max_b:,.0f}" if budget else ""
+                        usage_text = f" for {usage}" if usage else ""
+                        response = f"Here are {found_brands[0]} phones{budget_text}{usage_text}:\n\n"
+                    else:
+                        budget_text = f" within RM{min_b:,.0f} - RM{max_b:,.0f}" if budget else ""
+                        usage_text = f" for {usage}" if usage else ""
+                        brands_text = ", ".join(found_brands[:-1]) + f" and {found_brands[-1]}"
+                        response = f"Here are phones from {brands_text}{budget_text}{usage_text}:\n\n"
 
                     phone_list = []
-                    for phone in phones:
-                        response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                    for phone, brand_name in all_phones:
+                        response += f"📱 {brand_name} {phone.model_name} - RM{phone.price:,.2f}\n"
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
+                            'brand': brand_name,
                             'price': phone.price
                         })
 
                     return {
                         'response': response,
                         'type': 'recommendation',
-                        'metadata': {'phones': phone_list, 'brand': brand.name}
+                        'metadata': {
+                            'phones': phone_list,
+                            'brands': found_brands,
+                            'budget': budget,
+                            'usage': usage
+                        }
                     }
 
             return {
-                'response': "Which brand are you interested in? We have Samsung, Apple, Xiaomi, Huawei, and more!",
+                'response': "Which brand are you interested in? We have Samsung, Apple, Xiaomi, Huawei, Oppo, Vivo, Realme, and more!",
                 'type': 'text'
             }
 
@@ -355,17 +406,43 @@ Just ask me anything like:
         return None
 
     def _extract_brand(self, message):
-        """Extract brand name from message"""
-        brands = ['Samsung', 'Apple', 'iPhone', 'Xiaomi', 'Huawei', 'Nokia', 'Lenovo', 'Honor', 'Oppo', 'Realme', 'Vivo']
+        """Extract single brand name from message (for backward compatibility)"""
+        brands = self._extract_multiple_brands(message)
+        return brands[0] if brands else None
+
+    def _extract_multiple_brands(self, message):
+        """Extract all brand names mentioned in message"""
+        # All known brands
+        brand_keywords = {
+            'Samsung': ['samsung', 'galaxy'],
+            'Apple': ['apple', 'iphone'],
+            'Xiaomi': ['xiaomi', 'mi', 'redmi', 'poco'],
+            'Huawei': ['huawei'],
+            'Oppo': ['oppo'],
+            'Vivo': ['vivo'],
+            'Realme': ['realme'],
+            'Honor': ['honor'],
+            'Google': ['google', 'pixel'],
+            'Asus': ['asus', 'rog'],
+            'Infinix': ['infinix'],
+            'Redmi': ['redmi'],
+            'Poco': ['poco']
+        }
 
         message_lower = message.lower()
-        for brand in brands:
-            if brand.lower() in message_lower:
-                if brand.lower() == 'iphone':
-                    return 'Apple'
-                return brand
+        found_brands = []
 
-        return None
+        for brand_name, keywords in brand_keywords.items():
+            for keyword in keywords:
+                # Use word boundary to avoid false matches
+                import re
+                pattern = r'\b' + re.escape(keyword) + r'\b'
+                if re.search(pattern, message_lower):
+                    if brand_name not in found_brands:
+                        found_brands.append(brand_name)
+                    break
+
+        return found_brands
 
     def _save_chat_history(self, user_id, message, response, intent, session_id, metadata):
         """Save conversation to database"""

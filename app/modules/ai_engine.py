@@ -178,13 +178,32 @@ class AIRecommendationEngine:
 
         return results
 
-    def get_phones_by_usage(self, usage_type, budget_range=None, top_n=5):
-        """Get phones optimized for specific usage types"""
+    def get_phones_by_usage(self, usage_type, budget_range=None, brand_names=None, top_n=5):
+        """
+        Get phones optimized for specific usage types
+
+        Args:
+            usage_type: Type of usage (Gaming, Photography, etc.)
+            budget_range: Optional (min, max) price range
+            brand_names: Optional list of brand names to filter by
+            top_n: Number of results to return
+        """
         query = Phone.query.filter_by(is_active=True)
 
         if budget_range:
             min_price, max_price = budget_range
             query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Filter by brands if specified
+        if brand_names:
+            from app.models import Brand
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
 
         phones = query.all()
         results = []
