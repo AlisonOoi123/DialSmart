@@ -83,7 +83,7 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     max_score = 0
 
     # Brand preference (weight: 40 - HIGHEST PRIORITY)
-    max_score += 40
+    max_score += 50
     preferred_brands = []
 
     # Handle both list and JSON string formats
@@ -106,26 +106,26 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     # If user selected specific brands, heavily prioritize them
     if preferred_brands:
         if phone.brand_id in preferred_brands:
-            score += 40  # Full points for matching brand
+            score += 50  # Full points for matching brand
         # else: 0 points - phone doesn't match preferred brands
     else:
-        score += 40  # No brand preference, give full points to all
+        score += 50  # No brand preference, give full points to all
 
     # Budget match (weight: 20)
-    max_score += 20
+    max_score += 25
     if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
-        score += 20
+        score += 25
     elif phone.price < user_prefs.min_budget:
         # Slight penalty for cheaper phones
-        score += 15
+        score += 18
     else:
         # Penalty for over-budget phones
         over_budget = phone.price - user_prefs.max_budget
-        penalty = min(20, (over_budget / user_prefs.max_budget) * 20)
-        score += max(0, 20 - penalty)
+        penalty = min(25, (over_budget / user_prefs.max_budget) * 25)
+        score += max(0, 25 - penalty)
 
     # Usage type match (weight: 30 - HIGH PRIORITY for differentiation)
-    max_score += 30
+    max_score += 40
     usage_score = 0
     primary_usage = []
 
