@@ -99,10 +99,28 @@ class ChatbotEngine:
     def _generate_response(self, user_id, message, intent):
         """Generate appropriate response based on intent"""
 
-        # Check for specific phone model query first (high priority)
-        phone_model = self._extract_phone_model(message)
-        if phone_model:
-            return self._handle_specific_phone_query(message, phone_model)
+        # Check for specific phone model query ONLY if asking for price/spec/battery
+        # and NOT asking for recommendations or features
+        message_lower = message.lower()
+
+        # Skip phone model extraction if message contains recommendation/feature keywords
+        skip_phone_model = any(keyword in message_lower for keyword in [
+            'recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'best',
+            'photographer', 'photography', 'gaming', 'gamer', 'business', 'work',
+            'social media', 'entertainment', 'long lasting', 'amoled', 'display',
+            'i want', 'show me', 'within', 'under', 'for'
+        ])
+
+        # Only check phone model if asking specifically about a phone
+        if not skip_phone_model:
+            is_specific_query = any(keyword in message_lower for keyword in [
+                'price', 'cost', 'how much', 'spec', 'specification', 'battery'
+            ])
+
+            if is_specific_query:
+                phone_model = self._extract_phone_model(message)
+                if phone_model:
+                    return self._handle_specific_phone_query(message, phone_model)
 
         if intent == 'greeting':
             return {
