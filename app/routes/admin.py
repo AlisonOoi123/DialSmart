@@ -6,10 +6,8 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from functools import wraps
 from app import db
-from app.models import User, Phone, PhoneSpecification, Brand, Recommendation
-from app.models.contact import ContactMessage
+from app.models import User, Phone, PhoneSpecification, Brand, Recommendation, ContactMessage
 from app.utils.helpers import save_uploaded_file
-from app.utils.email import send_contact_reply
 from datetime import datetime, timedelta
 import json
 
@@ -64,9 +62,6 @@ def dashboard():
      .limit(5)\
      .all()
 
-    # Get unread messages count
-    unread_messages = ContactMessage.query.filter_by(is_read=False).count()
-
     return render_template('admin/dashboard.html',
                          total_users=total_users,
                          total_phones=total_phones,
@@ -75,8 +70,7 @@ def dashboard():
                          new_users=new_users,
                          recent_recommendations=recent_recommendations,
                          recent_users=recent_users_list,
-                         popular_phones=popular_phones,
-                         unread_messages=unread_messages)
+                         popular_phones=popular_phones)
 
 # Phone Management
 @bp.route('/phones')
@@ -438,198 +432,6 @@ def logs():
     return render_template('admin/logs.html',
                          recommendations=recommendations)
 
-# Message Management
-@bp.route('/messages')
-@login_required
-@admin_required
-def messages():
-    """View all contact messages"""
-    page = request.args.get('page', 1, type=int)
-    status = request.args.get('status', 'all')
-
-    query = ContactMessage.query
-
-    if status == 'unread':
-        query = query.filter_by(is_read=False)
-    elif status == 'replied':
-        query = query.filter_by(is_replied=True)
-    elif status == 'unreplied':
-        query = query.filter_by(is_replied=False)
-
-    messages = query.order_by(ContactMessage.created_at.desc())\
-        .paginate(page=page, per_page=20, error_out=False)
-
-    # Get counts for tabs
-    total_count = ContactMessage.query.count()
-    unread_count = ContactMessage.query.filter_by(is_read=False).count()
-    unreplied_count = ContactMessage.query.filter_by(is_replied=False).count()
-
-    return render_template('admin/messages.html',
-                         messages=messages,
-                         status=status,
-                         total_count=total_count,
-                         unread_count=unread_count,
-                         unreplied_count=unreplied_count)
-
-@bp.route('/messages/<int:message_id>')
-@login_required
-@admin_required
-def message_details(message_id):
-    """View message details"""
-    message = ContactMessage.query.get_or_404(message_id)
-
-    # Mark as read
-    if not message.is_read:
-        message.mark_as_read()
-        db.session.commit()
-
-    return render_template('admin/message_detail.html', message=message)
-
-@bp.route('/messages/<int:message_id>/reply', methods=['POST'])
-@login_required
-@admin_required
-def reply_message(message_id):
-    """Reply to a message via email"""
-    message = ContactMessage.query.get_or_404(message_id)
-    reply_text = request.form.get('reply_text', '')
-    admin_notes = request.form.get('admin_notes', '')
-
-    if not reply_text:
-        flash('Reply text is required.', 'danger')
-        return redirect(url_for('admin.message_details', message_id=message_id))
-
-    # Save admin notes
-    if admin_notes:
-        message.admin_notes = admin_notes
-
-    # Send email reply
-    try:
-        # Get admin name for email signature
-        admin_name = current_user.full_name if hasattr(current_user, 'full_name') and current_user.full_name else current_user.username
-
-        # Send the email
-        email_sent = send_contact_reply(
-            user_email=message.email,
-            user_name=message.name,
-            original_subject=message.subject or "Your message to DialSmart",
-            reply_text=reply_text,
-            admin_name=admin_name
-        )
-
-        if email_sent:
-            message.mark_as_replied()
-            db.session.commit()
-            flash(f'Reply sent to {message.email} successfully!', 'success')
-        else:
-            flash(f'Failed to send email to {message.email}. Please check email configuration.', 'warning')
-            # Still mark as replied in database even if email fails
-            message.mark_as_replied()
-            db.session.commit()
-
-    except Exception as e:
-        flash(f'Error sending reply: {str(e)}', 'danger')
-        db.session.rollback()
-
-    return redirect(url_for('admin.message_details', message_id=message_id))
-
-@bp.route('/messages/<int:message_id>/mark-read', methods=['POST'])
-@login_required
-@admin_required
-def mark_message_read(message_id):
-    """Mark message as read"""
-    message = ContactMessage.query.get_or_404(message_id)
-    message.mark_as_read()
-    db.session.commit()
-    flash('Message marked as read.', 'success')
-    return redirect(url_for('admin.messages'))
-
-@bp.route('/messages/<int:message_id>/delete', methods=['POST'])
-@login_required
-@admin_required
-def delete_message(message_id):
-    """Delete a message"""
-    message = ContactMessage.query.get_or_404(message_id)
-    db.session.delete(message)
-    db.session.commit()
-    flash('Message deleted successfully.', 'success')
-    return redirect(url_for('admin.messages'))
-
-# Admin Registration (requires special registration code)
-@bp.route('/register', methods=['GET', 'POST'])
-def register_admin():
-    """Register new admin with validation"""
-    # If user is already logged in and is admin, redirect to dashboard
-    if current_user.is_authenticated and current_user.is_admin:
-        return redirect(url_for('admin.dashboard'))
-
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip()
-        password = request.form.get('password', '')
-        confirm_password = request.form.get('confirm_password', '')
-        registration_code = request.form.get('registration_code', '').strip()
-
-        # Validation
-        errors = []
-
-        # Check registration code (you should change this in production)
-        # TODO: Store this in environment variable or database
-        ADMIN_REGISTRATION_CODE = "DIALSMART_ADMIN_2025"
-        if registration_code != ADMIN_REGISTRATION_CODE:
-            errors.append('Invalid registration code. Contact system administrator.')
-
-        # Validate username
-        if not username or len(username) < 3:
-            errors.append('Username must be at least 3 characters long.')
-
-        if User.query.filter_by(username=username).first():
-            errors.append('Username already exists.')
-
-        # Validate email
-        if not email or '@' not in email:
-            errors.append('Please provide a valid email address.')
-
-        if User.query.filter_by(email=email).first():
-            errors.append('Email already registered.')
-
-        # Validate password
-        if not password or len(password) < 6:
-            errors.append('Password must be at least 6 characters long.')
-
-        if password != confirm_password:
-            errors.append('Passwords do not match.')
-
-        # If there are errors, show them and return
-        if errors:
-            for error in errors:
-                flash(error, 'danger')
-            return render_template('admin/register.html')
-
-        # Create new admin user
-        try:
-            new_admin = User(
-                username=username,
-                email=email,
-                full_name=request.form.get('full_name', username),
-                is_admin=True,
-                is_active=True
-            )
-            new_admin.set_password(password)
-
-            db.session.add(new_admin)
-            db.session.commit()
-
-            flash(f'Admin account created successfully for {username}! Please login.', 'success')
-            return redirect(url_for('auth.login'))
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error creating admin account: {str(e)}', 'danger')
-            return render_template('admin/register.html')
-
-    # GET request - show registration form
-    return render_template('admin/register.html')
-
 # Settings
 @bp.route('/settings', methods=['GET', 'POST'])
 @login_required
@@ -641,3 +443,93 @@ def settings():
         return redirect(url_for('admin.settings'))
 
     return render_template('admin/settings.html')
+
+# Contact Messages
+@bp.route('/messages')
+@login_required
+@admin_required
+def messages():
+    """View all contact messages"""
+    page = request.args.get('page', 1, type=int)
+    filter_type = request.args.get('filter', 'all')  # all, unread, replied
+
+    query = ContactMessage.query
+
+    if filter_type == 'unread':
+        query = query.filter_by(is_read=False)
+    elif filter_type == 'replied':
+        query = query.filter_by(is_replied=True)
+    elif filter_type == 'pending':
+        query = query.filter_by(is_replied=False)
+
+    messages = query.order_by(ContactMessage.created_at.desc())\
+        .paginate(page=page, per_page=20, error_out=False)
+
+    # Get counts for filters
+    total_count = ContactMessage.query.count()
+    unread_count = ContactMessage.query.filter_by(is_read=False).count()
+    pending_count = ContactMessage.query.filter_by(is_replied=False).count()
+
+    return render_template('admin/messages.html',
+                         messages=messages,
+                         filter_type=filter_type,
+                         total_count=total_count,
+                         unread_count=unread_count,
+                         pending_count=pending_count)
+
+@bp.route('/messages/<int:message_id>')
+@login_required
+@admin_required
+def message_details(message_id):
+    """View message details"""
+    message = ContactMessage.query.get_or_404(message_id)
+
+    # Mark as read
+    if not message.is_read:
+        message.mark_as_read()
+
+    return render_template('admin/message_details.html', message=message)
+
+@bp.route('/messages/<int:message_id>/reply', methods=['POST'])
+@login_required
+@admin_required
+def reply_message(message_id):
+    """Reply to a contact message"""
+    from app.utils.email import send_admin_reply_email
+
+    message = ContactMessage.query.get_or_404(message_id)
+    reply_text = request.form.get('reply')
+
+    if not reply_text:
+        flash('Reply message cannot be empty.', 'danger')
+        return redirect(url_for('admin.message_details', message_id=message_id))
+
+    # Send email reply
+    success, email_message = send_admin_reply_email(
+        user_email=message.email,
+        user_name=message.name,
+        reply_message=reply_text,
+        original_message=message.message
+    )
+
+    if success:
+        # Mark message as replied
+        message.mark_as_replied(current_user, reply_text)
+        flash('Reply sent successfully via email.', 'success')
+    else:
+        flash(f'Failed to send reply: {email_message}', 'danger')
+
+    return redirect(url_for('admin.message_details', message_id=message_id))
+
+@bp.route('/messages/<int:message_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_message(message_id):
+    """Delete a contact message"""
+    message = ContactMessage.query.get_or_404(message_id)
+
+    db.session.delete(message)
+    db.session.commit()
+
+    flash('Message deleted successfully.', 'success')
+    return redirect(url_for('admin.messages'))
