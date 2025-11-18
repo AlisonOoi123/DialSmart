@@ -2,7 +2,7 @@
 Database Migration Script for Oracle - Add Email Verification Columns
 Adds new email verification and password reset fields to users table
 """
-import cx_Oracle
+import oracledb
 import os
 from getpass import getpass
 
@@ -23,13 +23,13 @@ def migrate_oracle_database():
     port = input("Port (default: 1521): ").strip() or "1521"
     service_name = input("Service Name (default: orclpdb): ").strip() or "orclpdb"
 
-    # Build connection string
-    dsn = cx_Oracle.makedsn(host, port, service_name=service_name)
+    # Build connection string (DSN)
+    dsn = f"{host}:{port}/{service_name}"
 
     try:
         # Connect to Oracle
         print(f"\nConnecting to Oracle at {host}:{port}/{service_name}...")
-        connection = cx_Oracle.connect(user=username, password=password, dsn=dsn)
+        connection = oracledb.connect(user=username, password=password, dsn=dsn)
         cursor = connection.cursor()
         print("✅ Connected successfully!")
         print()
@@ -112,10 +112,9 @@ def migrate_oracle_database():
 
         return True
 
-    except cx_Oracle.Error as e:
-        error_obj, = e.args
+    except oracledb.Error as e:
         print()
-        print(f"❌ Oracle Error: {error_obj.message}")
+        print(f"❌ Oracle Error: {e}")
         print()
         return False
     except Exception as e:
@@ -145,10 +144,10 @@ if __name__ == '__main__':
         print("\n\n❌ Migration cancelled by user.")
     except ImportError:
         print()
-        print("❌ cx_Oracle not installed!")
+        print("❌ oracledb not installed!")
         print()
         print("Please install it:")
-        print("  pip install cx-Oracle")
+        print("  pip install oracledb")
         print()
     except Exception as e:
         print()
