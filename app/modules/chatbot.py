@@ -17,12 +17,30 @@ class ChatbotEngine:
         self.intents = {
             'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
             'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm'],
-            'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want'],
+            'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'i want', 'show me', 'best'],
             'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
-            'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen'],
+            'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor', 'cpu'],
             'brand_query': ['brand', 'samsung', 'apple', 'iphone', 'xiaomi', 'huawei'],
             'help': ['help', 'how', 'what can you do'],
-            'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment']
+            'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'photographer', 'gamer']
+        }
+
+        # Feature keywords for enhanced understanding
+        self.feature_keywords = {
+            'battery': ['battery', 'long lasting', 'battery life', 'long battery', 'all day battery'],
+            'camera': ['camera', 'photo', 'photography', 'photographer', 'selfie', 'picture'],
+            'display': ['display', 'screen', 'amoled', 'oled', 'lcd', 'retina'],
+            'performance': ['fast', 'processor', 'cpu', 'performance', 'speed', 'powerful', 'snapdragon', 'flagship'],
+            '5g': ['5g', '5g support', '5g network'],
+            'storage': ['storage', 'memory', 'gb storage', 'space'],
+            'ram': ['ram', 'memory'],
+        }
+
+        # User category keywords
+        self.user_categories = {
+            'senior': ['senior', 'elderly', 'senior citizen', 'old age'],
+            'student': ['student', 'college', 'university', 'school'],
+            'professional': ['professional', 'business', 'work', 'office'],
         }
 
     def process_message(self, user_id, message, session_id=None):
@@ -122,41 +140,116 @@ class ChatbotEngine:
                     'type': 'text'
                 }
 
-        elif intent == 'recommendation':
+        elif intent == 'recommendation' or intent == 'specification':
             # Check for specific criteria in message
             criteria = self._extract_criteria(message)
 
-            # Get recommendations
-            recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=3)
+            # Detect feature priorities and user category
+            features = self._detect_feature_priority(message)
+            user_category = self._detect_user_category(message)
+            budget = self._extract_budget(message)
+            usage = self._detect_usage_type(message)
+            brands = self._extract_multiple_brands(message)
 
-            if recommendations:
-                response = "Based on your needs, I recommend:\n\n"
-                phone_list = []
+            # If we have feature priorities, use feature-based search
+            if features:
+                phones = self.ai_engine.get_phones_by_features(
+                    features=features,
+                    budget_range=budget,
+                    usage_type=usage,
+                    brand_names=brands,
+                    user_category=user_category,
+                    top_n=5
+                )
 
-                for rec in recommendations:
-                    phone = rec['phone']
-                    response += f"📱 {phone.model_name}\n"
-                    response += f"   💰 RM{phone.price:,.2f}\n"
-                    response += f"   ✨ {rec['match_score']}% match\n"
-                    response += f"   {rec['reasoning'][:100]}...\n\n"
+                if phones:
+                    # Build description based on features
+                    feature_desc = " and ".join([f.replace('_', ' ') for f in features])
+                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                    category_text = f" for {user_category}s" if user_category else ""
 
-                    phone_list.append({
-                        'id': phone.id,
-                        'name': phone.model_name,
-                        'price': phone.price,
-                        'match_score': rec['match_score']
-                    })
+                    response = f"Here are the best phones with {feature_desc}{budget_text}{category_text}:\n\n"
+                    phone_list = []
 
-                return {
-                    'response': response,
-                    'type': 'recommendation',
-                    'metadata': {'phones': phone_list}
-                }
-            else:
-                return {
-                    'response': "Let me help you find the perfect phone. What's your budget and what will you primarily use it for?",
-                    'type': 'text'
-                }
+                    for item in phones:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+
+                        # Show relevant specs based on features
+                        if specs:
+                            if 'battery' in features and specs.battery_capacity:
+                                response += f"   🔋 {specs.battery_capacity}mAh battery\n"
+                            if 'camera' in features and specs.rear_camera_main:
+                                response += f"   📷 {specs.rear_camera_main}MP camera\n"
+                            if 'display' in features and specs.screen_type:
+                                response += f"   📺 {specs.screen_size}\" {specs.screen_type}\n"
+                            if 'performance' in features and specs.processor:
+                                response += f"   ⚡ {specs.processor}\n"
+                            if '5g' in features and specs.has_5g:
+                                response += f"   📶 5G Support\n"
+
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'specs': {
+                                'battery': specs.battery_capacity if specs else None,
+                                'camera': specs.rear_camera_main if specs else None,
+                                'display': specs.screen_type if specs else None,
+                            }
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {
+                            'phones': phone_list,
+                            'features': features,
+                            'budget': budget,
+                            'user_category': user_category
+                        }
+                    }
+
+            # Fall back to general recommendations if no features detected
+            if criteria or budget or usage:
+                recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=5)
+
+                if recommendations:
+                    response = "Based on your needs, I recommend:\n\n"
+                    phone_list = []
+
+                    for rec in recommendations:
+                        phone = rec['phone']
+                        response += f"📱 {phone.brand.name} {phone.model_name}\n"
+                        response += f"   💰 RM{phone.price:,.2f}\n"
+                        response += f"   ✨ {rec['match_score']}% match\n"
+                        response += f"   {rec['reasoning'][:100]}...\n\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'match_score': rec['match_score']
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
+                    }
+
+            return {
+                'response': "Let me help you find the perfect phone. What's your budget and what will you primarily use it for?",
+                'type': 'text'
+            }
 
         elif intent == 'usage_type':
             # Detect usage type
@@ -187,7 +280,7 @@ class ChatbotEngine:
                         phone = item['phone']
                         specs = item.get('specifications')
 
-                        response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
 
                         # Add RAM and storage info if available
                         if specs and specs.ram_options:
@@ -201,7 +294,9 @@ class ChatbotEngine:
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
+                            'brand': phone.brand.name,
                             'price': phone.price,
+                            'image': phone.main_image,  # Add image URL
                             'ram': specs.ram_options if specs else None,
                             'storage': specs.storage_options if specs else None
                         })
@@ -269,7 +364,8 @@ class ChatbotEngine:
                             'id': phone.id,
                             'name': phone.model_name,
                             'brand': brand_name,
-                            'price': phone.price
+                            'price': phone.price,
+                            'image': phone.main_image
                         })
 
                     return {
@@ -323,11 +419,12 @@ Just ask me anything like:
 
     def _extract_budget(self, message):
         """Extract budget range from message"""
-        # Look for patterns like "RM1000", "1000", "under 2000", "within 3000", "between 1000 and 2000"
+        # Look for patterns like "RM1000", "1000", "under 2000", "within 3000", "near 3000", "between 1000 and 2000"
         patterns = [
             r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)',  # RM1000 to RM2000
-            r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000
-            r'(?:under|below|within|max|maximum)\s*rm?\s*(\d+)',  # under/below/within RM2000
+            r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000, within 2000-3000
+            r'near\s*rm?\s*(\d+)\s*(?:to|-)\s*rm?\s*(\d+)',  # near 2000-3000 or near 2000 to 3000
+            r'(?:under|below|within|max|maximum|near|around)\s*rm?\s*(\d+)',  # under/below/within/near RM2000
             r'rm\s*(\d+)',  # RM2000
             r'(?:^|\s)(\d{3,5})(?:\s|$)',  # standalone number 1000-99999
         ]
@@ -335,11 +432,22 @@ Just ask me anything like:
         for pattern in patterns:
             match = re.search(pattern, message.lower())
             if match:
-                if any(word in message.lower() for word in ['under', 'below', 'within', 'max', 'maximum']):
+                # First check if we have a range (2 groups)
+                if len(match.groups()) == 2 and match.group(2):
+                    # Handle "near X-Y" or "near X to Y" pattern (range)
+                    if 'near' in message.lower():
+                        return (int(match.group(1)), int(match.group(2)))
+                    # Regular range pattern (including "within 2000-3000")
+                    else:
+                        return (int(match.group(1)), int(match.group(2)))
+                # Handle "near X" pattern (±500 range)
+                elif 'near' in message.lower() or 'around' in message.lower():
+                    center = int(match.group(1))
+                    return (max(500, center - 500), center + 500)
+                # Handle single max budget keywords
+                elif any(word in message.lower() for word in ['under', 'below', 'within', 'max', 'maximum']):
                     max_budget = int(match.group(1))
                     return (500, max_budget)
-                elif len(match.groups()) == 2:
-                    return (int(match.group(1)), int(match.group(2)))
                 else:
                     # Single value mentioned
                     value = int(match.group(1))
@@ -394,14 +502,41 @@ Just ask me anything like:
 
         if 'gam' in message_lower:
             return 'Gaming'
-        elif 'photo' in message_lower or 'camera' in message_lower:
+        elif 'photographer' in message_lower or 'photo' in message_lower or 'picture' in message_lower:
             return 'Photography'
-        elif 'business' in message_lower or 'work' in message_lower:
+        elif 'camera' in message_lower and not any(word in message_lower for word in ['gaming', 'game']):
+            return 'Photography'
+        elif 'business' in message_lower or 'work' in message_lower or 'office' in message_lower:
             return 'Business'
         elif 'social' in message_lower:
             return 'Social Media'
         elif 'entertainment' in message_lower or 'video' in message_lower or 'movie' in message_lower:
             return 'Entertainment'
+
+        return None
+
+    def _detect_feature_priority(self, message):
+        """Detect which phone feature is being prioritized"""
+        message_lower = message.lower()
+        detected_features = []
+
+        for feature, keywords in self.feature_keywords.items():
+            for keyword in keywords:
+                if keyword in message_lower:
+                    if feature not in detected_features:
+                        detected_features.append(feature)
+                    break
+
+        return detected_features
+
+    def _detect_user_category(self, message):
+        """Detect user category from message"""
+        message_lower = message.lower()
+
+        for category, keywords in self.user_categories.items():
+            for keyword in keywords:
+                if keyword in message_lower:
+                    return category
 
         return None
 

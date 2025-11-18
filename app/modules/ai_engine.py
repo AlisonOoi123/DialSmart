@@ -257,6 +257,108 @@ class AIRecommendationEngine:
 
         return results[:top_n]
 
+    def get_phones_by_features(self, features, budget_range=None, usage_type=None, brand_names=None, user_category=None, top_n=5):
+        """
+        Get phones based on specific feature priorities
+
+        Args:
+            features: List of prioritized features ['battery', 'camera', 'display', etc.]
+            budget_range: Optional (min, max) price range
+            usage_type: Optional usage type
+            brand_names: Optional list of brand names
+            user_category: Optional user category (senior, student, etc.)
+            top_n: Number of results to return
+        """
+        query = Phone.query.filter_by(is_active=True)
+
+        if budget_range:
+            min_price, max_price = budget_range
+            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Filter by brands if specified
+        if brand_names:
+            from app.models import Brand
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.all()
+        results = []
+
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            if not specs:
+                continue
+
+            score = 0
+
+            # Score based on prioritized features
+            for feature in features:
+                if feature == 'battery':
+                    # Long lasting battery
+                    score += (specs.battery_capacity or 0) / 10
+                elif feature == 'camera':
+                    # Best camera
+                    score += (specs.rear_camera_main or 0) * 3
+                    score += (specs.front_camera_mp or 0)
+                elif feature == 'display':
+                    # AMOLED display
+                    if specs.screen_type and 'amoled' in specs.screen_type.lower():
+                        score += 100
+                    elif specs.screen_type and 'oled' in specs.screen_type.lower():
+                        score += 80
+                    score += (specs.screen_size or 0) * 10
+                    score += (specs.refresh_rate or 60) / 2
+                elif feature == 'performance':
+                    # Fast processor
+                    ram_values = self._extract_ram_values(specs.ram_options)
+                    if ram_values:
+                        score += max(ram_values) * 15
+                    if specs.processor and any(chip in specs.processor.lower() for chip in ['snapdragon 8', 'a17', 'a16', 'dimensity 9']):
+                        score += 150
+                    elif specs.processor:
+                        score += 50
+                elif feature == '5g':
+                    # 5G support
+                    if specs.has_5g:
+                        score += 200
+
+            # Additional scoring based on usage type
+            if usage_type == 'Gaming':
+                ram_values = self._extract_ram_values(specs.ram_options)
+                if ram_values:
+                    score += max(ram_values) * 10
+                score += (specs.refresh_rate or 60) / 10
+
+            # Adjustments for user category
+            if user_category == 'senior':
+                # Prefer simpler, reliable phones with good battery
+                score += (specs.battery_capacity or 0) / 5
+                # Slight preference for larger screens
+                if specs.screen_size and specs.screen_size >= 6.5:
+                    score += 50
+            elif user_category == 'student':
+                # Good value, decent performance, good battery
+                score += (specs.battery_capacity or 0) / 8
+                ram_values = self._extract_ram_values(specs.ram_options)
+                if ram_values and max(ram_values) >= 6:
+                    score += 30
+
+            results.append({
+                'phone': phone,
+                'specifications': specs,
+                'feature_score': score
+            })
+
+        # Sort by feature score
+        results.sort(key=lambda x: x['feature_score'], reverse=True)
+
+        return results[:top_n]
+
     def get_similar_phones(self, phone_id, top_n=3):
         """Get phones similar to a given phone"""
         reference_phone = Phone.query.get(phone_id)
