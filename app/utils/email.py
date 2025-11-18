@@ -230,3 +230,5 @@ def is_token_expired(sent_at, expiry_seconds):
 
     expiry_time = sent_at + timedelta(seconds=expiry_seconds)
     return datetime.utcnow() > expiry_time
+
+send_contact_reply = send_admin_reply_email
