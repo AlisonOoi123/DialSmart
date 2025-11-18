@@ -86,18 +86,103 @@ class AIRecommendationEngine:
         # Sort by match score (descending)
         all_scored_phones.sort(key=lambda x: x['match_score'], reverse=True)
 
-        # Filter by threshold, but if no matches, return top N anyway
-        recommendations = [p for p in all_scored_phones if p['match_score'] >= self.min_match_threshold]
+        # Check if user has selected specific brands for balanced distribution
+        preferred_brands = []
+        if hasattr(user_prefs, 'preferred_brands'):
+            if isinstance(user_prefs.preferred_brands, list):
+                preferred_brands = user_prefs.preferred_brands
+            elif isinstance(user_prefs.preferred_brands, str) and user_prefs.preferred_brands:
+                try:
+                    preferred_brands = json.loads(user_prefs.preferred_brands)
+                except (json.JSONDecodeError, ValueError):
+                    preferred_brands = []
 
-        if not recommendations and all_scored_phones:
-            # No phones meet threshold, return top N best matches anyway
-            recommendations = all_scored_phones[:top_n]
+        # Convert to integers
+        try:
+            preferred_brands = [int(b) for b in preferred_brands if b]
+        except (ValueError, TypeError):
+            preferred_brands = []
+
+        # If user selected multiple brands, distribute recommendations evenly across brands
+        if len(preferred_brands) > 1:
+            recommendations = self._get_balanced_brand_recommendations(
+                all_scored_phones, preferred_brands, top_n, self.min_match_threshold
+            )
+        else:
+            # Original logic: Filter by threshold, but if no matches, return top N anyway
+            recommendations = [p for p in all_scored_phones if p['match_score'] >= self.min_match_threshold]
+
+            if not recommendations and all_scored_phones:
+                # No phones meet threshold, return top N best matches anyway
+                recommendations = all_scored_phones[:top_n]
+            else:
+                recommendations = recommendations[:top_n]
 
         # Save recommendations to database if using actual user preferences
         if not criteria and user_prefs and hasattr(user_prefs, 'user_id') and user_id:
             self._save_recommendations(user_id, recommendations[:top_n], user_prefs)
 
         return recommendations[:top_n]
+
+    def _get_balanced_brand_recommendations(self, all_scored_phones, preferred_brands, top_n, threshold):
+        """
+        Get balanced recommendations across multiple selected brands.
+        Distributes recommendations evenly across brands (e.g., if 3 brands selected and 5 recommendations needed,
+        return 2 from brand A, 2 from brand B, 1 from brand C)
+
+        Args:
+            all_scored_phones: List of all phones with scores
+            preferred_brands: List of preferred brand IDs
+            top_n: Number of recommendations to return
+            threshold: Minimum match threshold
+
+        Returns:
+            Balanced list of recommendations
+        """
+        # Group phones by brand (only from preferred brands)
+        phones_by_brand = {brand_id: [] for brand_id in preferred_brands}
+
+        for phone_data in all_scored_phones:
+            brand_id = phone_data['phone'].brand_id
+            if brand_id in preferred_brands:
+                phones_by_brand[brand_id].append(phone_data)
+
+        # Remove empty brands
+        phones_by_brand = {k: v for k, v in phones_by_brand.items() if v}
+
+        if not phones_by_brand:
+            # No phones from preferred brands, return top N overall
+            return all_scored_phones[:top_n]
+
+        # Distribute recommendations using round-robin approach
+        balanced_recommendations = []
+        brand_ids = list(phones_by_brand.keys())
+        brand_index = 0
+
+        # Keep track of which index we're at for each brand
+        brand_pointers = {brand_id: 0 for brand_id in brand_ids}
+
+        # Round-robin distribution
+        while len(balanced_recommendations) < top_n:
+            current_brand = brand_ids[brand_index % len(brand_ids)]
+            brand_phones = phones_by_brand[current_brand]
+            pointer = brand_pointers[current_brand]
+
+            # If this brand still has phones to recommend
+            if pointer < len(brand_phones):
+                phone_data = brand_phones[pointer]
+                # Only add if meets threshold OR we don't have enough recommendations yet
+                if phone_data['match_score'] >= threshold or len(balanced_recommendations) < len(brand_ids):
+                    balanced_recommendations.append(phone_data)
+                    brand_pointers[current_brand] += 1
+
+            brand_index += 1
+
+            # Safety check: if all brands exhausted, break
+            if all(brand_pointers[b] >= len(phones_by_brand[b]) for b in brand_ids):
+                break
+
+        return balanced_recommendations[:top_n]
 
     def _create_temp_preferences(self, criteria):
         """Create temporary preference object from criteria dictionary"""
