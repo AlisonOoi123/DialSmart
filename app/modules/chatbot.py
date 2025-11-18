@@ -126,6 +126,12 @@ class ChatbotEngine:
             'i want a phone', 'show me phones', 'within', 'under rm'
         ])
 
+        # Also skip if multiple brands are mentioned (e.g., "apple and samsung phone")
+        if not skip_phone_model:
+            brands_mentioned = self._extract_multiple_brands(message)
+            if len(brands_mentioned) > 1 or (brands_mentioned and ' and ' in message_lower and 'phone' in message_lower):
+                skip_phone_model = True
+
         # Try to extract phone model if NOT asking for recommendations
         if not skip_phone_model:
             phone_model = self._extract_phone_model(message)
@@ -803,7 +809,7 @@ Just ask me anything like:
                     Phone.brand_id == brand_obj.id,
                     or_(
                         Phone.model_name.ilike(f'%{message_lower}%'),
-                        func.concat(Brand.name, ' ', Phone.model_name).ilike(f'%{message_lower}%')
+                        func.concat(func.concat(Brand.name, ' '), Phone.model_name).ilike(f'%{message_lower}%')
                     )
                 ).limit(5).all()
 
@@ -824,8 +830,8 @@ Just ask me anything like:
         phones = Phone.query.join(Brand).filter(
             Phone.is_active == True,
             or_(
-                func.concat(Brand.name, ' ', Phone.model_name).ilike(f'%{cleaned_message}%'),
-                func.concat(Phone.model_name, ' ', Brand.name).ilike(f'%{cleaned_message}%')
+                func.concat(func.concat(Brand.name, ' '), Phone.model_name).ilike(f'%{cleaned_message}%'),
+                func.concat(func.concat(Phone.model_name, ' '), Brand.name).ilike(f'%{cleaned_message}%')
             )
         ).limit(5).all()
 
