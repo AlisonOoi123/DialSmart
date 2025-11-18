@@ -143,10 +143,14 @@ def search():
     if not query:
         return redirect(url_for('user.browse'))
 
-    # Search in model name
-    phones = Phone.query.filter(
+    # Search in model name AND brand name
+    from sqlalchemy import or_
+    phones = Phone.query.join(Brand).filter(
         Phone.is_active == True,
-        Phone.model_name.ilike(f'%{query}%')
+        or_(
+            Phone.model_name.ilike(f'%{query}%'),
+            Brand.name.ilike(f'%{query}%')
+        )
     ).paginate(page=page, per_page=12, error_out=False)
 
     return render_template('phone/search_results.html',
