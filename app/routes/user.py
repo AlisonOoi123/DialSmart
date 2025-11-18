@@ -180,6 +180,19 @@ def recommendation_wizard():
             top_n=5  # Get top 5 instead of 3 for better results
         )
 
+        # Save recommendations to history for authenticated users
+        if current_user.is_authenticated and recommendations:
+            for rec in recommendations:
+                recommendation = Recommendation(
+                    user_id=current_user.id,
+                    phone_id=rec['phone'].id,
+                    match_percentage=rec['match_score'],
+                    reasoning=rec['reasoning'],
+                    user_criteria=json.dumps(criteria)
+                )
+                db.session.add(recommendation)
+            db.session.commit()
+
         return render_template('user/wizard_results.html',
                              recommendations=recommendations,
                              criteria=criteria)
