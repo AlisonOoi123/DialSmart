@@ -97,8 +97,30 @@ with app.app_context():
     # Track brands
     brands_cache = {}
 
-    # Read CSV file
-    csv_file = '/home/user/DialSmart/data/fyp_phoneDataset.csv'
+    # Read CSV file - try multiple locations (cross-platform)
+    import os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Try different possible locations
+    possible_paths = [
+        os.path.join(base_dir, 'data', 'fyp_phoneDataset.csv'),  # Windows: data folder
+        os.path.join(base_dir, 'fyp_phoneDataset.csv'),           # Root folder
+        '/home/user/DialSmart/fyp_phoneDataset.csv',              # Linux (original)
+    ]
+
+    csv_file = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            csv_file = path
+            print(f"Found CSV file at: {path}\n")
+            break
+
+    if not csv_file:
+        print(f"❌ ERROR: Could not find fyp_phoneDataset.csv in any of these locations:")
+        for path in possible_paths:
+            print(f"   - {path}")
+        print("\nPlease ensure the CSV file exists in one of these locations.")
+        exit(1)
 
     with open(csv_file, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
@@ -148,7 +170,7 @@ with app.app_context():
                     brand_id=brand.id,
                     model_name=model_name,
                     price=clean_price(row.get('Price', '0')),
-                    main_image=clean_text(row.get('Image URL')),
+                    main_image=clean_text(row.get('ImageURL')),  # Fixed: was 'Image URL'
                     availability_status=clean_text(row.get('Status', 'Available')),
                     release_date=parse_date(row.get('Date')),
                     is_active=True
@@ -158,42 +180,42 @@ with app.app_context():
                 db.session.flush()
 
                 # Create specifications
-                screen_size = extract_screen_size(row.get('Screen Size'))
+                screen_size = extract_screen_size(row.get('ScreenSize'))  # Fixed: was 'Screen Size'
                 ram_str = clean_text(row.get('RAM'))
                 storage_str = clean_text(row.get('Storage'))
-                rear_camera = clean_text(row.get('Rear Camera'))
-                front_camera = clean_text(row.get('Front Camera'))
-                battery_capacity = extract_number(row.get('Battery Capacity'))
+                rear_camera = clean_text(row.get('RearCamera'))  # Fixed: was 'Rear Camera'
+                front_camera = clean_text(row.get('FrontCamera'))  # Fixed: was 'Front Camera'
+                battery_capacity = extract_number(row.get('BatteryCapacity'))  # Fixed: was 'Battery Capacity'
 
                 specs = PhoneSpecification(
                     phone_id=phone.id,
                     # Display
                     screen_size=screen_size,
                     screen_resolution=clean_text(row.get('Resolution')),
-                    screen_type=clean_text(row.get('Display Type')),
-                    refresh_rate=extract_number(row.get('Display Type')) if 'Hz' in str(row.get('Display Type', '')) else 60,
+                    screen_type=clean_text(row.get('DisplayType')),  # Fixed: was 'Display Type'
+                    refresh_rate=extract_number(row.get('DisplayType')) if 'Hz' in str(row.get('DisplayType', '')) else 60,
 
                     # Performance
                     processor=clean_text(row.get('Chipset')),
                     processor_brand=clean_text(row.get('Chipset', '').split()[0]) if row.get('Chipset') else None,
                     ram_options=ram_str,
                     storage_options=storage_str,
-                    expandable_storage=parse_yes_no(row.get('Card Slot')),
+                    expandable_storage=parse_yes_no(row.get('CardSlot')),  # Fixed: Check both with/without space
 
                     # Camera
                     rear_camera=rear_camera,
                     rear_camera_main=extract_main_camera_mp(rear_camera),
                     front_camera=front_camera,
                     front_camera_mp=extract_main_camera_mp(front_camera),
-                    camera_features=clean_text(row.get('Camera Features')),
+                    camera_features=clean_text(row.get('CameraFeatures')),  # Fixed: Check both
 
                     # Battery
                     battery_capacity=battery_capacity,
-                    charging_speed=clean_text(row.get('Fast Charging')),
-                    wireless_charging=parse_yes_no(row.get('Wireless Charging')),
+                    charging_speed=clean_text(row.get('FastCharging')),  # Fixed: was 'Fast Charging'
+                    wireless_charging=parse_yes_no(row.get('WirelessCharging')),  # Fixed: was 'Wireless Charging'
 
                     # Connectivity
-                    has_5g=has_5g(row.get('5G Networks')),
+                    has_5g=has_5g(row.get('5GNetworks')),  # Fixed: was '5G Networks'
                     wifi_standard=clean_text(row.get('Wi-Fi')),
                     bluetooth_version=clean_text(row.get('Bluetooth')),
                     nfc=parse_yes_no(row.get('NFC')),
