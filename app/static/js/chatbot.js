@@ -82,8 +82,8 @@ $(document).ready(function() {
                         appendQuickReplies(response.quick_replies);
                     }
 
-                    // Handle phone recommendations
-                    if (response.type === 'recommendation' && response.metadata.phones) {
+                    // Handle phone recommendations and phone details
+                    if ((response.type === 'recommendation' || response.type === 'phone_details') && response.metadata.phones) {
                         appendPhoneCards(response.metadata.phones);
                     }
                 } else {
@@ -99,9 +99,25 @@ $(document).ready(function() {
 
     function appendMessage(message, type) {
         var messageClass = type === 'user' ? 'user-message' : 'bot-message';
+
+        // Convert markdown links to HTML for bot messages
+        var processedMessage = message;
+        if (type === 'bot') {
+            // Convert [text](url) to <a href="url">text</a>
+            processedMessage = processedMessage.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
+                return `<a href="${escapeHtml(url)}" class="text-primary text-decoration-underline" target="_blank">${escapeHtml(text)}</a>`;
+            });
+            // Convert **text** to <strong>text</strong>
+            processedMessage = processedMessage.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Convert line breaks
+            processedMessage = processedMessage.replace(/\n/g, '<br>');
+        } else {
+            processedMessage = escapeHtml(message);
+        }
+
         var messageHtml = `
             <div class="chat-message ${messageClass}">
-                <div class="message-content">${escapeHtml(message)}</div>
+                <div class="message-content">${processedMessage}</div>
             </div>
         `;
 

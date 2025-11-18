@@ -587,36 +587,46 @@ Just ask me anything like:
 
     def _extract_phone_model(self, message):
         """Extract specific phone model name from message"""
-        # Search for phone model patterns in the database
-        # Try to find phones with fuzzy matching on model name
         message_lower = message.lower()
 
         # Remove common query words to get the phone model
         query_words = ['price', 'cost', 'how much', 'specs', 'specification', 'details', 'info', 'information',
-                      'about', 'tell me', 'show me', 'what is', 'whats', 'the', 'of', 'for']
+                      'about', 'tell me', 'show me', 'what is', 'whats', 'the', 'of', 'for', 'spec', 'battery']
 
         cleaned_message = message_lower
         for word in query_words:
             cleaned_message = cleaned_message.replace(word, ' ')
 
         # Clean up extra spaces
-        cleaned_message = ' '.join(cleaned_message.split())
+        cleaned_message = ' '.join(cleaned_message.split()).strip()
 
         if len(cleaned_message) < 3:  # Too short to be a phone model
             return None
 
-        # Search for phones with model name containing the cleaned message
-        from sqlalchemy import or_
+        # Search strategy: Try exact model match first, then fuzzy
+        from sqlalchemy import or_, func
+
+        # Strategy 1: Search model_name directly (e.g., "galaxy s23 fe")
+        phones = Phone.query.join(Brand).filter(
+            Phone.is_active == True,
+            Phone.model_name.ilike(f'%{cleaned_message}%')
+        ).limit(5).all()
+
+        # If found, return them
+        if phones:
+            return phones
+
+        # Strategy 2: Search brand + model together (e.g., "samsung galaxy s23 fe")
         phones = Phone.query.join(Brand).filter(
             Phone.is_active == True,
             or_(
-                Phone.model_name.ilike(f'%{cleaned_message}%'),
-                Brand.name.ilike(f'%{cleaned_message}%')
+                func.concat(Brand.name, ' ', Phone.model_name).ilike(f'%{cleaned_message}%'),
+                func.concat(Phone.model_name, ' ', Brand.name).ilike(f'%{cleaned_message}%')
             )
         ).limit(5).all()
 
         if phones:
-            return phones  # Return list of matching phones
+            return phones
 
         return None
 
@@ -626,7 +636,8 @@ Just ask me anything like:
 
         # Determine what information is being requested
         is_price_query = any(word in message_lower for word in ['price', 'cost', 'how much', 'rm'])
-        is_spec_query = any(word in message_lower for word in ['specs', 'specification', 'camera', 'battery', 'ram', 'display', 'screen'])
+        is_spec_query = any(word in message_lower for word in ['specs', 'specification', 'spec'])
+        is_battery_query = 'battery' in message_lower
 
         if len(phones) == 1:
             phone = phones[0]
@@ -637,8 +648,17 @@ Just ask me anything like:
             # Always show price
             response += f"💰 **Price:** RM{phone.price:,.2f}\n\n"
 
-            # Show specs if requested or if not specifically asking for price only
-            if is_spec_query or not is_price_query:
+            # Show specific information based on query
+            if is_price_query and not is_spec_query and not is_battery_query:
+                # Price only - already shown above
+                pass
+            elif is_battery_query and specs and specs.battery_capacity:
+                # Battery specific query
+                response += f"🔋 **Battery:** {specs.battery_capacity}mAh\n"
+                if specs.fast_charging_wattage:
+                    response += f"⚡ **Fast Charging:** {specs.fast_charging_wattage}W\n"
+            elif is_spec_query or (not is_price_query and not is_battery_query):
+                # Full specs
                 if specs:
                     response += "📊 **Key Specifications:**\n"
                     if specs.processor:
@@ -656,6 +676,9 @@ Just ask me anything like:
                     if specs.has_5g:
                         response += f"   • 5G: Yes ✅\n"
 
+            # Add View Details button
+            response += f"\n👉 [View Full Details](/phone/{phone.id})"
+
             return {
                 'response': response,
                 'type': 'phone_details',
@@ -665,27 +688,30 @@ Just ask me anything like:
                         'name': phone.model_name,
                         'brand': phone.brand.name,
                         'price': phone.price,
-                        'image': phone.main_image
+                        'image': phone.main_image,
+                        'url': f'/phone/{phone.id}'
                     }]
                 }
             }
 
         elif len(phones) > 1:
-            # Multiple phones match - show all with prices
+            # Multiple phones match - show all with prices and view details
             response = f"I found {len(phones)} phones matching your query:\n\n"
             phone_list = []
 
             for phone in phones:
                 response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                response += f"   👉 [View Details](/phone/{phone.id})\n"
                 phone_list.append({
                     'id': phone.id,
                     'name': phone.model_name,
                     'brand': phone.brand.name,
                     'price': phone.price,
-                    'image': phone.main_image
+                    'image': phone.main_image,
+                    'url': f'/phone/{phone.id}'
                 })
 
-            response += "\nWhich one would you like to know more about?"
+            response += "\nClick any link above to see full details!"
 
             return {
                 'response': response,
