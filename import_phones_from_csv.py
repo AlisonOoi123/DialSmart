@@ -1,263 +1,228 @@
-"""
-Import phones from CSV dataset into the database
-"""
-import csv
-import re
+# import_phones_from_csv.py
+import pandas as pd
+import oracledb
 from datetime import datetime
-from app import create_app, db
-from app.models import Brand, Phone, PhoneSpecification
 
-def clean_price(price_str):
-    """Extract numeric price from string like 'MYR 3,899'"""
-    if not price_str or price_str.strip() == '':
-        return 0.0
-    # Remove MYR, currency symbols, commas, and spaces
-    price_str = re.sub(r'[MYR,\s]', '', price_str)
+print("="*60)
+print("IMPORTING PHONES WITH FULL SPECIFICATIONS")
+print("="*60)
+
+# Oracle connection
+try:
+    connection = oracledb.connect(
+        user='ds_user',
+        password='dsuser123',
+        host='localhost',
+        port=1521,
+        service_name='orclpdb'
+    )
+    cursor = connection.cursor()
+    print("✓ Connected to Oracle")
+except Exception as e:
+    print(f"✗ Connection failed: {e}")
+    exit()
+
+# Read CSV
+print("\n📂 Reading CSV file...")
+try:
+    df = pd.read_csv('data/fyp_phoneDataset.csv')
+    print(f"✓ Found {len(df)} phones in CSV")
+    print(f"✓ Columns: {list(df.columns)[:10]}...")  # Show first 10 columns
+except Exception as e:
+    print(f"✗ Error reading CSV: {e}")
+    exit()
+
+# Check brands exist
+print("\n🏷️ Checking brands...")
+cursor.execute("SELECT id, name FROM brands")
+brands = cursor.fetchall()
+brand_map = {row[1].upper(): row[0] for row in brands}
+print(f"✓ Found {len(brand_map)} brands in database")
+
+if not brands:
+    print("⚠️ No brands found! Creating brands first...")
+    unique_brands = df['Brand'].unique()
+    for brand in unique_brands:
+        brand_name = str(brand).strip()
+        cursor.execute(
+            "INSERT INTO brands (id, name, is_active) VALUES (brands_seq.NEXTVAL, :name, 1)",
+            {'name': brand_name}
+        )
+        connection.commit()
+    
+    cursor.execute("SELECT id, name FROM brands")
+    brand_map = {row[1].upper(): row[0] for row in cursor.fetchall()}
+    print(f"✓ Created {len(brand_map)} brands")
+
+# Clear old data
+print("\n🗑️ Clearing old phone data...")
+cursor.execute("DELETE FROM phone_specifications")
+cursor.execute("DELETE FROM phones")
+connection.commit()
+print("✓ Old data cleared")
+
+# Import phones with specifications
+print("\n📥 Importing phones with full specifications...")
+imported = 0
+errors = 0
+
+for index, row in df.iterrows():
     try:
-        return float(price_str)
-    except:
-        return 0.0
-
-def extract_number(text, default=None):
-    """Extract first number from text"""
-    if not text or text.strip() == '':
-        return default
-    match = re.search(r'(\d+\.?\d*)', str(text))
-    if match:
+        # Get brand
+        brand_name = str(row['Brand']).strip().upper()
+        if brand_name not in brand_map:
+            print(f"⚠️ Unknown brand: {brand_name}, skipping...")
+            errors += 1
+            continue
+        
+        brand_id = brand_map[brand_name]
+        
+        # Clean price
+        price_str = str(row.get('Price', '0'))
+        price_str = price_str.replace('MYR', '').replace('RM', '').replace(',', '').strip()
         try:
-            return float(match.group(1)) if '.' in match.group(1) else int(match.group(1))
+            price = float(price_str) if price_str else 0.0
         except:
-            return default
-    return default
-
-def extract_screen_size(text):
-    """Extract screen size in inches from text like '6.7 inches'"""
-    if not text:
-        return None
-    match = re.search(r'(\d+\.?\d*)\s*inch', str(text))
-    if match:
+            price = 0.0
+        
+        # Get model name
+        model_name = str(row.get('Model', 'Unknown'))[:150]
+        
+        # Get image URL
+        image_url = str(row.get('ImageURL', ''))[:500] if pd.notna(row.get('ImageURL')) else None
+        
+        # Get status
+        status = str(row.get('Status', 'Available'))[:50] if pd.notna(row.get('Status')) else 'Available'
+        
+        # Parse release date
         try:
-            return float(match.group(1))
+            release_date = pd.to_datetime(row.get('Date')).date() if pd.notna(row.get('Date')) else None
         except:
-            return None
-    return None
+            release_date = None
+        
+        # Insert phone (get the ID back)
+        cursor.execute("""
+            INSERT INTO phones (
+                id, brand_id, model_name, price, main_image,
+                release_date, availability_status, is_active, created_at
+            ) VALUES (
+                phones_seq.NEXTVAL, :brand_id, :model, :price, :image,
+                :release_date, :status, 1, SYSDATE
+            ) RETURNING id INTO :phone_id
+        """, {
+            'brand_id': brand_id,
+            'model': model_name,
+            'price': price,
+            'image': image_url,
+            'release_date': release_date,
+            'status': status,
+            'phone_id': cursor.var(oracledb.NUMBER)
+        })
+        
+        phone_id = cursor.var(oracledb.NUMBER).getvalue()[0]
+        
+        # Insert specifications
+        cursor.execute("""
+            INSERT INTO phone_specifications (
+                id, phone_id, 
+                dimensions, weight, colors, body_material,
+                screen_size, display_type, resolution, ppi,
+                network_technology, os, chipset, cpu, gpu,
+                ram_options, storage_options, card_slot,
+                rear_camera, front_camera, camera_features, video_recording,
+                battery_capacity, fast_charging, wireless_charging,
+                wifi, bluetooth, gps, nfc, usb_type, radio,
+                sensors, product_url
+            ) VALUES (
+                phone_specifications_seq.NEXTVAL, :phone_id,
+                :dimensions, :weight, :colors, :body_material,
+                :screen_size, :display_type, :resolution, :ppi,
+                :technology, :os, :chipset, :cpu, :gpu,
+                :ram, :storage, :card_slot,
+                :rear_camera, :front_camera, :camera_features, :video,
+                :battery, :fast_charging, :wireless_charging,
+                :wifi, :bluetooth, :gps, :nfc, :usb, :radio,
+                :sensors, :url
+            )
+        """, {
+            'phone_id': phone_id,
+            'dimensions': str(row.get('Dimensions', ''))[:100] if pd.notna(row.get('Dimensions')) else None,
+            'weight': str(row.get('Weight', ''))[:50] if pd.notna(row.get('Weight')) else None,
+            'colors': str(row.get('Color', ''))[:200] if pd.notna(row.get('Color')) else None,
+            'body_material': str(row.get('BodyMaterial', ''))[:200] if pd.notna(row.get('BodyMaterial')) else None,
+            'screen_size': str(row.get('ScreenSize', ''))[:50] if pd.notna(row.get('ScreenSize')) else None,
+            'display_type': str(row.get('DisplayType', ''))[:200] if pd.notna(row.get('DisplayType')) else None,
+            'resolution': str(row.get('Resolution', ''))[:100] if pd.notna(row.get('Resolution')) else None,
+            'ppi': str(row.get('PPI', ''))[:50] if pd.notna(row.get('PPI')) else None,
+            'technology': str(row.get('Technology', ''))[:200] if pd.notna(row.get('Technology')) else None,
+            'os': str(row.get('OS', ''))[:100] if pd.notna(row.get('OS')) else None,
+            'chipset': str(row.get('Chipset', ''))[:100] if pd.notna(row.get('Chipset')) else None,
+            'cpu': str(row.get('CPU', ''))[:200] if pd.notna(row.get('CPU')) else None,
+            'gpu': str(row.get('GPU', ''))[:100] if pd.notna(row.get('GPU')) else None,
+            'ram': str(row.get('RAM', ''))[:100] if pd.notna(row.get('RAM')) else None,
+            'storage': str(row.get('Storage', ''))[:200] if pd.notna(row.get('Storage')) else None,
+            'card_slot': str(row.get('Card Slot', ''))[:100] if pd.notna(row.get('Card Slot')) else None,
+            'rear_camera': str(row.get('RearCamera', ''))[:500] if pd.notna(row.get('RearCamera')) else None,
+            'front_camera': str(row.get('FrontCamera', ''))[:200] if pd.notna(row.get('FrontCamera')) else None,
+            'camera_features': str(row.get('Camera Features', ''))[:300] if pd.notna(row.get('Camera Features')) else None,
+            'video': str(row.get('VideoRecording', ''))[:300] if pd.notna(row.get('VideoRecording')) else None,
+            'battery': str(row.get('BatteryCapacity', ''))[:50] if pd.notna(row.get('BatteryCapacity')) else None,
+            'fast_charging': str(row.get('FastCharging', ''))[:200] if pd.notna(row.get('FastCharging')) else None,
+            'wireless_charging': str(row.get('WirelessCharging', ''))[:100] if pd.notna(row.get('WirelessCharging')) else None,
+            'wifi': str(row.get('Wi-Fi', ''))[:100] if pd.notna(row.get('Wi-Fi')) else None,
+            'bluetooth': str(row.get('Bluetooth', ''))[:50] if pd.notna(row.get('Bluetooth')) else None,
+            'gps': str(row.get('GPS', ''))[:100] if pd.notna(row.get('GPS')) else None,
+            'nfc': str(row.get('NFC', ''))[:50] if pd.notna(row.get('NFC')) else None,
+            'usb': str(row.get('USB', ''))[:100] if pd.notna(row.get('USB')) else None,
+            'radio': str(row.get('Radio', ''))[:50] if pd.notna(row.get('Radio')) else None,
+            'sensors': str(row.get('Sensors', ''))[:300] if pd.notna(row.get('Sensors')) else None,
+            'url': str(row.get('URL', ''))[:500] if pd.notna(row.get('URL')) else None
+        })
+        
+        imported += 1
+        
+        # Commit every 50 records
+        if imported % 50 == 0:
+            connection.commit()
+            print(f"  ... {imported} phones imported")
+        
+    except Exception as e:
+        errors += 1
+        print(f"✗ Error importing {row.get('Model', 'Unknown')}: {str(e)}")
+        continue
 
-def parse_date(date_str):
-    """Parse date from string"""
-    if not date_str or date_str.strip() == '':
-        return None
-    try:
-        return datetime.strptime(date_str, '%Y-%m-%d').date()
-    except:
-        return None
+# Final commit
+connection.commit()
 
-def extract_main_camera_mp(camera_str):
-    """Extract main camera MP from string like '48 MP, f/1.6, ...'"""
-    if not camera_str:
-        return None
-    match = re.search(r'(\d+)\s*MP', str(camera_str))
-    if match:
-        return int(match.group(1))
-    return None
+print(f"\n{'='*60}")
+print(f"✅ IMPORT COMPLETE!")
+print(f"{'='*60}")
+print(f"   Imported: {imported} phones with specifications")
+print(f"   Errors: {errors}")
+print(f"{'='*60}")
 
-def has_5g(networks_str):
-    """Check if phone supports 5G"""
-    if not networks_str:
-        return False
-    return len(str(networks_str).strip()) > 0 and str(networks_str).strip() != ''
+# Verify import
+print(f"\n📊 Verification:")
+cursor.execute("SELECT COUNT(*) FROM phones")
+total_phones = cursor.fetchone()[0]
+print(f"   Total phones: {total_phones}")
 
-def parse_yes_no(text):
-    """Convert Yes/No to boolean"""
-    if not text:
-        return False
-    text = str(text).strip().lower()
-    return text in ['yes', 'true', '1']
+cursor.execute("SELECT COUNT(*) FROM phone_specifications")
+total_specs = cursor.fetchone()[0]
+print(f"   Total specifications: {total_specs}")
 
-def clean_text(text):
-    """Clean text field"""
-    if not text or str(text).strip() == '':
-        return None
-    return str(text).strip()
+# Sample data
+print(f"\n📱 Sample phone with specs:")
+cursor.execute("""
+    SELECT p.model_name, p.price, ps.ram_options, ps.battery_capacity, ps.rear_camera
+    FROM phones p
+    LEFT JOIN phone_specifications ps ON p.id = ps.phone_id
+    WHERE ROWNUM <= 3
+""")
+for row in cursor.fetchall():
+    print(f"   {row[0]} - RM{row[1]} - RAM: {row[2]} - Battery: {row[3]}")
 
-# Create application instance
-app = create_app()
+cursor.close()
+connection.close()
 
-with app.app_context():
-    print("Importing phones from CSV dataset...")
-    print("=" * 80)
-
-    # Clear existing data (optional - comment out if you want to keep sample data)
-    print("Clearing existing phone data...")
-    PhoneSpecification.query.delete()
-    Phone.query.delete()
-    Brand.query.delete()
-    db.session.commit()
-    print("✓ Existing data cleared\n")
-
-    # Track brands
-    brands_cache = {}
-
-    # Read CSV file - try multiple locations (cross-platform)
-    import os
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Try different possible locations
-    possible_paths = [
-        os.path.join(base_dir, 'data', 'fyp_phoneDataset.csv'),  # Windows: data folder
-        os.path.join(base_dir, 'fyp_phoneDataset.csv'),           # Root folder
-        '/home/user/DialSmart/fyp_phoneDataset.csv',              # Linux (original)
-    ]
-
-    csv_file = None
-    for path in possible_paths:
-        if os.path.exists(path):
-            csv_file = path
-            print(f"Found CSV file at: {path}\n")
-            break
-
-    if not csv_file:
-        print(f"❌ ERROR: Could not find fyp_phoneDataset.csv in any of these locations:")
-        for path in possible_paths:
-            print(f"   - {path}")
-        print("\nPlease ensure the CSV file exists in one of these locations.")
-        exit(1)
-
-    with open(csv_file, 'r', encoding='utf-8-sig') as f:
-        reader = csv.DictReader(f)
-
-        total_phones = 0
-        skipped_phones = 0
-
-        for row in reader:
-            try:
-                brand_name = clean_text(row.get('Brand'))
-                model_name = clean_text(row.get('Model'))
-
-                if not brand_name or not model_name:
-                    print(f"✗ Skipping row with missing brand/model")
-                    skipped_phones += 1
-                    continue
-
-                # Get or create brand
-                if brand_name not in brands_cache:
-                    brand = Brand.query.filter_by(name=brand_name).first()
-                    if not brand:
-                        brand = Brand(
-                            name=brand_name,
-                            is_featured=brand_name in ['Samsung', 'Apple', 'Xiaomi', 'Huawei', 'Oppo', 'Vivo', 'Realme', 'OnePlus', 'Google'],
-                            is_active=True
-                        )
-                        db.session.add(brand)
-                        db.session.flush()
-                        print(f"✓ Created brand: {brand_name}")
-                    brands_cache[brand_name] = brand
-
-                brand = brands_cache[brand_name]
-
-                # Check if phone already exists
-                existing_phone = Phone.query.filter_by(
-                    brand_id=brand.id,
-                    model_name=model_name
-                ).first()
-
-                if existing_phone:
-                    print(f"  Skipping duplicate: {brand_name} {model_name}")
-                    skipped_phones += 1
-                    continue
-
-                # Create phone
-                phone = Phone(
-                    brand_id=brand.id,
-                    model_name=model_name,
-                    price=clean_price(row.get('Price', '0')),
-                    main_image=clean_text(row.get('ImageURL')),  # Fixed: was 'Image URL'
-                    availability_status=clean_text(row.get('Status', 'Available')),
-                    release_date=parse_date(row.get('Date')),
-                    is_active=True
-                )
-
-                db.session.add(phone)
-                db.session.flush()
-
-                # Create specifications
-                screen_size = extract_screen_size(row.get('ScreenSize'))  # Fixed: was 'Screen Size'
-                ram_str = clean_text(row.get('RAM'))
-                storage_str = clean_text(row.get('Storage'))
-                rear_camera = clean_text(row.get('RearCamera'))  # Fixed: was 'Rear Camera'
-                front_camera = clean_text(row.get('FrontCamera'))  # Fixed: was 'Front Camera'
-                battery_capacity = extract_number(row.get('BatteryCapacity'))  # Fixed: was 'Battery Capacity'
-
-                specs = PhoneSpecification(
-                    phone_id=phone.id,
-                    # Display
-                    screen_size=screen_size,
-                    screen_resolution=clean_text(row.get('Resolution')),
-                    screen_type=clean_text(row.get('DisplayType')),  # Fixed: was 'Display Type'
-                    refresh_rate=extract_number(row.get('DisplayType')) if 'Hz' in str(row.get('DisplayType', '')) else 60,
-
-                    # Performance
-                    processor=clean_text(row.get('Chipset')),
-                    processor_brand=clean_text(row.get('Chipset', '').split()[0]) if row.get('Chipset') else None,
-                    ram_options=ram_str,
-                    storage_options=storage_str,
-                    expandable_storage=parse_yes_no(row.get('CardSlot')),  # Fixed: Check both with/without space
-
-                    # Camera
-                    rear_camera=rear_camera,
-                    rear_camera_main=extract_main_camera_mp(rear_camera),
-                    front_camera=front_camera,
-                    front_camera_mp=extract_main_camera_mp(front_camera),
-                    camera_features=clean_text(row.get('CameraFeatures')),  # Fixed: Check both
-
-                    # Battery
-                    battery_capacity=battery_capacity,
-                    charging_speed=clean_text(row.get('FastCharging')),  # Fixed: was 'Fast Charging'
-                    wireless_charging=parse_yes_no(row.get('WirelessCharging')),  # Fixed: was 'Wireless Charging'
-
-                    # Connectivity
-                    has_5g=has_5g(row.get('5GNetworks')),  # Fixed: was '5G Networks'
-                    wifi_standard=clean_text(row.get('Wi-Fi')),
-                    bluetooth_version=clean_text(row.get('Bluetooth')),
-                    nfc=parse_yes_no(row.get('NFC')),
-
-                    # Additional
-                    operating_system=clean_text(row.get('OS')),
-                    fingerprint_sensor='fingerprint' in str(row.get('Sensors', '')).lower(),
-                    face_unlock='face' in str(row.get('Sensors', '')).lower(),
-                    water_resistance=clean_text(row.get('Protection')) if 'IP' in str(row.get('Protection', '')) else None,
-                    dual_sim='Dual' in str(row.get('SIM', '')),
-                    weight=extract_number(row.get('Weight')),
-                    dimensions=clean_text(row.get('Dimensions')),
-                    colors_available=clean_text(row.get('Color'))
-                )
-
-                db.session.add(specs)
-
-                total_phones += 1
-
-                if total_phones % 50 == 0:
-                    db.session.commit()
-                    print(f"  Imported {total_phones} phones...")
-
-            except Exception as e:
-                print(f"✗ Error importing {brand_name} {model_name}: {str(e)}")
-                skipped_phones += 1
-                continue
-
-        # Final commit
-        db.session.commit()
-
-        print("\n" + "=" * 80)
-        print(f"✅ Import completed!")
-        print(f"   Total phones imported: {total_phones}")
-        print(f"   Total phones skipped: {skipped_phones}")
-        print(f"   Total brands created: {len(brands_cache)}")
-        print("=" * 80)
-
-        # Show brand summary
-        print("\nBrand Summary:")
-        for brand_name in sorted(brands_cache.keys()):
-            brand = brands_cache[brand_name]
-            count = Phone.query.filter_by(brand_id=brand.id).count()
-            featured = "⭐" if brand.is_featured else "  "
-            print(f"  {featured} {brand_name}: {count} phones")
+print(f"\n✓ Done! Check your website at http://localhost:5000/browse")
