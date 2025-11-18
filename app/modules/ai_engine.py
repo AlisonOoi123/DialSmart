@@ -420,7 +420,16 @@ class AIRecommendationEngine:
                         score += 200
 
             # Additional scoring based on usage type
-            if usage_type == 'Gaming':
+            if usage_type == 'Photography':
+                # Photography users: prioritize camera MP first
+                if specs.rear_camera_main:
+                    score += specs.rear_camera_main * 5  # Heavily prioritize main camera
+                if specs.front_camera_mp:
+                    score += specs.front_camera_mp * 2  # Also consider selfie camera
+                # Good display for reviewing photos
+                if specs.screen_type and ('amoled' in specs.screen_type.lower() or 'oled' in specs.screen_type.lower()):
+                    score += 80
+            elif usage_type == 'Gaming':
                 ram_values = self._extract_ram_values(specs.ram_options)
                 if ram_values:
                     score += max(ram_values) * 10
@@ -428,17 +437,66 @@ class AIRecommendationEngine:
 
             # Adjustments for user category
             if user_category == 'senior':
-                # Prefer simpler, reliable phones with good battery
+                # Prefer budget phones with entertainment capabilities
+                # Good battery for all-day use
                 score += (specs.battery_capacity or 0) / 5
-                # Slight preference for larger screens
+                # Larger screens for better visibility
                 if specs.screen_size and specs.screen_size >= 6.5:
                     score += 50
+                # Prefer budget-friendly options (lower price = higher score)
+                if phone.price <= 1500:
+                    score += 100
+                elif phone.price <= 2500:
+                    score += 50
+                # Good display for entertainment
+                if specs.screen_type and ('amoled' in specs.screen_type.lower() or 'oled' in specs.screen_type.lower()):
+                    score += 60
             elif user_category == 'student':
-                # Good value, decent performance, good battery
-                score += (specs.battery_capacity or 0) / 8
+                # Value phones with good performance (processor priority)
+                # Prefer mid-range pricing (best value)
+                if 1000 <= phone.price <= 2500:
+                    score += 80
+                # Prioritize good processor for multitasking
+                if specs.processor:
+                    if any(chip in specs.processor.lower() for chip in ['snapdragon 7', 'snapdragon 8', 'dimensity 8', 'dimensity 9', 'helio g9']):
+                        score += 120
+                    elif any(chip in specs.processor.lower() for chip in ['snapdragon', 'dimensity', 'helio']):
+                        score += 60
+                # Good RAM for performance
                 ram_values = self._extract_ram_values(specs.ram_options)
-                if ram_values and max(ram_values) >= 6:
-                    score += 30
+                if ram_values:
+                    max_ram = max(ram_values)
+                    if max_ram >= 8:
+                        score += 80
+                    elif max_ram >= 6:
+                        score += 50
+                # Decent battery
+                score += (specs.battery_capacity or 0) / 8
+            elif user_category == 'professional':
+                # Workers need: long battery, big storage, good performance
+                # Long-lasting battery is critical
+                if specs.battery_capacity:
+                    if specs.battery_capacity >= 5000:
+                        score += 150
+                    elif specs.battery_capacity >= 4500:
+                        score += 100
+                    else:
+                        score += specs.battery_capacity / 30
+                # Big storage for work files
+                storage_values = self._extract_storage_values(specs.storage_options)
+                if storage_values:
+                    max_storage = max(storage_values)
+                    if max_storage >= 256:
+                        score += 120
+                    elif max_storage >= 128:
+                        score += 80
+                # Good performance/processor for productivity
+                if specs.processor and any(chip in specs.processor.lower() for chip in ['snapdragon 8', 'snapdragon 7', 'dimensity 8', 'dimensity 9']):
+                    score += 100
+                # Decent RAM
+                ram_values = self._extract_ram_values(specs.ram_options)
+                if ram_values and max(ram_values) >= 8:
+                    score += 60
 
             results.append({
                 'phone': phone,
