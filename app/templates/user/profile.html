@@ -3,25 +3,95 @@
 {% block content %}
 <div class="container py-4">
     <h2>My Profile</h2>
-    <form method="POST" class="mt-4">
-        <div class="mb-3">
-            <label class="form-label">Full Name</label>
-            <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name }}" required>
+
+    <!-- Profile Information -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Profile Information</h5>
         </div>
-        <div class="mb-3">
-            <label class="form-label">Email</label>
-            <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
+        <div class="card-body">
+            <form method="POST" id="profileForm">
+                <div class="mb-3">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">User Category</label>
+                    <select name="user_category" class="form-select">
+                        <option value="Student" {% if current_user.user_category == 'Student' %}selected{% endif %}>Student</option>
+                        <option value="Working Professional" {% if current_user.user_category == 'Working Professional' %}selected{% endif %}>Working Professional</option>
+                        <option value="Senior Citizen" {% if current_user.user_category == 'Senior Citizen' %}selected{% endif %}>Senior Citizen</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Age Range</label>
+                    <select name="age_range" class="form-select">
+                        <option value="18-25" {% if current_user.age_range == '18-25' %}selected{% endif %}>18-25</option>
+                        <option value="26-35" {% if current_user.age_range == '26-35' %}selected{% endif %}>26-35</option>
+                        <option value="36-45" {% if current_user.age_range == '36-45' %}selected{% endif %}>36-45</option>
+                        <option value="46-60" {% if current_user.age_range == '46-60' %}selected{% endif %}>46-60</option>
+                        <option value="60+" {% if current_user.age_range == '60+' %}selected{% endif %}>60+</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Profile</button>
+            </form>
         </div>
-        <div class="mb-3">
-            <label class="form-label">User Category</label>
-            <select name="user_category" class="form-select">
-                <option value="Student" {% if current_user.user_category == 'Student' %}selected{% endif %}>Student</option>
-                <option value="Working Professional" {% if current_user.user_category == 'Working Professional' %}selected{% endif %}>Working Professional</option>
-                <option value="Senior Citizen" {% if current_user.user_category == 'Senior Citizen' %}selected{% endif %}>Senior Citizen</option>
-                <option value="Others" {% if current_user.user_category == 'Others' %}selected{% endif %}>Others</option>
-            </select>
+    </div>
+
+    <!-- Change Password -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Change Password</h5>
         </div>
-        <button type="submit" class="btn btn-primary">Update Profile</button>
-    </form>
+        <div class="card-body">
+            <form method="POST" id="passwordForm">
+                <div class="mb-3">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" name="current_password" class="form-control" id="currentPassword">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <input type="password" name="new_password" class="form-control" id="newPassword">
+                    <div class="form-text">
+                        Password must be 8-12 characters with at least one uppercase, one lowercase, one number, and one special character.
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="confirmPassword">
+                </div>
+                <button type="submit" class="btn btn-warning" onclick="return validatePasswordForm()">Change Password</button>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+function validatePasswordForm() {
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const currentPassword = document.getElementById('currentPassword').value;
+
+    if (!currentPassword) {
+        alert('Please enter your current password');
+        return false;
+    }
+
+    if (!newPassword) {
+        alert('Please enter a new password');
+        return false;
+    }
+
+    if (newPassword !== confirmPassword) {
+        alert('New password and confirm password do not match');
+        return false;
+    }
+
+    return true;
+}
+</script>
 {% endblock %}
