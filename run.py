@@ -3,6 +3,11 @@ DialSmart Application Entry Point
 Run this file to start the DialSmart web application
 """
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 from app import create_app, db
 from app.models import User, Brand, Phone, PhoneSpecification
 
