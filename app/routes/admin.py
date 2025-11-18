@@ -55,25 +55,24 @@ def dashboard():
         .all()
 
     # Get popular phones (most recommended)
-    # Oracle requires all selected columns in GROUP BY, so we need to group by all Phone columns
+    # Oracle doesn't allow CLOB/Text columns in GROUP BY, so we use a subquery approach
+    # First, get phone IDs and their recommendation counts
+    phone_counts_subquery = db.session.query(
+        Recommendation.phone_id,
+        db.func.count(Recommendation.id).label('recommendation_count')
+    ).group_by(Recommendation.phone_id)\
+     .order_by(db.func.count(Recommendation.id).desc())\
+     .limit(5)\
+     .subquery()
+
+    # Then join with Phone table to get full phone objects
     popular_phones = db.session.query(
         Phone,
-        db.func.count(Recommendation.id).label('recommendation_count')
-    ).join(Recommendation).group_by(
-        Phone.id,
-        Phone.brand_id,
-        Phone.model_name,
-        Phone.model_number,
-        Phone.price,
-        Phone.main_image,
-        Phone.gallery_images,
-        Phone.is_active,
-        Phone.availability_status,
-        Phone.release_date,
-        Phone.created_at,
-        Phone.updated_at
-    ).order_by(db.func.count(Recommendation.id).desc())\
-     .limit(5)\
+        phone_counts_subquery.c.recommendation_count
+    ).join(
+        phone_counts_subquery,
+        Phone.id == phone_counts_subquery.c.phone_id
+    ).order_by(phone_counts_subquery.c.recommendation_count.desc())\
      .all()
 
     return render_template('admin/dashboard.html',
