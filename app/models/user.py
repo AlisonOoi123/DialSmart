@@ -32,6 +32,10 @@ class User(UserMixin, db.Model):
     email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
     email_verification_sent_at = db.Column(db.DateTime, nullable=True)
 
+    # Password reset
+    password_reset_token = db.Column(db.String(100), unique=True, nullable=True)
+    password_reset_sent_at = db.Column(db.DateTime, nullable=True)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_active = db.Column(db.DateTime, default=datetime.utcnow)

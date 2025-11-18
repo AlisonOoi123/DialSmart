@@ -30,6 +30,7 @@ def migrate_database():
 
         columns_to_add = []
 
+        # Email verification columns
         if 'email_verified' not in columns:
             columns_to_add.append(('email_verified', 'INTEGER DEFAULT 0'))
 
@@ -38,6 +39,13 @@ def migrate_database():
 
         if 'email_verification_sent_at' not in columns:
             columns_to_add.append(('email_verification_sent_at', 'DATETIME'))
+
+        # Password reset columns
+        if 'password_reset_token' not in columns:
+            columns_to_add.append(('password_reset_token', 'VARCHAR(100)'))
+
+        if 'password_reset_sent_at' not in columns:
+            columns_to_add.append(('password_reset_sent_at', 'DATETIME'))
 
         if not columns_to_add:
             print("✅ All email verification columns already exist!")

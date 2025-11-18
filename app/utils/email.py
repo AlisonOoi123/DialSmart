@@ -156,9 +156,19 @@ def send_admin_reply_email(user_email, user_name, reply_message, original_messag
         return False, f"Failed to send email: {str(e)}"
 
 
-def send_password_reset_email(user, reset_url):
-    """Send password reset email to user"""
+def send_password_reset_email(user):
+    """Send password reset email to user with token generation"""
     try:
+        from datetime import datetime
+
+        # Generate reset token
+        token = generate_verification_token()
+        user.password_reset_token = token
+        user.password_reset_sent_at = datetime.utcnow()
+
+        # Generate reset URL
+        reset_url = url_for('auth.reset_password', token=token, _external=True)
+
         subject = "DialSmart - Password Reset Request"
 
         html_body = f"""
