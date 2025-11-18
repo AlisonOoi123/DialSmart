@@ -75,6 +75,15 @@ def dashboard():
     ).order_by(phone_counts_subquery.c.recommendation_count.desc())\
      .all()
 
+    # If no recommendations yet, show recently added phones instead
+    if not popular_phones:
+        recent_phones = Phone.query.filter_by(is_active=True)\
+            .order_by(Phone.created_at.desc())\
+            .limit(5)\
+            .all()
+        # Format to match popular_phones structure (phone, count)
+        popular_phones = [(phone, 0) for phone in recent_phones]
+
     # Get unread contact messages count (Oracle uses 0 for false, 1 for true)
     unread_messages = ContactMessage.query.filter(
         (ContactMessage.is_read == 0) | (ContactMessage.is_read == None)

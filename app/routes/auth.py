@@ -205,11 +205,23 @@ def forgot_password():
         if success:
             db.session.commit()  # Save reset token
             flash('Password reset instructions have been sent to your email. Please check your inbox.', 'success')
+            return redirect(url_for('auth.login'))
         else:
+            # Email failed - generate reset link and show it directly (development fallback)
             current_app.logger.error(f"Failed to send reset email: {message}")
-            flash('An error occurred while sending the reset email. Please try again later.', 'danger')
 
-        return redirect(url_for('auth.login'))
+            # Generate token if not already generated
+            if not user.password_reset_token:
+                from app.utils.email import generate_secure_token
+                user.password_reset_token = generate_secure_token()
+                user.password_reset_sent_at = datetime.utcnow()
+                db.session.commit()
+
+            # Create reset URL
+            reset_url = url_for('auth.reset_password', token=user.password_reset_token, _external=True)
+
+            flash(f'Email service not configured. Use this link to reset your password: {reset_url}', 'warning')
+            return redirect(url_for('auth.forgot_password'))
 
     return render_template('auth/forgot_password.html')
 
