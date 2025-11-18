@@ -6,6 +6,7 @@ from app.models.user import User, UserPreference
 from app.models.phone import Phone, PhoneSpecification
 from app.models.brand import Brand
 from app.models.recommendation import Recommendation, Comparison, ChatHistory
+from app.models.contact import ContactMessage
 
 __all__ = [
     'User',
@@ -15,5 +16,6 @@ __all__ = [
     'Brand',
     'Recommendation',
     'Comparison',
-    'ChatHistory'
+    'ChatHistory',
+    'ContactMessage'
 ]

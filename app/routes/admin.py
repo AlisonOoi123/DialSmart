@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from functools import wraps
 from app import db
-from app.models import User, Phone, PhoneSpecification, Brand, Recommendation
+from app.models import User, Phone, PhoneSpecification, Brand, Recommendation, ContactMessage
 from app.utils.helpers import save_uploaded_file
 from datetime import datetime, timedelta
 import json
@@ -443,3 +443,93 @@ def settings():
         return redirect(url_for('admin.settings'))
 
     return render_template('admin/settings.html')
+
+# Contact Messages
+@bp.route('/messages')
+@login_required
+@admin_required
+def messages():
+    """View all contact messages"""
+    page = request.args.get('page', 1, type=int)
+    filter_type = request.args.get('filter', 'all')  # all, unread, replied
+
+    query = ContactMessage.query
+
+    if filter_type == 'unread':
+        query = query.filter_by(is_read=False)
+    elif filter_type == 'replied':
+        query = query.filter_by(is_replied=True)
+    elif filter_type == 'pending':
+        query = query.filter_by(is_replied=False)
+
+    messages = query.order_by(ContactMessage.created_at.desc())\
+        .paginate(page=page, per_page=20, error_out=False)
+
+    # Get counts for filters
+    total_count = ContactMessage.query.count()
+    unread_count = ContactMessage.query.filter_by(is_read=False).count()
+    pending_count = ContactMessage.query.filter_by(is_replied=False).count()
+
+    return render_template('admin/messages.html',
+                         messages=messages,
+                         filter_type=filter_type,
+                         total_count=total_count,
+                         unread_count=unread_count,
+                         pending_count=pending_count)
+
+@bp.route('/messages/<int:message_id>')
+@login_required
+@admin_required
+def message_details(message_id):
+    """View message details"""
+    message = ContactMessage.query.get_or_404(message_id)
+
+    # Mark as read
+    if not message.is_read:
+        message.mark_as_read()
+
+    return render_template('admin/message_details.html', message=message)
+
+@bp.route('/messages/<int:message_id>/reply', methods=['POST'])
+@login_required
+@admin_required
+def reply_message(message_id):
+    """Reply to a contact message"""
+    from app.utils.email import send_admin_reply_email
+
+    message = ContactMessage.query.get_or_404(message_id)
+    reply_text = request.form.get('reply')
+
+    if not reply_text:
+        flash('Reply message cannot be empty.', 'danger')
+        return redirect(url_for('admin.message_details', message_id=message_id))
+
+    # Send email reply
+    success, email_message = send_admin_reply_email(
+        user_email=message.email,
+        user_name=message.name,
+        reply_message=reply_text,
+        original_message=message.message
+    )
+
+    if success:
+        # Mark message as replied
+        message.mark_as_replied(current_user, reply_text)
+        flash('Reply sent successfully via email.', 'success')
+    else:
+        flash(f'Failed to send reply: {email_message}', 'danger')
+
+    return redirect(url_for('admin.message_details', message_id=message_id))
+
+@bp.route('/messages/<int:message_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_message(message_id):
+    """Delete a contact message"""
+    message = ContactMessage.query.get_or_404(message_id)
+
+    db.session.delete(message)
+    db.session.commit()
+
+    flash('Message deleted successfully.', 'success')
+    return redirect(url_for('admin.messages'))
