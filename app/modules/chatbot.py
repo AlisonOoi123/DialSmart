@@ -21,6 +21,7 @@ class ChatbotEngine:
             'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
             'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor', 'cpu'],
             'brand_query': ['brand', 'samsung', 'apple', 'iphone', 'xiaomi', 'huawei'],
+            'specific_phone_query': ['price', 'cost', 'how much', 'specs', 'specification', 'details', 'info', 'information'],
             'help': ['help', 'how', 'what can you do'],
             'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'photographer', 'gamer']
         }
@@ -97,6 +98,11 @@ class ChatbotEngine:
 
     def _generate_response(self, user_id, message, intent):
         """Generate appropriate response based on intent"""
+
+        # Check for specific phone model query first (high priority)
+        phone_model = self._extract_phone_model(message)
+        if phone_model:
+            return self._handle_specific_phone_query(message, phone_model)
 
         if intent == 'greeting':
             return {
@@ -578,6 +584,116 @@ Just ask me anything like:
                     break
 
         return found_brands
+
+    def _extract_phone_model(self, message):
+        """Extract specific phone model name from message"""
+        # Search for phone model patterns in the database
+        # Try to find phones with fuzzy matching on model name
+        message_lower = message.lower()
+
+        # Remove common query words to get the phone model
+        query_words = ['price', 'cost', 'how much', 'specs', 'specification', 'details', 'info', 'information',
+                      'about', 'tell me', 'show me', 'what is', 'whats', 'the', 'of', 'for']
+
+        cleaned_message = message_lower
+        for word in query_words:
+            cleaned_message = cleaned_message.replace(word, ' ')
+
+        # Clean up extra spaces
+        cleaned_message = ' '.join(cleaned_message.split())
+
+        if len(cleaned_message) < 3:  # Too short to be a phone model
+            return None
+
+        # Search for phones with model name containing the cleaned message
+        from sqlalchemy import or_
+        phones = Phone.query.join(Brand).filter(
+            Phone.is_active == True,
+            or_(
+                Phone.model_name.ilike(f'%{cleaned_message}%'),
+                Brand.name.ilike(f'%{cleaned_message}%')
+            )
+        ).limit(5).all()
+
+        if phones:
+            return phones  # Return list of matching phones
+
+        return None
+
+    def _handle_specific_phone_query(self, message, phones):
+        """Handle query about specific phone model"""
+        message_lower = message.lower()
+
+        # Determine what information is being requested
+        is_price_query = any(word in message_lower for word in ['price', 'cost', 'how much', 'rm'])
+        is_spec_query = any(word in message_lower for word in ['specs', 'specification', 'camera', 'battery', 'ram', 'display', 'screen'])
+
+        if len(phones) == 1:
+            phone = phones[0]
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+
+            response = f"📱 **{phone.brand.name} {phone.model_name}**\n\n"
+
+            # Always show price
+            response += f"💰 **Price:** RM{phone.price:,.2f}\n\n"
+
+            # Show specs if requested or if not specifically asking for price only
+            if is_spec_query or not is_price_query:
+                if specs:
+                    response += "📊 **Key Specifications:**\n"
+                    if specs.processor:
+                        response += f"   • Processor: {specs.processor}\n"
+                    if specs.ram_options:
+                        response += f"   • RAM: {specs.ram_options}\n"
+                    if specs.storage_options:
+                        response += f"   • Storage: {specs.storage_options}\n"
+                    if specs.screen_size and specs.screen_type:
+                        response += f"   • Display: {specs.screen_size}\" {specs.screen_type}\n"
+                    if specs.rear_camera_main:
+                        response += f"   • Main Camera: {specs.rear_camera_main}MP\n"
+                    if specs.battery_capacity:
+                        response += f"   • Battery: {specs.battery_capacity}mAh\n"
+                    if specs.has_5g:
+                        response += f"   • 5G: Yes ✅\n"
+
+            return {
+                'response': response,
+                'type': 'phone_details',
+                'metadata': {
+                    'phones': [{
+                        'id': phone.id,
+                        'name': phone.model_name,
+                        'brand': phone.brand.name,
+                        'price': phone.price,
+                        'image': phone.main_image
+                    }]
+                }
+            }
+
+        elif len(phones) > 1:
+            # Multiple phones match - show all with prices
+            response = f"I found {len(phones)} phones matching your query:\n\n"
+            phone_list = []
+
+            for phone in phones:
+                response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                phone_list.append({
+                    'id': phone.id,
+                    'name': phone.model_name,
+                    'brand': phone.brand.name,
+                    'price': phone.price,
+                    'image': phone.main_image
+                })
+
+            response += "\nWhich one would you like to know more about?"
+
+            return {
+                'response': response,
+                'type': 'recommendation',
+                'metadata': {'phones': phone_list}
+            }
+
+        return None
 
     def _save_chat_history(self, user_id, message, response, intent, session_id, metadata):
         """Save conversation to database"""
