@@ -8,6 +8,8 @@ import re
 from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime
+from app.utils.email import send_verification_email, send_password_reset_email, is_token_expired
+
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
