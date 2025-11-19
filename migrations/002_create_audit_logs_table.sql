@@ -12,7 +12,7 @@ CREATE TABLE audit_logs (
     ip_address VARCHAR2(50),
     user_agent VARCHAR2(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    extra_data CLOB,
+    chat_metadata CLOB,
     CONSTRAINT pk_audit_logs PRIMARY KEY (id),
     CONSTRAINT fk_audit_logs_user FOREIGN KEY (user_id) REFERENCES users(id),
     CONSTRAINT fk_audit_logs_target_user FOREIGN KEY (target_user_id) REFERENCES users(id)
@@ -43,6 +43,6 @@ COMMENT ON TABLE audit_logs IS 'Audit log for tracking admin and important user 
 COMMENT ON COLUMN audit_logs.user_id IS 'Who performed the action';
 COMMENT ON COLUMN audit_logs.target_user_id IS 'Who was affected by the action';
 COMMENT ON COLUMN audit_logs.action_type IS 'Type of action (e.g., admin_created, password_changed)';
-COMMENT ON COLUMN audit_logs.extra_data IS 'Additional data stored as JSON';
+COMMENT ON COLUMN audit_logs.chat_metadata IS 'Additional data stored as JSON';
 
 COMMIT;

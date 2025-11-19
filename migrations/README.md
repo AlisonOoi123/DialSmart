@@ -6,10 +6,13 @@ This folder contains SQL migration scripts for the Oracle database.
 
 Connect to your Oracle database using SQL*Plus or SQL Developer and execute the scripts in order:
 
+**Note**: If the `audit_logs` table already exists in your database, you only need to run migration 001.
+
 ### Using SQL*Plus:
 ```bash
 sqlplus username/password@database
 @migrations/001_add_admin_management_columns.sql
+# Only run 002 if audit_logs table doesn't exist
 @migrations/002_create_audit_logs_table.sql
 ```
 
