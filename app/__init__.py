@@ -2,9 +2,9 @@
 DialSmart Application Factory
 Initializes and configures the Flask application
 """
-from flask import Flask
+from flask import Flask, session, make_response, request
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from flask_mail import Mail
 from config import config
 import os
@@ -72,6 +72,19 @@ def create_app(config_name='default'):
     def inject_brands():
         """Inject featured brands into all templates"""
         return dict(featured_brands=app.config['FEATURED_BRANDS'])
+    
+    @app.after_request
+    def add_security_headers(response):
+        """
+        Add cache control headers to prevent browser caching of authenticated pages.
+        This prevents users from using the back button to access protected pages after logout.
+        """
+        # Only apply to authenticated user pages (not public pages or static files)
+        if current_user.is_authenticated and not request.path.startswith('/static'):
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+        return response
 
     # Create database tables
     with app.app_context():

@@ -2,7 +2,7 @@
 Authentication Routes
 Handles user registration, login, and logout
 """
-from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, session, make_response
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models import User
@@ -131,7 +131,13 @@ def logout():
     """Logout user"""
     logout_user()
     flash('You have been logged out successfully.', 'info')
-    return redirect(url_for('user.index'))
+    # Create response with cache control headers
+    response = make_response(redirect(url_for('user.index')))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+
+    return response
 
 @bp.route('/register-admin', methods=['GET', 'POST'])
 def register_admin():
