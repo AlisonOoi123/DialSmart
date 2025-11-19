@@ -35,7 +35,7 @@ def log_audit_action(action_type, description, target_user_id=None, metadata=Non
             description=description,
             ip_address=request.remote_addr if request else None,
             user_agent=request.headers.get('User-Agent')[:255] if request else None,
-            metadata=json.dumps(metadata) if metadata else None
+            chat_metadata=json.dumps(metadata) if metadata else None
         )
         db.session.add(audit_log)
         db.session.commit()
