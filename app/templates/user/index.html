@@ -26,19 +26,26 @@
             sessionStorage.clear();
             localStorage.clear();
 
-            // Remove the logged_out parameter from URL (clean up)
-            if (urlParams.has('logged_out')) {
-                const cleanUrl = window.location.pathname;
-                window.history.replaceState(null, document.title, cleanUrl);
+            // CRITICAL: Clear forward history by replacing all future states
+            // This prevents forward button from accessing authenticated pages
+            const currentUrl = window.location.pathname;
+
+            // Replace the current state to remove logged_out parameter
+            window.history.replaceState(null, document.title, currentUrl);
+
+            // Push multiple states to override any forward history
+            // This ensures forward button cannot access old authenticated pages
+            for (let i = 0; i < 50; i++) {
+                window.history.pushState(null, document.title, currentUrl);
             }
 
-            // CRITICAL: Prevent back button from accessing authenticated pages
-            // This creates a new history entry that can't go back to authenticated pages
-            window.history.pushState(null, null, window.location.href);
+            // Now go back to the first state (clean URL)
+            window.history.go(-49);
 
+            // Prevent ALL navigation (back and forward)
             window.addEventListener('popstate', function(event) {
-                // User pressed back button - keep them on homepage
-                window.history.pushState(null, null, window.location.href);
+                // User pressed back/forward - keep them on homepage
+                window.history.pushState(null, document.title, currentUrl);
 
                 // Show a message if they keep trying
                 if (!sessionStorage.getItem('back_warned')) {

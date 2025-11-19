@@ -87,10 +87,12 @@ def register():
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     """User login page"""
+    """
     if current_user.is_authenticated:
         if current_user.is_admin:
             return redirect(url_for('admin.dashboard'))
         return redirect(url_for('user.dashboard'))
+    """
 
     if request.method == 'POST':
         email = request.form.get('email')
@@ -129,14 +131,26 @@ def login():
 @login_required
 def logout():
 
+    # Check if this logout was triggered from login page (auto-logout for security)
+    referer = request.headers.get('Referer', '')
+    from_login_page = '/auth/login' in referer
+
      # Clear the session completely
     session.clear()
 
     """Logout user"""
     logout_user()
-    flash('You have been logged out successfully.', 'info')
-    # Create response with cache control headers
-    response = make_response(redirect(url_for('user.index', logged_out='true')))
+    
+    if from_login_page:
+        # Auto-logout from login page - redirect back to login WITHOUT logged_out flag
+        # This prevents the homepage logout protection script from running
+        flash('Please login to continue.', 'info')
+        response = make_response(redirect(url_for('auth.login')))
+    else:
+        # Normal logout - redirect to homepage WITH logged_out flag
+        flash('You have been logged out successfully.', 'info')
+        response = make_response(redirect(url_for('user.index', logged_out='true')))
+    
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
