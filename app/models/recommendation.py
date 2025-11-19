@@ -66,7 +66,7 @@ class ChatHistory(db.Model):
     __tablename__ = 'chat_history'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Allow guests (NULL for non-logged in users)
 
     # Message details
     message = db.Column(db.Text, nullable=False)

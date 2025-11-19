@@ -14,6 +14,7 @@ sqlplus username/password@database
 @migrations/001_add_admin_management_columns.sql
 # Only run 002 if audit_logs table doesn't exist
 @migrations/002_create_audit_logs_table.sql
+@migrations/004_allow_guest_chatbot_users.sql
 ```
 
 ### Using SQL Developer:
@@ -27,6 +28,7 @@ sqlplus username/password@database
 |--------|-------------|------|
 | 001_add_admin_management_columns.sql | Add admin management columns (force_password_change, created_by_admin_id, last_password_change) | 2025-11-19 |
 | 002_create_audit_logs_table.sql | Create audit_logs table for tracking admin actions | 2025-11-19 |
+| 004_allow_guest_chatbot_users.sql | Allow guest (non-logged in) users to use chatbot by making user_id nullable | 2025-11-19 |
 
 ## Verification
 
@@ -44,6 +46,11 @@ SELECT table_name FROM user_tables WHERE table_name = 'AUDIT_LOGS';
 
 -- Check audit_logs structure
 DESC audit_logs;
+
+-- Check if chat_history.user_id allows NULL (for guest users)
+SELECT column_name, nullable
+FROM user_tab_columns
+WHERE table_name = 'CHAT_HISTORY' AND column_name = 'USER_ID';
 ```
 
 ## Rollback (if needed)

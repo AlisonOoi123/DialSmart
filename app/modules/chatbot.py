@@ -419,17 +419,27 @@ Just ask me anything like:
         return found_brands
 
     def _save_chat_history(self, user_id, message, response, intent, session_id, metadata):
-        """Save conversation to database"""
-        chat = ChatHistory(
-            user_id=user_id,
-            message=message,
-            response=response,
-            intent=intent,
-            session_id=session_id or datetime.utcnow().strftime('%Y%m%d%H%M%S'),
-            metadata=json.dumps(metadata) if metadata else None
-        )
-        db.session.add(chat)
-        db.session.commit()
+        """
+        Save conversation to database
+
+        Note: user_id can be None for guest (non-logged in) users.
+        Guest conversations are saved with user_id=NULL for analytics purposes.
+        """
+        try:
+            chat = ChatHistory(
+                user_id=user_id,  # Can be None for guest users
+                message=message,
+                response=response,
+                intent=intent,
+                session_id=session_id or datetime.utcnow().strftime('%Y%m%d%H%M%S'),
+                metadata=json.dumps(metadata) if metadata else None
+            )
+            db.session.add(chat)
+            db.session.commit()
+        except Exception as e:
+            # Log error but don't fail the chatbot response
+            print(f"Error saving chat history: {e}")
+            db.session.rollback()
 
     def get_chat_history(self, user_id, session_id=None, limit=50):
         """Retrieve chat history for a user"""
