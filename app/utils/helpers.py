@@ -4,7 +4,6 @@ Common utility functions used across the application
 """
 import os
 import json
-import re
 from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime
@@ -45,24 +44,6 @@ def parse_json_field(field_value, default=None):
     except (json.JSONDecodeError, TypeError):
         return default if default is not None else []
 
-def extract_numbers_from_text(text):
-    """
-    Extract numeric values from text that may contain numbers in various formats.
-    Handles formats like: "8GB, 12GB", "8 / 12 / 16", "128 GB", etc.
-    Returns list of integers.
-    """
-    if not text:
-        return []
-
-    # Remove common units and separators, extract all numbers
-    # Handles: "8GB, 12GB", "8 / 12 / 16", "128 GB, 256 GB", etc.
-    numbers = re.findall(r'\d+', str(text))
-
-    try:
-        return [int(n) for n in numbers if n]
-    except ValueError:
-        return []
-
 def format_price(price):
     """Format price in Malaysian Ringgit"""
     return f"RM {price:,.2f}"
@@ -77,13 +58,18 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     """
     Calculate how well a phone matches user preferences
     Returns a score from 0-100
-    Priority: Brand > Budget > Usage Type > Features > Specs
+    Priority: Budget (HARD FILTER) > Brand > Features > Specs
     """
+    # CRITICAL: Budget is a HARD REQUIREMENT
+    # Phones outside budget range get ZERO score immediately
+    if phone.price < user_prefs.min_budget or phone.price > user_prefs.max_budget:
+        return 0  # Immediately disqualify phones outside budget
+
     score = 0
     max_score = 0
 
-    # Brand preference (weight: 40 - HIGHEST PRIORITY)
-    max_score += 40
+    # Brand preference (weight: 50 - HIGHEST PRIORITY after budget)
+    max_score += 50
     preferred_brands = []
 
     # Handle both list and JSON string formats
@@ -92,7 +78,6 @@ def calculate_match_score(user_prefs, phone, phone_specs):
             preferred_brands = user_prefs.preferred_brands
         elif isinstance(user_prefs.preferred_brands, str) and user_prefs.preferred_brands:
             try:
-                import json
                 preferred_brands = json.loads(user_prefs.preferred_brands)
             except (json.JSONDecodeError, ValueError):
                 preferred_brands = []
@@ -106,274 +91,67 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     # If user selected specific brands, heavily prioritize them
     if preferred_brands:
         if phone.brand_id in preferred_brands:
-            score += 40  # Full points for matching brand
-        # else: 0 points - phone doesn't match preferred brands
+            score += 50  # Full points for matching brand
+        else:
+            # Brand doesn't match preference - give partial points
+            score += 10  # Small points for being within budget but wrong brand
     else:
-        score += 40  # No brand preference, give full points to all
+        score += 50  # No brand preference, give full points to all
 
-    # Budget match (weight: 20)
-    max_score += 20
-    if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
-        score += 20
-    elif phone.price < user_prefs.min_budget:
-        # Slight penalty for cheaper phones
-        score += 15
+    # Budget match (weight: 25) - Already within budget, give bonus for being optimal
+    max_score += 25
+    budget_midpoint = (user_prefs.min_budget + user_prefs.max_budget) / 2
+    budget_range = user_prefs.max_budget - user_prefs.min_budget
+
+    # Give more points for phones near the budget midpoint
+    if budget_range > 0:
+        distance_from_midpoint = abs(phone.price - budget_midpoint)
+        # Phones at midpoint get full 25 points, phones at edges get 15 points
+        budget_score = 25 - (distance_from_midpoint / budget_range) * 10
+        score += max(15, budget_score)
     else:
-        # Penalty for over-budget phones
-        over_budget = phone.price - user_prefs.max_budget
-        penalty = min(20, (over_budget / user_prefs.max_budget) * 20)
-        score += max(0, 20 - penalty)
-
-    # Usage type match (weight: 30 - HIGH PRIORITY for differentiation)
-    max_score += 30
-    usage_score = 0
-    primary_usage = []
-
-    # Parse primary_usage from user preferences
-    if hasattr(user_prefs, 'primary_usage') and user_prefs.primary_usage:
-        if isinstance(user_prefs.primary_usage, list):
-            primary_usage = user_prefs.primary_usage
-        elif isinstance(user_prefs.primary_usage, str):
-            try:
-                import json
-                primary_usage = json.loads(user_prefs.primary_usage)
-            except (json.JSONDecodeError, ValueError):
-                primary_usage = []
-
-    if primary_usage and phone_specs:
-        # Score based on usage type (can have multiple usage types)
-        for usage_type in primary_usage:
-            if usage_type == 'Gaming':
-                # Gaming needs: HIGH RAM, high refresh rate, good processor
-                ram_values = extract_numbers_from_text(phone_specs.ram_options)
-                if ram_values:
-                    max_ram = max(ram_values)
-                    if max_ram >= 12:
-                        usage_score += 12
-                    elif max_ram >= 8:
-                        usage_score += 8
-                    elif max_ram >= 6:
-                        usage_score += 4
-
-                # High refresh rate is critical for gaming
-                if phone_specs.refresh_rate and phone_specs.refresh_rate >= 120:
-                    usage_score += 10
-                elif phone_specs.refresh_rate and phone_specs.refresh_rate >= 90:
-                    usage_score += 6
-
-                # Good processor for gaming
-                if phone_specs.processor:
-                    if any(chip in phone_specs.processor.lower() for chip in ['snapdragon 8', 'dimensity 9', 'a17', 'a16']):
-                        usage_score += 8
-                    elif any(chip in phone_specs.processor.lower() for chip in ['snapdragon 7', 'dimensity 8']):
-                        usage_score += 4
-
-            elif usage_type in ['Business', 'Work']:
-                # Business needs: LONG BATTERY, big storage, good performance
-                if phone_specs.battery_capacity:
-                    if phone_specs.battery_capacity >= 5000:
-                        usage_score += 12
-                    elif phone_specs.battery_capacity >= 4500:
-                        usage_score += 8
-                    elif phone_specs.battery_capacity >= 4000:
-                        usage_score += 4
-
-                # Large storage for work files
-                storage_values = extract_numbers_from_text(phone_specs.storage_options)
-                if storage_values:
-                    max_storage = max(storage_values)
-                    if max_storage >= 256:
-                        usage_score += 10
-                    elif max_storage >= 128:
-                        usage_score += 6
-                    elif max_storage >= 64:
-                        usage_score += 3
-
-                # Decent RAM for multitasking
-                ram_values = extract_numbers_from_text(phone_specs.ram_options)
-                if ram_values:
-                    max_ram = max(ram_values)
-                    if max_ram >= 8:
-                        usage_score += 8
-                    elif max_ram >= 6:
-                        usage_score += 4
-
-            elif usage_type == 'Photography':
-                # Photography needs: HIGH CAMERA MP
-                if phone_specs.rear_camera_main:
-                    if phone_specs.rear_camera_main >= 108:
-                        usage_score += 15
-                    elif phone_specs.rear_camera_main >= 64:
-                        usage_score += 12
-                    elif phone_specs.rear_camera_main >= 48:
-                        usage_score += 8
-                    elif phone_specs.rear_camera_main >= 32:
-                        usage_score += 4
-
-                # Good front camera for selfies
-                if phone_specs.front_camera_mp and phone_specs.front_camera_mp >= 32:
-                    usage_score += 8
-                elif phone_specs.front_camera_mp and phone_specs.front_camera_mp >= 16:
-                    usage_score += 4
-
-                # Good display for photo review
-                if phone_specs.screen_type and ('amoled' in phone_specs.screen_type.lower() or 'oled' in phone_specs.screen_type.lower()):
-                    usage_score += 7
-
-            elif usage_type == 'Entertainment':
-                # Entertainment needs: Large screen, good battery
-                if phone_specs.screen_size and phone_specs.screen_size >= 6.7:
-                    usage_score += 10
-                elif phone_specs.screen_size and phone_specs.screen_size >= 6.5:
-                    usage_score += 7
-                elif phone_specs.screen_size and phone_specs.screen_size >= 6.3:
-                    usage_score += 4
-
-                if phone_specs.battery_capacity and phone_specs.battery_capacity >= 5000:
-                    usage_score += 10
-                elif phone_specs.battery_capacity and phone_specs.battery_capacity >= 4500:
-                    usage_score += 6
-
-                # AMOLED display for better viewing
-                if phone_specs.screen_type and ('amoled' in phone_specs.screen_type.lower() or 'oled' in phone_specs.screen_type.lower()):
-                    usage_score += 10
-
-            elif usage_type == 'Social Media':
-                # Social media needs: Good camera, decent battery
-                if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= 48:
-                    usage_score += 10
-                elif phone_specs.rear_camera_main and phone_specs.rear_camera_main >= 32:
-                    usage_score += 6
-
-                if phone_specs.battery_capacity and phone_specs.battery_capacity >= 4500:
-                    usage_score += 10
-                elif phone_specs.battery_capacity and phone_specs.battery_capacity >= 4000:
-                    usage_score += 6
-
-        # Normalize usage score to 0-30 range
-        score += min(30, usage_score)
-    else:
-        # No usage type specified, give half points
-        score += 15
+        score += 25  # Exact budget match
 
     if phone_specs:
-        # RAM match (weight: 8)
-        max_score += 8
+        # RAM match (weight: 10)
+        max_score += 10
         if phone_specs.ram_options:
-            ram_values = extract_numbers_from_text(phone_specs.ram_options)
+            import re
+            ram_values = [int(r) for r in re.findall(r'\d+', phone_specs.ram_options) if r]
             if ram_values and max(ram_values) >= user_prefs.min_ram:
-                score += 8
+                score += 10
 
-        # Storage match (weight: 8)
-        max_score += 8
+        # Storage match (weight: 10)
+        max_score += 10
         if phone_specs.storage_options:
-            storage_values = extract_numbers_from_text(phone_specs.storage_options)
+            import re
+            storage_values = [int(s) for s in re.findall(r'\d+', phone_specs.storage_options) if s]
             if storage_values and max(storage_values) >= user_prefs.min_storage:
-                score += 8
+                score += 10
 
-        # Camera match (weight: 10)
-        max_score += 10
+        # Camera match (weight: 15)
+        max_score += 15
         if phone_specs.rear_camera_main and phone_specs.rear_camera_main >= user_prefs.min_camera:
-            score += 10
+            score += 15
 
-        # Battery match (weight: 10)
-        max_score += 10
+        # Battery match (weight: 15)
+        max_score += 15
         if phone_specs.battery_capacity and phone_specs.battery_capacity >= user_prefs.min_battery:
-            score += 10
+            score += 15
 
-        # 5G requirement (weight: 8)
-        max_score += 8
+        # 5G requirement (weight: 10)
+        max_score += 10
         if user_prefs.requires_5g:
             if phone_specs.has_5g:
-                score += 8
+                score += 10
         else:
-            score += 8  # No requirement, so full points
+            score += 10  # No requirement, so full points
 
-        # Screen size match (weight: 6)
-        max_score += 6
+        # Screen size match (weight: 10)
+        max_score += 10
         if phone_specs.screen_size:
             if user_prefs.min_screen_size <= phone_specs.screen_size <= user_prefs.max_screen_size:
-                score += 6
-
-    # Important features bonus (weight: 30 - HIGH PRIORITY for selected features)
-    # This gives extra weight to features explicitly selected by user in wizard
-    important_features = []
-    if hasattr(user_prefs, 'important_features') and user_prefs.important_features:
-        if isinstance(user_prefs.important_features, list):
-            important_features = user_prefs.important_features
-        elif isinstance(user_prefs.important_features, str):
-            try:
-                import json
-                important_features = json.loads(user_prefs.important_features)
-            except (json.JSONDecodeError, ValueError):
-                important_features = []
-
-    if important_features and phone_specs:
-        max_score += 30  # Add weight for important features
-        features_score = 0
-
-        for feature in important_features:
-            if feature == 'Battery' and phone_specs.battery_capacity:
-                # Long battery life priority
-                if phone_specs.battery_capacity >= 5000:
-                    features_score += 10
-                elif phone_specs.battery_capacity >= 4500:
-                    features_score += 7
-                elif phone_specs.battery_capacity >= 4000:
-                    features_score += 4
-
-            elif feature == 'Camera' and phone_specs.rear_camera_main:
-                # Great camera priority
-                if phone_specs.rear_camera_main >= 108:
-                    features_score += 10
-                elif phone_specs.rear_camera_main >= 64:
-                    features_score += 7
-                elif phone_specs.rear_camera_main >= 48:
-                    features_score += 4
-
-            elif feature == 'Performance':
-                # Fast performance priority
-                ram_values = extract_numbers_from_text(phone_specs.ram_options)
-                if ram_values:
-                    max_ram = max(ram_values)
-                    if max_ram >= 12:
-                        features_score += 5
-                    elif max_ram >= 8:
-                        features_score += 3
-
-                # Check processor
-                if phone_specs.processor and any(chip in phone_specs.processor.lower() for chip in ['snapdragon 8', 'dimensity 9', 'a17', 'a16']):
-                    features_score += 5
-                elif phone_specs.processor and any(chip in phone_specs.processor.lower() for chip in ['snapdragon 7', 'dimensity 8', 'a15']):
-                    features_score += 3
-
-            elif feature == 'Storage' and phone_specs.storage_options:
-                # Large storage priority
-                storage_values = extract_numbers_from_text(phone_specs.storage_options)
-                if storage_values:
-                    max_storage = max(storage_values)
-                    if max_storage >= 512:
-                        features_score += 10
-                    elif max_storage >= 256:
-                        features_score += 7
-                    elif max_storage >= 128:
-                        features_score += 4
-
-            elif feature == '5G' and phone_specs.has_5g:
-                # 5G connectivity priority
-                features_score += 10
-
-            elif feature == 'Design':
-                # Premium design priority (AMOLED, wireless charging, etc.)
-                if phone_specs.screen_type and ('amoled' in phone_specs.screen_type.lower() or 'oled' in phone_specs.screen_type.lower()):
-                    features_score += 5
-                if phone_specs.wireless_charging:
-                    features_score += 3
-                if phone_specs.water_resistance and phone_specs.water_resistance != 'None':
-                    features_score += 2
-
-        # Normalize features score to 0-30 range
-        score += min(30, features_score)
+                score += 10
 
     # Calculate final percentage
     if max_score > 0:
@@ -391,7 +169,6 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
             preferred_brands = user_prefs.preferred_brands
         elif isinstance(user_prefs.preferred_brands, str) and user_prefs.preferred_brands:
             try:
-                import json
                 preferred_brands = json.loads(user_prefs.preferred_brands)
             except (json.JSONDecodeError, ValueError):
                 preferred_brands = []
@@ -413,7 +190,8 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
     if phone_specs:
         # Performance
         if phone_specs.ram_options:
-            ram_values = extract_numbers_from_text(phone_specs.ram_options)
+            import re
+            ram_values = [int(r) for r in re.findall(r'\d+', phone_specs.ram_options) if r]
             if ram_values:
                 max_ram = max(ram_values)
                 if max_ram >= user_prefs.min_ram:
@@ -435,45 +213,3 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
         reasons.append("Good overall specifications for the price")
 
     return " • ".join(reasons)
-
-def validate_password(password):
-    """
-    Validate password strength according to security standards
-    Requirements:
-    - At least 8 characters long (maximum 12 recommended)
-    - Contains at least one uppercase letter
-    - Contains at least one lowercase letter
-    - Contains at least one digit
-    - Contains at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
-
-    Returns:
-        tuple: (is_valid: bool, error_message: str or None)
-    """
-    if not password:
-        return False, "Password is required."
-
-    # Check minimum length
-    if len(password) < 8:
-        return False, "Password must be at least 8 characters long."
-
-    # Check maximum recommended length
-    if len(password) > 128:
-        return False, "Password is too long (maximum 128 characters)."
-
-    # Check for uppercase letter
-    if not re.search(r'[A-Z]', password):
-        return False, "Password must contain at least one uppercase letter."
-
-    # Check for lowercase letter
-    if not re.search(r'[a-z]', password):
-        return False, "Password must contain at least one lowercase letter."
-
-    # Check for digit
-    if not re.search(r'\d', password):
-        return False, "Password must contain at least one number."
-
-    # Check for special character
-    if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', password):
-        return False, "Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)."
-
-    return True, None
