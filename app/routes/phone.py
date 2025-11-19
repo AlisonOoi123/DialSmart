@@ -151,7 +151,7 @@ def search():
             Phone.model_name.ilike(f'%{query}%'),
             Brand.name.ilike(f'%{query}%')
         )
-    ).paginate(page=page, per_page=12, error_out=False)
+    ).order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc()).paginate(page=page, per_page=12, error_out=False)
 
     return render_template('phone/search_results.html',
                          phones=phones,
