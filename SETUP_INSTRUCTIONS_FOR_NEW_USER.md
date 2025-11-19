@@ -3,11 +3,27 @@
 ## Prerequisites
 ✅ Oracle SQL*Plus database installed and running
 ✅ Python 3.8+ installed
-✅ Git installed
+✅ Git installed (Optional - only needed if using Method 1)
 
 ---
 
-## Step-by-Step Setup Guide
+## 📥 Choose Your Download Method
+
+### Method 1: Using Git (Recommended)
+✅ Easy to update later
+✅ Can switch between branches
+✅ Keeps project in sync with GitHub
+
+### Method 2: Download ZIP File (Simpler)
+✅ No Git installation needed
+✅ Good for one-time setup
+✅ Simpler for beginners
+
+**Choose one method below and follow its instructions.**
+
+---
+
+## 🔧 METHOD 1: Setup Using Git Clone
 
 ### 1. Clone the Project
 
@@ -30,7 +46,54 @@ git checkout claude/dialsmart-python-system-01Qv2n5kr4dUSV8HUagf8ueS
 git pull origin claude/dialsmart-python-system-01Qv2n5kr4dUSV8HUagf8ueS
 ```
 
+**Now continue to Step 3 below.**
+
 ---
+
+## 📦 METHOD 2: Setup Using ZIP Download
+
+### 1. Download the Project ZIP
+
+**Option A: Download Specific Branch (Recommended)**
+
+1. Go to: https://github.com/AlisonOoi123/DialSmart
+2. Click on the **branch selector** (shows "main" by default)
+3. Select branch: `claude/dialsmart-python-system-01Qv2n5kr4dUSV8HUagf8ueS`
+4. Click the green **"Code"** button
+5. Click **"Download ZIP"**
+6. Save the ZIP file
+
+**Option B: Direct Download Link**
+
+Download from:
+```
+https://github.com/AlisonOoi123/DialSmart/archive/refs/heads/claude/dialsmart-python-system-01Qv2n5kr4dUSV8HUagf8ueS.zip
+```
+
+### 2. Extract the ZIP File
+
+```bash
+# Extract to your desired location
+# For example: C:\Users\User\OneDrive\Documents\GitHub\
+
+# The folder will be named something like:
+# DialSmart-claude-dialsmart-python-system-01Qv2n5kr4dUSV8HUagf8ueS
+
+# Rename it to just "DialSmart" for convenience:
+# Right-click folder → Rename → "DialSmart"
+```
+
+### 3. Navigate to Project Folder
+
+```bash
+cd C:\Users\User\OneDrive\Documents\GitHub\DialSmart
+```
+
+**Now continue to Step 3 below.**
+
+---
+
+## 🚀 COMMON STEPS (For Both Methods)
 
 ### 3. Create Virtual Environment
 

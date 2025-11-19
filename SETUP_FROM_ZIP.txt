@@ -1,0 +1,214 @@
+================================================================================
+  DialSmart - Setup Instructions for ZIP Download
+================================================================================
+
+📦 FOR USERS WHO DOWNLOADED THE PROJECT AS A ZIP FILE
+
+If you downloaded DialSmart as a ZIP file from GitHub, follow these steps:
+
+================================================================================
+  STEP 1: Download the Correct Branch
+================================================================================
+
+1. Go to: https://github.com/AlisonOoi123/DialSmart
+
+2. Click the branch selector button (it shows "main" or current branch name)
+
+3. In the dropdown, find and select:
+   claude/dialsmart-python-system-01Qv2n5kr4dUSV8HUagf8ueS
+
+4. Click the green "Code" button
+
+5. Click "Download ZIP"
+
+6. Save the ZIP file to your computer
+
+ALTERNATIVE: Use this direct download link:
+https://github.com/AlisonOoi123/DialSmart/archive/refs/heads/claude/dialsmart-python-system-01Qv2n5kr4dUSV8HUagf8ueS.zip
+
+================================================================================
+  STEP 2: Extract the ZIP File
+================================================================================
+
+1. Right-click the downloaded ZIP file
+
+2. Select "Extract All..." or use your favorite ZIP program
+
+3. Extract to a location like:
+   C:\Users\User\OneDrive\Documents\GitHub\
+
+4. The extracted folder will have a long name like:
+   DialSmart-claude-dialsmart-python-system-01Qv2n5kr4dUSV8HUagf8ueS
+
+5. RENAME the folder to just "DialSmart" for convenience
+
+================================================================================
+  STEP 3: Open Command Prompt in Project Folder
+================================================================================
+
+Method A (Easy):
+1. Open the DialSmart folder in File Explorer
+2. Hold Shift and right-click in the empty space
+3. Select "Open PowerShell window here" or "Open command window here"
+
+Method B (Command Line):
+1. Open Command Prompt (Win + R, type "cmd", press Enter)
+2. Navigate to the folder:
+   cd C:\Users\User\OneDrive\Documents\GitHub\DialSmart
+
+================================================================================
+  STEP 4: Run the Automated Setup Script
+================================================================================
+
+In the command prompt, run:
+
+QUICK_SETUP_ZIP.bat
+
+This will:
+✓ Create virtual environment
+✓ Install Python dependencies
+✓ Help you create .env file
+✓ Create database tables
+✓ Guide you through migrations
+✓ Import phone data
+
+Just follow the prompts!
+
+================================================================================
+  STEP 5: Configure .env File (IMPORTANT!)
+================================================================================
+
+The setup script will open the .env file in Notepad.
+
+You MUST edit these settings with your Oracle database credentials:
+
+SECRET_KEY=change-this-to-random-string-12345
+FLASK_ENV=development
+DEBUG=True
+
+DATABASE_TYPE=oracle
+ORACLE_USER=your_oracle_username        ← CHANGE THIS
+ORACLE_PASSWORD=your_oracle_password    ← CHANGE THIS
+ORACLE_HOST=localhost
+ORACLE_PORT=1521
+ORACLE_SERVICE_NAME=XEPDB1              ← CHANGE THIS
+
+DATABASE_URL=oracle+cx_oracle://your_oracle_username:your_oracle_password@localhost:1521/?service_name=XEPDB1
+                                 ↑ CHANGE THESE ↑
+
+ADMIN_PASSKEY=DialSmart2024Admin!
+
+SAVE the file and close Notepad, then press any key in the command prompt.
+
+================================================================================
+  STEP 6: Run Database Migrations (REQUIRED!)
+================================================================================
+
+The setup script will pause and ask you to run migrations in SQL*Plus.
+
+Open a NEW command prompt and run:
+
+sqlplus your_username/your_password@localhost:1521/your_service_name
+
+Then in SQL*Plus:
+
+@migrations\001_add_admin_management_columns.sql
+@migrations\002_create_audit_logs_table.sql
+@migrations\004_allow_guest_chatbot_users.sql
+EXIT;
+
+Go back to the setup script window and press any key to continue.
+
+================================================================================
+  STEP 7: Complete Setup
+================================================================================
+
+After the setup script finishes, run these commands:
+
+1. Train the chatbot model (takes 2-5 minutes):
+   python train_chatbot_model.py
+
+2. Create your admin account:
+   python create_admin.py
+
+   You'll be asked for:
+   - Full Name
+   - Email
+   - Password (must be strong)
+   - Confirm Password
+
+3. Run the application:
+   python run.py
+
+4. Open your browser to:
+   http://localhost:5000
+
+================================================================================
+  QUICK REFERENCE - Commands Summary
+================================================================================
+
+To run DialSmart every time:
+
+1. Open command prompt in project folder
+2. Activate virtual environment:
+   venv\Scripts\activate
+3. Run application:
+   python run.py
+4. Open browser:
+   http://localhost:5000
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+Problem: "cx_Oracle.DatabaseError: DPI-1047"
+Solution: Install Oracle Instant Client
+         Download from: oracle.com/database/technologies/instant-client/
+
+Problem: "No module named 'flask'"
+Solution: Make sure virtual environment is activated:
+         venv\Scripts\activate
+         pip install -r requirements.txt
+
+Problem: "Cannot connect to Oracle"
+Solution: Check your .env file settings
+         Test connection: sqlplus username/password@host:port/service
+
+Problem: "No phones in database"
+Solution: Run import script:
+         python import_phones_from_csv.py
+
+Problem: Port 5000 already in use
+Solution: Edit run.py and change port to 5001 or 5002
+
+================================================================================
+  NEED MORE HELP?
+================================================================================
+
+See the complete guide:
+SETUP_INSTRUCTIONS_FOR_NEW_USER.md
+
+This includes:
+- Detailed troubleshooting
+- Oracle database setup
+- Step-by-step screenshots
+- Common issues and solutions
+
+================================================================================
+  SUCCESS CHECKLIST
+================================================================================
+
+After setup, verify:
+
+□ Can access http://localhost:5000
+□ Homepage loads correctly
+□ Can login as admin
+□ Can browse phones (350+ phones should be listed)
+□ Chatbot responds to questions
+□ Can search for phones
+□ Can compare phones
+□ Can use the wizard feature
+
+If all checked, you're ready to use DialSmart! 🎉
+
+================================================================================
