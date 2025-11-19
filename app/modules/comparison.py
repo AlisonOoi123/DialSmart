@@ -278,10 +278,12 @@ class PhoneComparison:
         comparison = Comparison(
             user_id=user_id,
             phone1_id=phone1_id,
-            phone2_id=phone2_id
+            phone2_id=phone2_id,
+            is_saved=False
         )
         db.session.add(comparison)
         db.session.commit()
+        return comparison.id
 
     def get_user_comparisons(self, user_id, limit=10):
         """Get user's comparison history"""
