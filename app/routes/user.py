@@ -244,8 +244,8 @@ def browse():
     per_page = 12
     phones = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    # Get all brands for filter
-    brands = Brand.query.filter_by(is_active=True).all()
+    # Get all brands for filter (sorted alphabetically)
+    brands = Brand.query.filter_by(is_active=True).order_by(Brand.name.asc()).all()
 
     return render_template('user/browse.html',
                          phones=phones,
