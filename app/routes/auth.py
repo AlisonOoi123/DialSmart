@@ -87,10 +87,9 @@ def register():
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     """User login page"""
-    if current_user.is_authenticated:
-        if current_user.is_admin:
-            return redirect(url_for('admin.dashboard'))
-        return redirect(url_for('user.dashboard'))
+    # Note: We don't redirect authenticated users here anymore
+    # The login.html template handles auto-logout if user is authenticated
+    # This prevents issues when user presses Alt+Left from dashboard
 
     if request.method == 'POST':
         email = request.form.get('email')
@@ -132,17 +131,27 @@ def logout():
     Logout user and clear session.
     Prevents back/forward button access by clearing all session data.
     """
+    # Check if this logout was triggered from login page (auto-logout for security)
+    referer = request.headers.get('Referer', '')
+    from_login_page = '/auth/login' in referer
+
     # Clear the session completely
     session.clear()
 
     # Logout the user
     logout_user()
 
-    flash('You have been logged out successfully.', 'info')
+    if from_login_page:
+        # Auto-logout from login page - redirect back to login WITHOUT logged_out flag
+        # This prevents the homepage logout protection script from running
+        flash('Please login to continue.', 'info')
+        response = make_response(redirect(url_for('auth.login')))
+    else:
+        # Normal logout - redirect to homepage WITH logged_out flag
+        flash('You have been logged out successfully.', 'info')
+        response = make_response(redirect(url_for('user.index', logged_out='true')))
 
-    # Create response with cache control headers AND logout flag
-    # The logged_out parameter triggers JavaScript to clear browser storage
-    response = make_response(redirect(url_for('user.index', logged_out='true')))
+    # Always set cache control headers
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'

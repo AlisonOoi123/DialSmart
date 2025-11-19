@@ -5,7 +5,7 @@ This document explains how to test the browser history protection that prevents 
 
 ## Security Implementation
 
-### 3-Layer Protection:
+### 4-Layer Protection:
 
 1. **Authenticated Pages Protection** (`base.html`)
    - `window.onpopstate` handler blocks back/forward navigation
@@ -18,9 +18,15 @@ This document explains how to test the browser history protection that prevents 
    - Clears all browser storage
 
 3. **Login Page Protection** (`login.html`)
-   - Prevents going back to previous authenticated session
+   - **NEW:** Auto-logout if user is authenticated (prevents forward button abuse)
    - Clears session storage on load
    - History manipulation blocks navigation
+   - Prevents going back to previous authenticated session
+
+4. **Server-Side Logout Logic** (`auth.py`)
+   - **NEW:** Detects if logout was triggered from login page
+   - Redirects appropriately to prevent homepage protection script
+   - Clears all session data and cookies
 
 ---
 
@@ -48,6 +54,29 @@ This document explains how to test the browser history protection that prevents 
 **What to Watch:**
 - Browser console should show: `Logout detected - securing browser history`
 - Any attempt to go back/forward should keep you on current page
+
+---
+
+### Test 1B: Forward Button While Still Logged In (CRITICAL NEW TEST)
+
+**Steps:**
+1. Open browser (Chrome/Firefox/Edge)
+2. Go to `http://192.168.0.178:5000/auth/login`
+3. Enter credentials and login
+4. You are now at **Dashboard** (`/dashboard`)
+5. Press **Alt+Left** (Back button) - You go back to login page
+6. **CRITICAL:** Console should show: `User already authenticated on login page - logging out for security`
+7. You should be auto-redirected through logout back to login page
+8. You should see flash message: "Please login to continue"
+9. Press **Alt+Right** (Forward button)
+10. **Should NOT show dashboard** - should stay on login page or require re-login
+
+**Expected Result:** ✅ Cannot access dashboard via forward button when navigating back to login page while still logged in
+
+**What to Watch:**
+- Console: `User already authenticated on login page - logging out for security`
+- Flash message: "Please login to continue" (NOT "You have been logged out successfully")
+- Forward button does nothing or stays on login page
 
 ---
 
@@ -110,6 +139,18 @@ Cannot navigate back to authenticated pages after logout
 Session invalid (status 401) - redirecting to login
 ```
 
+### When Navigating Back to Login While Authenticated (NEW):
+```
+User already authenticated on login page - logging out for security
+[Auto-redirect to /auth/logout]
+[Redirect back to /auth/login]
+```
+
+### On Login Page (Normal):
+```
+Navigation blocked on login page - please login to continue
+```
+
 ---
 
 ## Troubleshooting
@@ -141,14 +182,14 @@ Session invalid (status 401) - redirecting to login
 
 ## Files Modified
 
-| File | Purpose |
-|------|---------|
-| `app/templates/base.html` | Authenticated pages protection with onpopstate |
-| `app/templates/user/index.html` | Post-logout history protection |
-| `app/templates/auth/login.html` | Login page history protection |
-| `app/routes/api.py` | `/api/auth/check` endpoint for session verification |
-| `app/routes/auth.py` | Logout with `?logged_out=true` parameter |
-| `app/__init__.py` | Cache-Control headers for protected routes |
+| File | Purpose | Latest Changes |
+|------|---------|----------------|
+| `app/templates/base.html` | Authenticated pages protection with onpopstate | Session verification endpoint |
+| `app/templates/user/index.html` | Post-logout history protection | History flooding technique |
+| `app/templates/auth/login.html` | Login page history protection | **NEW: Auto-logout if authenticated** |
+| `app/routes/api.py` | `/api/auth/check` endpoint for session verification | Protected endpoint returns 401 when not authenticated |
+| `app/routes/auth.py` | Logout logic | **NEW: Detect logout from login page, different redirect** |
+| `app/__init__.py` | Cache-Control headers for protected routes | Prevents browser caching |
 
 ---
 
@@ -173,6 +214,8 @@ After implementing these changes, verify:
 - [x] Cannot access dashboard via forward button after logout
 - [x] Cannot access dashboard via back button after logout
 - [x] Cannot type dashboard URL directly after logout (redirects to login)
+- [x] **NEW:** Cannot access dashboard via forward button when navigating back to login while still logged in
+- [x] **NEW:** Auto-logout when accessing login page while authenticated (via back button)
 - [x] Session verification runs on every authenticated page load
 - [x] Browser storage cleared on logout
 - [x] Cache-Control headers prevent page caching
