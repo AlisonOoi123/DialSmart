@@ -4,8 +4,9 @@ RESTful API endpoints for AJAX requests and chatbot
 """
 from flask import Blueprint, jsonify, request, send_file, current_app
 from flask_login import login_required, current_user
-from app.models import Phone, PhoneSpecification, Brand
-from app.modules import ChatbotEngine, AIRecommendationEngine
+from app.models import Phone, PhoneSpecification, Brand, Comparison
+from app.modules import ChatbotEngine, AIRecommendationEngine, PhoneComparison
+from app import db
 import uuid
 import requests
 from io import BytesIO
@@ -91,9 +92,8 @@ def image_proxy():
 
 # Chatbot endpoints
 @bp.route('/chat', methods=['POST'])
-@login_required
 def chat():
-    """Process chatbot message"""
+    """Process chatbot message (available for guests and logged-in users)"""
     try:
         data = request.get_json()
         message = data.get('message', '')
@@ -102,9 +102,12 @@ def chat():
         if not message:
             return jsonify({'error': 'Message is required'}), 400
 
+        # Get user_id (None for guests)
+        user_id = current_user.id if current_user.is_authenticated else None
+
         # Process with chatbot engine
         chatbot = ChatbotEngine()
-        response = chatbot.process_message(current_user.id, message, session_id)
+        response = chatbot.process_message(user_id, message, session_id)
 
         return jsonify({
             'success': True,
@@ -355,3 +358,57 @@ def get_stats():
             'max_price': max(prices) if prices else 0
         }
     })
+
+# Comparison save endpoint
+@bp.route('/comparison/save', methods=['POST'])
+@login_required
+def save_comparison():
+    """Save a comparison"""
+    try:
+        data = request.get_json()
+        phone1_id = data.get('phone1_id')
+        phone2_id = data.get('phone2_id')
+
+        if not phone1_id or not phone2_id:
+            return jsonify({
+                'success': False,
+                'error': 'Both phone IDs are required'
+            }), 400
+
+        # Check if comparison already exists
+        existing_comparison = Comparison.query.filter_by(
+            user_id=current_user.id,
+            phone1_id=phone1_id,
+            phone2_id=phone2_id
+        ).first()
+
+        if existing_comparison:
+            # Update existing comparison to saved
+            existing_comparison.is_saved = True
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': 'Comparison updated successfully'
+            })
+
+        # Create new saved comparison
+        comparison = Comparison(
+            user_id=current_user.id,
+            phone1_id=phone1_id,
+            phone2_id=phone2_id,
+            is_saved=True
+        )
+        db.session.add(comparison)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Comparison saved successfully'
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error saving comparison: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
