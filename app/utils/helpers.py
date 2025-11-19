@@ -83,7 +83,7 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     max_score = 0
 
     # Brand preference (weight: 40 - HIGHEST PRIORITY)
-    max_score += 50
+    max_score += 40
     preferred_brands = []
 
     # Handle both list and JSON string formats
@@ -106,26 +106,26 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     # If user selected specific brands, heavily prioritize them
     if preferred_brands:
         if phone.brand_id in preferred_brands:
-            score += 50  # Full points for matching brand
+            score += 40  # Full points for matching brand
         # else: 0 points - phone doesn't match preferred brands
     else:
-        score += 50  # No brand preference, give full points to all
+        score += 40  # No brand preference, give full points to all
 
     # Budget match (weight: 20)
-    max_score += 25
+    max_score += 20
     if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
-        score += 25
+        score += 20
     elif phone.price < user_prefs.min_budget:
         # Slight penalty for cheaper phones
-        score += 18
+        score += 15
     else:
         # Penalty for over-budget phones
         over_budget = phone.price - user_prefs.max_budget
-        penalty = min(25, (over_budget / user_prefs.max_budget) * 25)
-        score += max(0, 25 - penalty)
+        penalty = min(20, (over_budget / user_prefs.max_budget) * 20)
+        score += max(0, 20 - penalty)
 
     # Usage type match (weight: 30 - HIGH PRIORITY for differentiation)
-    max_score += 40
+    max_score += 30
     usage_score = 0
     primary_usage = []
 
@@ -294,6 +294,86 @@ def calculate_match_score(user_prefs, phone, phone_specs):
         if phone_specs.screen_size:
             if user_prefs.min_screen_size <= phone_specs.screen_size <= user_prefs.max_screen_size:
                 score += 6
+
+    # Important features bonus (weight: 30 - HIGH PRIORITY for selected features)
+    # This gives extra weight to features explicitly selected by user in wizard
+    important_features = []
+    if hasattr(user_prefs, 'important_features') and user_prefs.important_features:
+        if isinstance(user_prefs.important_features, list):
+            important_features = user_prefs.important_features
+        elif isinstance(user_prefs.important_features, str):
+            try:
+                import json
+                important_features = json.loads(user_prefs.important_features)
+            except (json.JSONDecodeError, ValueError):
+                important_features = []
+
+    if important_features and phone_specs:
+        max_score += 30  # Add weight for important features
+        features_score = 0
+
+        for feature in important_features:
+            if feature == 'Battery' and phone_specs.battery_capacity:
+                # Long battery life priority
+                if phone_specs.battery_capacity >= 5000:
+                    features_score += 10
+                elif phone_specs.battery_capacity >= 4500:
+                    features_score += 7
+                elif phone_specs.battery_capacity >= 4000:
+                    features_score += 4
+
+            elif feature == 'Camera' and phone_specs.rear_camera_main:
+                # Great camera priority
+                if phone_specs.rear_camera_main >= 108:
+                    features_score += 10
+                elif phone_specs.rear_camera_main >= 64:
+                    features_score += 7
+                elif phone_specs.rear_camera_main >= 48:
+                    features_score += 4
+
+            elif feature == 'Performance':
+                # Fast performance priority
+                ram_values = extract_numbers_from_text(phone_specs.ram_options)
+                if ram_values:
+                    max_ram = max(ram_values)
+                    if max_ram >= 12:
+                        features_score += 5
+                    elif max_ram >= 8:
+                        features_score += 3
+
+                # Check processor
+                if phone_specs.processor and any(chip in phone_specs.processor.lower() for chip in ['snapdragon 8', 'dimensity 9', 'a17', 'a16']):
+                    features_score += 5
+                elif phone_specs.processor and any(chip in phone_specs.processor.lower() for chip in ['snapdragon 7', 'dimensity 8', 'a15']):
+                    features_score += 3
+
+            elif feature == 'Storage' and phone_specs.storage_options:
+                # Large storage priority
+                storage_values = extract_numbers_from_text(phone_specs.storage_options)
+                if storage_values:
+                    max_storage = max(storage_values)
+                    if max_storage >= 512:
+                        features_score += 10
+                    elif max_storage >= 256:
+                        features_score += 7
+                    elif max_storage >= 128:
+                        features_score += 4
+
+            elif feature == '5G' and phone_specs.has_5g:
+                # 5G connectivity priority
+                features_score += 10
+
+            elif feature == 'Design':
+                # Premium design priority (AMOLED, wireless charging, etc.)
+                if phone_specs.screen_type and ('amoled' in phone_specs.screen_type.lower() or 'oled' in phone_specs.screen_type.lower()):
+                    features_score += 5
+                if phone_specs.wireless_charging:
+                    features_score += 3
+                if phone_specs.water_resistance and phone_specs.water_resistance != 'None':
+                    features_score += 2
+
+        # Normalize features score to 0-30 range
+        score += min(30, features_score)
 
     # Calculate final percentage
     if max_score > 0:
