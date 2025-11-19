@@ -55,8 +55,12 @@ class PhoneComparison:
         }
 
         # Save comparison if user_id provided
+        comparison_id = None
         if user_id:
-            self._save_comparison(user_id, phone1_id, phone2_id)
+            comparison_id = self._save_comparison(user_id, phone1_id, phone2_id)
+
+        # Add comparison ID to data
+        comparison_data['comparison_id'] = comparison_id
 
         return comparison_data
 
@@ -263,14 +267,16 @@ class PhoneComparison:
             return {'phone': None, 'name': 'Tie', 'score': phone1_score}
 
     def _save_comparison(self, user_id, phone1_id, phone2_id):
-        """Save comparison to database"""
+        """Save comparison to database and return the comparison ID"""
         comparison = Comparison(
             user_id=user_id,
             phone1_id=phone1_id,
-            phone2_id=phone2_id
+            phone2_id=phone2_id,
+            is_saved=False  # Not saved by default, user needs to click "Save" button
         )
         db.session.add(comparison)
         db.session.commit()
+        return comparison.id
 
     def get_user_comparisons(self, user_id, limit=10):
         """Get user's comparison history"""

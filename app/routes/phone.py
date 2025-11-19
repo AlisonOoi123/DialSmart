@@ -43,8 +43,11 @@ def brand_page(brand_id):
         query = query.order_by(Phone.price.desc())
     elif sort_by == 'name':
         query = query.order_by(Phone.model_name.asc())
-    else:  # created_at
-        query = query.order_by(Phone.created_at.desc())
+    elif sort_by == 'newest':
+        # Sort by release date (newest first), fallback to created_at if release_date is None
+        query = query.order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())
+    else:  # default to newest
+        query = query.order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())
 
     # Paginate
     per_page = 12
@@ -128,11 +131,12 @@ def save_comparison(comparison_id):
     """Save a comparison"""
     comparison_engine = PhoneComparison()
     if comparison_engine.save_comparison(comparison_id):
-        flash('Comparison saved successfully.', 'success')
+        flash('Comparison saved successfully! You can view it in your dashboard.', 'success')
     else:
         flash('Unable to save comparison.', 'danger')
 
-    return redirect(url_for('phone.comparison_history'))
+    # Redirect to dashboard so user can see the saved comparison
+    return redirect(url_for('user.dashboard'))
 
 @bp.route('/search')
 def search():
@@ -143,11 +147,12 @@ def search():
     if not query:
         return redirect(url_for('user.browse'))
 
-    # Search in model name
+    # Search in model name, sorted by release date (newest first)
     phones = Phone.query.filter(
         Phone.is_active == True,
         Phone.model_name.ilike(f'%{query}%')
-    ).paginate(page=page, per_page=12, error_out=False)
+    ).order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())\
+     .paginate(page=page, per_page=12, error_out=False)
 
     return render_template('phone/search_results.html',
                          phones=phones,

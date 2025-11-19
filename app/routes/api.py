@@ -12,9 +12,8 @@ bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Chatbot endpoints
 @bp.route('/chat', methods=['POST'])
-@login_required
 def chat():
-    """Process chatbot message"""
+    """Process chatbot message (available for both guests and logged-in users)"""
     data = request.get_json()
     message = data.get('message', '')
     session_id = data.get('session_id') or str(uuid.uuid4())
@@ -24,7 +23,9 @@ def chat():
 
     # Process with chatbot engine
     chatbot = ChatbotEngine()
-    response = chatbot.process_message(current_user.id, message, session_id)
+    # Use current_user.id if authenticated, otherwise use None for guest
+    user_id = current_user.id if current_user.is_authenticated else None
+    response = chatbot.process_message(user_id, message, session_id)
 
     return jsonify({
         'success': True,

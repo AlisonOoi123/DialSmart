@@ -18,9 +18,9 @@ def index():
     # Get featured brands
     featured_brands = Brand.query.filter_by(is_featured=True, is_active=True).limit(10).all()
 
-    # Get latest phones
+    # Get latest phones (sorted by release date, newest first)
     latest_phones = Phone.query.filter_by(is_active=True)\
-        .order_by(Phone.created_at.desc())\
+        .order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())\
         .limit(6)\
         .all()
 
@@ -148,31 +148,63 @@ def recommendation_history():
 def recommendation_wizard():
     """Multi-step recommendation wizard"""
     if request.method == 'POST':
-        # Process wizard form
+        # Extract primary usage
+        primary_usage_list = request.form.getlist('primary_usage')
+
+        # Extract important features
+        important_features_list = request.form.getlist('important_features')
+
+        # Extract preferred brands
+        preferred_brands_list = request.form.getlist('preferred_brands')
+
+        # Process wizard form with proper JSON conversion
         criteria = {
             'min_budget': int(request.form.get('min_budget', 500)),
             'max_budget': int(request.form.get('max_budget', 5000)),
-            'primary_usage': request.form.getlist('primary_usage'),
-            'important_features': request.form.getlist('important_features'),
-            'preferred_brands': request.form.getlist('preferred_brands'),
-            'min_ram': int(request.form.get('min_ram', 4)),
-            'requires_5g': bool(request.form.get('requires_5g'))
+            'primary_usage': json.dumps(primary_usage_list),
+            'important_features': json.dumps(important_features_list),
+            'preferred_brands': json.dumps(preferred_brands_list),
         }
+
+        # Set specific criteria based on important features
+        if '5G Connectivity' in important_features_list:
+            criteria['requires_5g'] = True
+
+        # Set minimum specs based on important features
+        if 'Fast Performance' in important_features_list:
+            criteria['min_ram'] = 8  # Higher RAM for performance
+        else:
+            criteria['min_ram'] = 4
+
+        if 'Long Battery Life' in important_features_list:
+            criteria['min_battery'] = 4500  # Larger battery
+        else:
+            criteria['min_battery'] = 3000
+
+        if 'Great Camera' in important_features_list:
+            criteria['min_camera'] = 48  # Higher megapixel camera
+        else:
+            criteria['min_camera'] = 12
+
+        if 'Large Storage' in important_features_list:
+            criteria['min_storage'] = 128  # More storage
+        else:
+            criteria['min_storage'] = 64
 
         # Get AI recommendations
         ai_engine = AIRecommendationEngine()
         recommendations = ai_engine.get_recommendations(
             current_user.id if current_user.is_authenticated else None,
             criteria=criteria,
-            top_n=3
+            top_n=5  # Show more results
         )
 
         return render_template('user/wizard_results.html',
                              recommendations=recommendations,
                              criteria=criteria)
 
-    # Get brands for wizard
-    brands = Brand.query.filter_by(is_active=True).all()
+    # Get brands for wizard, sorted alphabetically
+    brands = Brand.query.filter_by(is_active=True).order_by(Brand.name.asc()).all()
 
     return render_template('user/wizard.html', brands=brands)
 
@@ -206,15 +238,18 @@ def browse():
         query = query.order_by(Phone.price.desc())
     elif sort_by == 'name':
         query = query.order_by(Phone.model_name.asc())
-    else:  # created_at
-        query = query.order_by(Phone.created_at.desc())
+    elif sort_by == 'newest':
+        # Sort by release date (newest first), fallback to created_at if release_date is None
+        query = query.order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())
+    else:  # default to newest
+        query = query.order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())
 
     # Paginate
     per_page = 12
     phones = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    # Get all brands for filter
-    brands = Brand.query.filter_by(is_active=True).all()
+    # Get all brands for filter, sorted alphabetically A-Z
+    brands = Brand.query.filter_by(is_active=True).order_by(Brand.name.asc()).all()
 
     return render_template('user/browse.html',
                          phones=phones,
