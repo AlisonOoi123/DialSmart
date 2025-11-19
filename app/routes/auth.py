@@ -130,7 +130,7 @@ def login():
 def logout():
     """
     Logout user and clear session.
-    Prevents back button access by clearing all session data.
+    Prevents back/forward button access by clearing all session data.
     """
     # Clear the session completely
     session.clear()
@@ -140,11 +140,15 @@ def logout():
 
     flash('You have been logged out successfully.', 'info')
 
-    # Create response with cache control headers
-    response = make_response(redirect(url_for('user.index')))
+    # Create response with cache control headers AND logout flag
+    # The logged_out parameter triggers JavaScript to clear browser storage
+    response = make_response(redirect(url_for('user.index', logged_out='true')))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
+
+    # Additional security: Set cookie to expire immediately
+    response.set_cookie('session', '', expires=0)
 
     return response
 
