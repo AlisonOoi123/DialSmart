@@ -28,42 +28,57 @@
     {% if current_user.is_authenticated %}
     <!-- JavaScript to prevent back/forward button access after logout -->
     <script>
-        // Mark that this page was loaded while authenticated
-        sessionStorage.setItem('auth_page_loaded', 'true');
-        sessionStorage.setItem('last_access_time', Date.now());
+        (function() {
+            'use strict';
 
-        // Prevent browser back/forward cache (bfcache)
-        window.addEventListener('pageshow', function(event) {
-            if (event.persisted) {
-                // Page was restored from bfcache - reload to check auth status
-                window.location.reload();
-            }
-        });
+            // Mark that this page was loaded while authenticated
+            sessionStorage.setItem('auth_page_loaded', 'true');
+            sessionStorage.setItem('last_access_time', Date.now());
 
-        // Check auth status on page load (handles forward button after logout)
-        window.addEventListener('load', function() {
-            // Verify session is still valid by making a lightweight API call
-            fetch('{{ url_for("api.check_auth") }}', {
-                method: 'GET',
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (response.status === 401 || response.status === 403) {
-                    // Session expired or user logged out - redirect to login immediately
-                    console.log('Session invalid (status ' + response.status + ') - redirecting to login');
+            // CRITICAL: Disable browser history for this page
+            // This prevents forward button from working after logout
+            window.history.pushState(null, null, window.location.href);
+            window.onpopstate = function() {
+                // User pressed back/forward - redirect to current page
+                window.history.pushState(null, null, window.location.href);
+            };
+
+            // Prevent browser back/forward cache (bfcache)
+            window.addEventListener('pageshow', function(event) {
+                if (event.persisted) {
+                    // Page was restored from bfcache - reload to check auth status
+                    window.location.reload();
+                }
+            });
+
+            // Check auth status on page load (handles forward button after logout)
+            window.addEventListener('load', function() {
+                // Verify session is still valid by making a protected API call
+                // This endpoint returns 401 if user is not authenticated
+                fetch('{{ url_for("api.check_auth") }}', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (response.status === 401 || response.status === 403) {
+                        // Session expired or user logged out - redirect to login immediately
+                        console.log('Session invalid (status ' + response.status + ') - redirecting to login');
+                        sessionStorage.clear();
+                        localStorage.clear();
+                        // Use replace to avoid adding to history
+                        window.location.replace('{{ url_for("auth.login") }}');
+                    }
+                    // If status is 200, user is authenticated - do nothing, page loads normally
+                })
+                .catch(error => {
+                    // Network error - redirect to login to be safe
+                    console.log('Auth check network error:', error);
                     sessionStorage.clear();
                     localStorage.clear();
                     window.location.replace('{{ url_for("auth.login") }}');
-                }
-            })
-            .catch(error => {
-                // Network error - redirect to login to be safe
-                console.log('Auth check network error:', error);
-                sessionStorage.clear();
-                localStorage.clear();
-                window.location.replace('{{ url_for("auth.login") }}');
+                });
             });
-        });
+        })();
     </script>
     {% endif %}
 

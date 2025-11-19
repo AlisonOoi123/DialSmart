@@ -3,32 +3,53 @@
 {% block extra_js %}
 <!-- Logout Security: Clear browser storage if redirected from logout -->
 <script>
-    // Check if user was just logged out (from URL parameter or flash message)
-    const urlParams = new URLSearchParams(window.location.search);
-    const flashMessages = document.querySelectorAll('.alert');
+    (function() {
+        'use strict';
 
-    let justLoggedOut = urlParams.get('logged_out') === 'true';
+        // Check if user was just logged out (from URL parameter or flash message)
+        const urlParams = new URLSearchParams(window.location.search);
+        const flashMessages = document.querySelectorAll('.alert');
 
-    // Also check if there's a logout success message
-    flashMessages.forEach(function(msg) {
-        if (msg.textContent.includes('logged out')) {
-            justLoggedOut = true;
-        }
-    });
+        let justLoggedOut = urlParams.get('logged_out') === 'true';
 
-    if (justLoggedOut) {
-        // Clear all browser storage
-        sessionStorage.clear();
-        localStorage.clear();
-
-        // Prevent back/forward navigation to cached authenticated pages
-        window.history.pushState(null, document.title, window.location.href);
-        window.addEventListener('popstate', function() {
-            window.history.pushState(null, document.title, window.location.href);
+        // Also check if there's a logout success message
+        flashMessages.forEach(function(msg) {
+            if (msg.textContent.includes('logged out')) {
+                justLoggedOut = true;
+            }
         });
 
-        console.log('Logout complete: Browser storage cleared');
-    }
+        if (justLoggedOut) {
+            console.log('Logout detected - securing browser history');
+
+            // Clear all browser storage
+            sessionStorage.clear();
+            localStorage.clear();
+
+            // Remove the logged_out parameter from URL (clean up)
+            if (urlParams.has('logged_out')) {
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState(null, document.title, cleanUrl);
+            }
+
+            // CRITICAL: Prevent back button from accessing authenticated pages
+            // This creates a new history entry that can't go back to authenticated pages
+            window.history.pushState(null, null, window.location.href);
+
+            window.addEventListener('popstate', function(event) {
+                // User pressed back button - keep them on homepage
+                window.history.pushState(null, null, window.location.href);
+
+                // Show a message if they keep trying
+                if (!sessionStorage.getItem('back_warned')) {
+                    sessionStorage.setItem('back_warned', 'true');
+                    console.log('Cannot navigate back to authenticated pages after logout');
+                }
+            });
+
+            console.log('Logout complete: Browser storage cleared and history secured');
+        }
+    })();
 </script>
 {% endblock %}
 
