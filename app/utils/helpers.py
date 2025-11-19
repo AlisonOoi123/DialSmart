@@ -58,12 +58,17 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     """
     Calculate how well a phone matches user preferences
     Returns a score from 0-100
-    Priority: Brand > Budget > Features > Specs
+    Priority: Budget (HARD FILTER) > Brand > Features > Specs
     """
+    # CRITICAL: Budget is a HARD REQUIREMENT
+    # Phones outside budget range get ZERO score immediately
+    if phone.price < user_prefs.min_budget or phone.price > user_prefs.max_budget:
+        return 0  # Immediately disqualify phones outside budget
+
     score = 0
     max_score = 0
 
-    # Brand preference (weight: 50 - HIGHEST PRIORITY)
+    # Brand preference (weight: 50 - HIGHEST PRIORITY after budget)
     max_score += 50
     preferred_brands = []
 
@@ -87,22 +92,25 @@ def calculate_match_score(user_prefs, phone, phone_specs):
     if preferred_brands:
         if phone.brand_id in preferred_brands:
             score += 50  # Full points for matching brand
-        # else: 0 points - phone doesn't match preferred brands
+        else:
+            # Brand doesn't match preference - give partial points
+            score += 10  # Small points for being within budget but wrong brand
     else:
         score += 50  # No brand preference, give full points to all
 
-    # Budget match (weight: 25)
+    # Budget match (weight: 25) - Already within budget, give bonus for being optimal
     max_score += 25
-    if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
-        score += 25
-    elif phone.price < user_prefs.min_budget:
-        # Slight penalty for cheaper phones
-        score += 18
+    budget_midpoint = (user_prefs.min_budget + user_prefs.max_budget) / 2
+    budget_range = user_prefs.max_budget - user_prefs.min_budget
+
+    # Give more points for phones near the budget midpoint
+    if budget_range > 0:
+        distance_from_midpoint = abs(phone.price - budget_midpoint)
+        # Phones at midpoint get full 25 points, phones at edges get 15 points
+        budget_score = 25 - (distance_from_midpoint / budget_range) * 10
+        score += max(15, budget_score)
     else:
-        # Penalty for over-budget phones
-        over_budget = phone.price - user_prefs.max_budget
-        penalty = min(25, (over_budget / user_prefs.max_budget) * 25)
-        score += max(0, 25 - penalty)
+        score += 25  # Exact budget match
 
     if phone_specs:
         # RAM match (weight: 10)

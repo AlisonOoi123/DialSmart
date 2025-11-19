@@ -107,6 +107,11 @@ def login():
             login_user(user, remember=remember)
             user.update_last_active()
 
+            # Check if user must change password (new admin)
+            if hasattr(user, 'force_password_change') and user.force_password_change:
+                flash('You must change your password before continuing.', 'warning')
+                return redirect(url_for('auth.change_password'))
+
             # Redirect based on user type
             next_page = request.args.get('next')
             if next_page:
@@ -228,6 +233,67 @@ def forgot_password():
             flash('Password reset is not available at this time. Please contact support.', 'danger')
 
     return render_template('auth/forgot_password.html')
+
+@bp.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Change password (for forced password changes or user-initiated)"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        # Validation
+        if not all([current_password, new_password, confirm_password]):
+            flash('All fields are required.', 'danger')
+            return render_template('auth/change_password.html')
+
+        # Verify current password
+        if not current_user.check_password(current_password):
+            flash('Current password is incorrect.', 'danger')
+            return render_template('auth/change_password.html')
+
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'danger')
+            return render_template('auth/change_password.html')
+
+        # Validate password strength
+        is_valid, error_message = validate_password(new_password)
+        if not is_valid:
+            flash(error_message, 'danger')
+            return render_template('auth/change_password.html')
+
+        # Change password
+        current_user.set_password(new_password)
+        db.session.commit()
+
+        # Log password change
+        if hasattr(current_user, 'is_admin') and current_user.is_admin:
+            try:
+                from app.models import AuditLog
+                audit_log = AuditLog(
+                    user_id=current_user.id,
+                    action_type='password_changed',
+                    description=f'Admin {current_user.full_name} changed their password',
+                    ip_address=request.remote_addr
+                )
+                db.session.add(audit_log)
+                db.session.commit()
+            except:
+                pass
+
+        flash('Password changed successfully!', 'success')
+
+        # Redirect based on user type
+        if current_user.is_admin:
+            return redirect(url_for('admin.dashboard'))
+        else:
+            return redirect(url_for('user.dashboard'))
+
+    # Check if this is a forced password change
+    is_forced = hasattr(current_user, 'force_password_change') and current_user.force_password_change
+
+    return render_template('auth/change_password.html', is_forced=is_forced)
 
 @bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
