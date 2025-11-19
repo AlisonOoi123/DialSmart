@@ -128,14 +128,20 @@ def login():
 @bp.route('/logout')
 @login_required
 def logout():
+
+     # Clear the session completely
+    session.clear()
+
     """Logout user"""
     logout_user()
     flash('You have been logged out successfully.', 'info')
     # Create response with cache control headers
-    response = make_response(redirect(url_for('user.index')))
+    response = make_response(redirect(url_for('user.index', logged_out='true')))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
+
+    response.set_cookie('session', '', expires=0)
 
     return response
 

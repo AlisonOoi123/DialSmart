@@ -1,5 +1,37 @@
 {% extends "base.html" %}
 
+{% block extra_js %}
+<!-- Logout Security: Clear browser storage if redirected from logout -->
+<script>
+    // Check if user was just logged out (from URL parameter or flash message)
+    const urlParams = new URLSearchParams(window.location.search);
+    const flashMessages = document.querySelectorAll('.alert');
+
+    let justLoggedOut = urlParams.get('logged_out') === 'true';
+
+    // Also check if there's a logout success message
+    flashMessages.forEach(function(msg) {
+        if (msg.textContent.includes('logged out')) {
+            justLoggedOut = true;
+        }
+    });
+
+    if (justLoggedOut) {
+        // Clear all browser storage
+        sessionStorage.clear();
+        localStorage.clear();
+
+        // Prevent back/forward navigation to cached authenticated pages
+        window.history.pushState(null, document.title, window.location.href);
+        window.addEventListener('popstate', function() {
+            window.history.pushState(null, document.title, window.location.href);
+        });
+
+        console.log('Logout complete: Browser storage cleared');
+    }
+</script>
+{% endblock %}
+
 {% block content %}
 <!-- Hero Section -->
 <section class="hero-section bg-gradient-primary text-white py-5">
