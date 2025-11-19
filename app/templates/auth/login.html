@@ -2,6 +2,25 @@
 
 {% block title %}Login - DialSmart{% endblock %}
 
+{% block extra_js %}
+<!-- Prevent navigation to previous authenticated session -->
+<script>
+    (function() {
+        'use strict';
+
+        // Clear any leftover session data from previous login
+        sessionStorage.clear();
+
+        // If user came from logout, prevent them from going back to authenticated pages
+        // This ensures Alt+Left after logout doesn't show authenticated pages
+        window.history.pushState(null, null, window.location.href);
+        window.addEventListener('popstate', function(event) {
+            window.history.pushState(null, null, window.location.href);
+        });
+    })();
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
