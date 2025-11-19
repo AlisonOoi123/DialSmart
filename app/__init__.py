@@ -47,13 +47,25 @@ def create_app(config_name='default'):
     def add_security_headers(response):
         """
         Add cache control headers to prevent browser caching of authenticated pages.
-        This prevents users from using the back button to access protected pages after logout.
+        This prevents users from using the back/forward button to access protected pages after logout.
+
+        CRITICAL: Must apply to protected routes regardless of current authentication status,
+        otherwise forward button after logout will still show cached authenticated pages.
         """
-        # Only apply to authenticated user pages (not public pages or static files)
-        if current_user.is_authenticated and not request.path.startswith('/static'):
+        # Protected route prefixes that should never be cached
+        protected_prefixes = ('/dashboard', '/admin', '/auth/logout', '/user/', '/phone/compare')
+
+        # Apply cache headers to:
+        # 1. Currently authenticated users (for all their pages)
+        # 2. Protected routes (even if user is not currently authenticated - prevents forward button)
+        # 3. But NOT to static files or public pages
+        is_protected = any(request.path.startswith(prefix) for prefix in protected_prefixes)
+
+        if (current_user.is_authenticated or is_protected) and not request.path.startswith('/static'):
             response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private, max-age=0'
             response.headers['Pragma'] = 'no-cache'
             response.headers['Expires'] = '0'
+
         return response
 
     # Create database tables
