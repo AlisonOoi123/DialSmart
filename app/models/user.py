@@ -28,6 +28,8 @@ class User(UserMixin, db.Model):
     # Account settings
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
+    force_password_change = db.Column(db.Boolean, default=False)  # Force password change on next login
+    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Track who created this admin
     email_verified = db.Column(db.Boolean, default=False)
     email_verification_token = db.Column(db.String(100), unique=True, nullable=True)
     email_verification_sent_at = db.Column(db.DateTime, nullable=True)
@@ -39,16 +41,24 @@ class User(UserMixin, db.Model):
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_active = db.Column(db.DateTime, default=datetime.utcnow)
+    last_password_change = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
     preferences = db.relationship('UserPreference', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     recommendations = db.relationship('Recommendation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     comparisons = db.relationship('Comparison', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     chat_history = db.relationship('ChatHistory', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    audit_logs = db.relationship('AuditLog', foreign_keys='AuditLog.user_id', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    created_admins = db.relationship('User', backref=db.backref('created_by_admin', remote_side=[id]), foreign_keys=[created_by_admin_id])
+
 
     def set_password(self, password):
         """Hash and set user password"""
         self.password_hash = generate_password_hash(password)
+        self.last_password_change = datetime.utcnow()
+        # Clear force password change flag after setting new password
+        if self.force_password_change:
+            self.force_password_change = False
 
     def check_password(self, password):
         """Verify password against hash"""
@@ -61,6 +71,25 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return f'<User {self.email}>'
+
+class AuditLog(db.Model):
+    """Audit log for tracking admin and important user actions"""
+    __tablename__ = 'audit_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Who performed the action
+    target_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Who was affected
+    action_type = db.Column(db.String(100), nullable=False)  # e.g., 'admin_created', 'admin_deleted', 'password_changed'
+    description = db.Column(db.Text)  # Detailed description
+    ip_address = db.Column(db.String(50))  # IP address of the user
+    user_agent = db.Column(db.String(255))  # Browser/device info
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    # Additional data stored as JSON
+    metadata = db.Column(db.Text)  # Any additional info as JSON string
+
+    def __repr__(self):
+        return f'<AuditLog {self.action_type} by User {self.user_id}>'
 
 
 class UserPreference(db.Model):

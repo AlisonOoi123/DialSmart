@@ -6,10 +6,11 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from functools import wraps
 from app import db
-from app.models import User, Phone, PhoneSpecification, Brand, Recommendation, ContactMessage
-from app.utils.helpers import save_uploaded_file
+from app.models import User, Phone, PhoneSpecification, Brand, Recommendation, AuditLog, ContactMessage
+from app.utils.helpers import save_uploaded_file, validate_password
 from datetime import datetime, timedelta
 import json
+import secrets
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -22,6 +23,26 @@ def admin_required(f):
             return redirect(url_for('user.index'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def log_audit_action(action_type, description, target_user_id=None, metadata=None):
+    """Helper function to log audit actions"""
+    try:
+        audit_log = AuditLog(
+            user_id=current_user.id if current_user.is_authenticated else None,
+            target_user_id=target_user_id,
+            action_type=action_type,
+            description=description,
+            ip_address=request.remote_addr if request else None,
+            user_agent=request.headers.get('User-Agent')[:255] if request else None,
+            metadata=json.dumps(metadata) if metadata else None
+        )
+        db.session.add(audit_log)
+        db.session.commit()
+    except Exception as e:
+        # Log error but don't fail the main operation
+        print(f"Error logging audit action: {e}")
+        db.session.rollback()
 
 @bp.route('/')
 @bp.route('/dashboard')
@@ -445,7 +466,173 @@ def toggle_user_status(user_id):
     status = 'activated' if user.is_active else 'suspended'
     flash(f'User "{user.full_name}" has been {status}.', 'success')
 
+    log_audit_action(
+        action_type='user_status_changed',
+        description=f'User {user.full_name} ({user.email}) {status}',
+        target_user_id=user.id,
+        metadata={'new_status': user.is_active}
+    )
+
     return redirect(url_for('admin.users'))
+
+# Admin Management
+@bp.route('/admins')
+@login_required
+@admin_required
+def admins():
+    """List all admin users"""
+    page = request.args.get('page', 1, type=int)
+    admins = User.query.filter_by(is_admin=True)\
+        .order_by(User.created_at.desc())\
+        .paginate(page=page, per_page=20, error_out=False)
+
+    return render_template('admin/admins.html', admins=admins)
+
+@bp.route('/admins/create', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_admin():
+    """Create new admin user (requires passkey verification)"""
+    # Admin passkey - MUST match the one in auth.py
+    ADMIN_PASSKEY = "DialSmart2024Admin!"
+
+    if request.method == 'POST':
+        # Verify admin passkey FIRST
+        admin_passkey = request.form.get('admin_passkey')
+
+        if admin_passkey != ADMIN_PASSKEY:
+            flash('Invalid admin passkey! Admin creation denied.', 'danger')
+            log_audit_action(
+                action_type='admin_creation_failed',
+                description=f'Failed admin creation attempt - invalid passkey',
+                metadata={'reason': 'invalid_passkey'}
+            )
+            return render_template('admin/create_admin.html')
+
+        # Passkey verified - proceed with creation
+        full_name = request.form.get('full_name')
+        email = request.form.get('email')
+        temporary_password = request.form.get('temporary_password')
+
+        # Validation
+        if not all([full_name, email, temporary_password]):
+            flash('All fields are required.', 'danger')
+            return render_template('admin/create_admin.html')
+
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash('Email already registered.', 'warning')
+            return render_template('admin/create_admin.html')
+
+        # Validate password strength
+        is_valid, error_message = validate_password(temporary_password)
+        if not is_valid:
+            flash(error_message, 'danger')
+            return render_template('admin/create_admin.html')
+
+        # Create new admin user
+        new_admin = User(
+            full_name=full_name,
+            email=email,
+            user_category='Admin',
+            is_admin=True,
+            force_password_change=True,  # Force password change on first login
+            created_by_admin_id=current_user.id  # Track who created this admin
+        )
+        new_admin.set_password(temporary_password)
+
+        db.session.add(new_admin)
+        db.session.commit()
+
+        # Log admin creation
+        log_audit_action(
+            action_type='admin_created',
+            description=f'New admin created: {new_admin.full_name} ({new_admin.email}) by {current_user.full_name}',
+            target_user_id=new_admin.id,
+            metadata={
+                'created_by': current_user.email,
+                'created_admin_email': new_admin.email
+            }
+        )
+
+        flash(f'Admin "{new_admin.full_name}" created successfully! They will be required to change password on first login.', 'success')
+        return redirect(url_for('admin.admins'))
+
+    return render_template('admin/create_admin.html')
+
+@bp.route('/admins/<int:admin_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_admin(admin_id):
+    """Delete admin user (requires passkey verification)"""
+    if admin_id == current_user.id:
+        flash('You cannot delete your own admin account.', 'danger')
+        return redirect(url_for('admin.admins'))
+
+    admin = User.query.get_or_404(admin_id)
+
+    if not admin.is_admin:
+        flash('This user is not an admin.', 'warning')
+        return redirect(url_for('admin.admins'))
+
+    # Verify passkey
+    admin_passkey = request.form.get('admin_passkey')
+    ADMIN_PASSKEY = "DialSmart2024Admin!"
+
+    if admin_passkey != ADMIN_PASSKEY:
+        flash('Invalid admin passkey! Admin deletion denied.', 'danger')
+        log_audit_action(
+            action_type='admin_deletion_failed',
+            description=f'Failed admin deletion attempt for {admin.full_name} - invalid passkey',
+            target_user_id=admin.id,
+            metadata={'reason': 'invalid_passkey'}
+        )
+        return redirect(url_for('admin.admins'))
+
+    # Log before deletion
+    log_audit_action(
+        action_type='admin_deleted',
+        description=f'Admin deleted: {admin.full_name} ({admin.email}) by {current_user.full_name}',
+        target_user_id=admin.id,
+        metadata={
+            'deleted_by': current_user.email,
+            'deleted_admin_email': admin.email
+        }
+    )
+
+    admin_name = admin.full_name
+    db.session.delete(admin)
+    db.session.commit()
+
+    flash(f'Admin "{admin_name}" has been deleted.', 'success')
+    return redirect(url_for('admin.admins'))
+
+# Audit Logs
+@bp.route('/audit-logs')
+@login_required
+@admin_required
+def audit_logs():
+    """View audit logs for admin actions"""
+    page = request.args.get('page', 1, type=int)
+    action_type = request.args.get('action_type', '')
+
+    query = AuditLog.query
+
+    if action_type:
+        query = query.filter_by(action_type=action_type)
+
+    logs = query.order_by(AuditLog.created_at.desc())\
+        .paginate(page=page, per_page=50, error_out=False)
+
+    # Get unique action types for filter
+    action_types = db.session.query(AuditLog.action_type.distinct()).all()
+    action_types = [t[0] for t in action_types]
+
+    return render_template('admin/audit_logs.html',
+                         logs=logs,
+                         action_types=action_types,
+                         current_action_type=action_type)
 
 # System Logs
 @bp.route('/logs')
