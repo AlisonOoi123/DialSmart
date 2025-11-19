@@ -7,9 +7,17 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models import User
 from app.utils.helpers import validate_password
+from datetime import datetime
 from app.utils.email import send_verification_email, send_password_reset_email, is_token_expired
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+# Try to import email utilities, but handle if they don't exist
+try:
+    from app.utils.email import send_verification_email, send_password_reset_email, is_token_expired
+    EMAIL_UTILS_AVAILABLE = True
+except ImportError:
+    EMAIL_UTILS_AVAILABLE = False
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -68,8 +76,9 @@ def register():
                 flash('Registration successful! However, we could not send the verification email. You can still login.', 'warning')
         else:
             # Auto-verify if email verification is disabled
-            user.email_verified = True
-            db.session.commit()
+            if hasattr(user, 'email_verified'):
+                user.email_verified = True
+                db.session.commit()
             flash('Registration successful! Please login.', 'success')
 
         return redirect(url_for('auth.login'))
