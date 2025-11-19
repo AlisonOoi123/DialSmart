@@ -78,8 +78,8 @@ class AuditLog(db.Model):
     user_agent = db.Column(db.String(255))  # Browser/device info
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
-    # Additional data stored as JSON
-    metadata = db.Column(db.Text)  # Any additional info as JSON string
+    # Additional data stored as JSON (renamed from 'metadata' to avoid SQLAlchemy reserved name)
+    extra_data = db.Column(db.Text)  # Any additional info as JSON string
 
     def __repr__(self):
         return f'<AuditLog {self.action_type} by User {self.user_id}>'
