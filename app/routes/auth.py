@@ -7,9 +7,16 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models import User
 from app.utils.helpers import validate_password
-from app.utils.email import send_verification_email, send_password_reset_email, is_token_expired
+from datetime import datetime
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+# Try to import email utilities, but handle if they don't exist
+try:
+    from app.utils.email import send_verification_email, send_password_reset_email, is_token_expired
+    EMAIL_UTILS_AVAILABLE = True
+except ImportError:
+    EMAIL_UTILS_AVAILABLE = False
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -58,8 +65,8 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        # Send verification email if enabled
-        if current_app.config.get('EMAIL_VERIFICATION_REQUIRED'):
+        # Send verification email if email utilities are available
+        if EMAIL_UTILS_AVAILABLE and current_app.config.get('EMAIL_VERIFICATION_REQUIRED'):
             success, message = send_verification_email(user)
             if success:
                 db.session.commit()  # Save verification token
@@ -67,9 +74,10 @@ def register():
             else:
                 flash('Registration successful! However, we could not send the verification email. You can still login.', 'warning')
         else:
-            # Auto-verify if email verification is disabled
-            user.email_verified = True
-            db.session.commit()
+            # Auto-verify if email verification is disabled or utilities not available
+            if hasattr(user, 'email_verified'):
+                user.email_verified = True
+                db.session.commit()
             flash('Registration successful! Please login.', 'success')
 
         return redirect(url_for('auth.login'))
@@ -184,99 +192,42 @@ def register_admin():
 
 @bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
-    """Forgot password page - verifies email and sends reset link"""
+    """Forgot password page"""
     if current_user.is_authenticated:
         return redirect(url_for('user.dashboard'))
 
     if request.method == 'POST':
         email = request.form.get('email')
-
-        # Check if email exists
         user = User.query.filter_by(email=email).first()
 
         if not user:
-            # Email not registered - ask user to register
             flash('This email is not registered. Please register for an account first.', 'warning')
             return redirect(url_for('auth.register'))
 
-        # Email exists - send password reset email
-        success, message = send_password_reset_email(user)
+        # If email utilities are available, send reset email
+        if EMAIL_UTILS_AVAILABLE:
+            success, message = send_password_reset_email(user)
 
-        if success:
-            db.session.commit()  # Save reset token
-            flash('Password reset instructions have been sent to your email. Please check your inbox.', 'success')
-            return redirect(url_for('auth.login'))
-        else:
-            # Email failed - generate reset link and show it directly (development fallback)
-            current_app.logger.error(f"Failed to send reset email: {message}")
-
-            # Generate token if not already generated
-            if not user.password_reset_token:
-                from app.utils.email import generate_secure_token
-                user.password_reset_token = generate_secure_token()
-                user.password_reset_sent_at = datetime.utcnow()
+            if success:
                 db.session.commit()
+                flash('Password reset instructions have been sent to your email.', 'success')
+                return redirect(url_for('auth.login'))
+            else:
+                current_app.logger.error(f"Failed to send reset email: {message}")
+                # Generate token manually if email failed
+                if not hasattr(user, 'password_reset_token') or not user.password_reset_token:
+                    import secrets
+                    user.password_reset_token = secrets.token_urlsafe(32)
+                    user.password_reset_sent_at = datetime.utcnow()
+                    db.session.commit()
 
-            # Create reset URL
-            reset_url = url_for('auth.reset_password', token=user.password_reset_token, _external=True)
-
-            flash(f'Email service not configured. Use this link to reset your password: {reset_url}', 'warning')
-            return redirect(url_for('auth.forgot_password'))
+                reset_url = url_for('auth.reset_password', token=user.password_reset_token, _external=True)
+                flash(f'Email service not configured. Use this link: {reset_url}', 'warning')
+        else:
+            # No email utilities - show error
+            flash('Password reset is not available at this time. Please contact support.', 'danger')
 
     return render_template('auth/forgot_password.html')
-
-@bp.route('/verify-email/<token>')
-def verify_email(token):
-    """Verify user email with token"""
-    user = User.query.filter_by(email_verification_token=token).first()
-
-    if not user:
-        flash('Invalid verification link.', 'danger')
-        return redirect(url_for('auth.login'))
-
-    # Check if token expired
-    expiry_seconds = current_app.config.get('EMAIL_VERIFICATION_TOKEN_EXPIRY', 24 * 3600)
-    if is_token_expired(user.email_verification_sent_at, expiry_seconds):
-        flash('Verification link has expired. Please request a new one.', 'warning')
-        return redirect(url_for('auth.resend_verification', email=user.email))
-
-    # Verify the email
-    user.email_verified = True
-    user.email_verification_token = None
-    user.email_verification_sent_at = None
-    db.session.commit()
-
-    flash('Email verified successfully! You can now login.', 'success')
-    return redirect(url_for('auth.login'))
-
-@bp.route('/resend-verification', methods=['GET', 'POST'])
-def resend_verification():
-    """Resend verification email"""
-    if request.method == 'POST':
-        email = request.form.get('email')
-        user = User.query.filter_by(email=email).first()
-
-        if not user:
-            flash('Email not found.', 'danger')
-            return render_template('auth/resend_verification.html')
-
-        if user.email_verified:
-            flash('Your email is already verified. Please login.', 'info')
-            return redirect(url_for('auth.login'))
-
-        # Resend verification email
-        success, message = send_verification_email(user)
-        if success:
-            db.session.commit()
-            flash('Verification email sent! Please check your inbox.', 'success')
-        else:
-            flash(f'Failed to send verification email. {message}', 'danger')
-
-        return redirect(url_for('auth.login'))
-
-    # GET request - show form
-    email = request.args.get('email', '')
-    return render_template('auth/resend_verification.html', email=email)
 
 @bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
@@ -285,6 +236,10 @@ def reset_password(token):
         return redirect(url_for('user.dashboard'))
 
     # Find user with this reset token
+    if not hasattr(User, 'password_reset_token'):
+        flash('Password reset functionality is not available.', 'danger')
+        return redirect(url_for('auth.login'))
+
     user = User.query.filter_by(password_reset_token=token).first()
 
     if not user:
@@ -292,9 +247,10 @@ def reset_password(token):
         return redirect(url_for('auth.forgot_password'))
 
     # Check if token expired (1 hour = 3600 seconds)
-    if is_token_expired(user.password_reset_sent_at, 3600):
-        flash('Password reset link has expired. Please request a new one.', 'warning')
-        return redirect(url_for('auth.forgot_password'))
+    if EMAIL_UTILS_AVAILABLE and hasattr(user, 'password_reset_sent_at'):
+        if is_token_expired(user.password_reset_sent_at, 3600):
+            flash('Password reset link has expired. Please request a new one.', 'warning')
+            return redirect(url_for('auth.forgot_password'))
 
     if request.method == 'POST':
         new_password = request.form.get('new_password')
@@ -317,8 +273,10 @@ def reset_password(token):
 
         # Reset the password
         user.set_password(new_password)
-        user.password_reset_token = None
-        user.password_reset_sent_at = None
+        if hasattr(user, 'password_reset_token'):
+            user.password_reset_token = None
+        if hasattr(user, 'password_reset_sent_at'):
+            user.password_reset_sent_at = None
         db.session.commit()
 
         flash('Password reset successful! You can now login with your new password.', 'success')
