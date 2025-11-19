@@ -8,8 +8,6 @@ from app import db
 from app.models import User
 from app.utils.helpers import validate_password
 from datetime import datetime
-from app.utils.email import send_verification_email, send_password_reset_email, is_token_expired
-
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
