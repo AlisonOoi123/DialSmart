@@ -41,21 +41,28 @@
 
         // Check auth status on page load (handles forward button after logout)
         window.addEventListener('load', function() {
-            // Verify session is still valid by making a lightweight API call
-            fetch('{{ url_for("api.get_stats") }}', {
+            // Verify session is still valid by making a protected API call
+            // This endpoint returns 401 if user is not authenticated
+            fetch('{{ url_for("api.check_auth") }}', {
                 method: 'GET',
                 credentials: 'same-origin'
             })
             .then(response => {
                 if (response.status === 401 || response.status === 403) {
-                    // Session expired or user logged out - redirect to login
+                    // Session expired or user logged out - redirect to login immediately
+                    console.log('Session invalid (status ' + response.status + ') - redirecting to login');
                     sessionStorage.clear();
-                    window.location.href = '{{ url_for("auth.login") }}';
+                    localStorage.clear();
+                    window.location.replace('{{ url_for("auth.login") }}');
                 }
+                // If status is 200, user is authenticated - do nothing, page loads normally
             })
             .catch(error => {
-                // Network error - allow page to load
-                console.log('Auth check failed:', error);
+                // Network error - redirect to login to be safe
+                console.log('Auth check network error:', error);
+                sessionStorage.clear();
+                localStorage.clear();
+                window.location.replace('{{ url_for("auth.login") }}');
             });
         });
     </script>

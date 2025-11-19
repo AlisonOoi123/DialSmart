@@ -10,6 +10,26 @@ import uuid
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
+# Authentication check endpoint
+@bp.route('/auth/check', methods=['GET'])
+def check_auth():
+    """
+    Check if user is authenticated (for session verification after logout).
+    Returns 200 if authenticated, 401 if not.
+    This endpoint is CRITICAL for preventing forward button access after logout.
+
+    Note: We don't use @login_required because we want to return 401 explicitly
+    instead of redirecting, which is better for AJAX calls.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({'authenticated': False, 'error': 'Not authenticated'}), 401
+
+    return jsonify({
+        'authenticated': True,
+        'user_id': current_user.id,
+        'is_admin': current_user.is_admin
+    }), 200
+
 # Chatbot endpoints
 @bp.route('/chat', methods=['POST'])
 def chat():
