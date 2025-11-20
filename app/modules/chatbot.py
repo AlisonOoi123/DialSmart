@@ -365,13 +365,24 @@ class ChatbotEngine:
         # Extract brand preferences from current message
         wanted, unwanted = self._extract_brands_with_preferences(message)
 
+        message_words = message.lower().strip().split()
+        all_brand_keywords = ['apple', 'iphone', 'samsung', 'galaxy', 'xiaomi', 'vivo', 'oppo',
+                            'huawei', 'honor', 'realme', 'redmi', 'poco', 'google', 'pixel']
+        is_brand_only = len(message_words) <= 3 and all(word in all_brand_keywords for word in message_words)
+
         # Update session context with brand preferences
         if wanted:
-            # Add to wanted brands if not already there
+            if is_brand_only:
+                # REPLACE: Clear previous brands
+                self.session_context[context_key]['wanted_brands'] = wanted.copy()
+            else:
+                # ADD: Merge with previous brands
+                for brand in wanted:
+                    if brand not in self.session_context[context_key]['wanted_brands']:
+                        self.session_context[context_key]['wanted_brands'].append(brand)
+
+            # Remove from unwanted
             for brand in wanted:
-                if brand not in self.session_context[context_key]['wanted_brands']:
-                    self.session_context[context_key]['wanted_brands'].append(brand)
-                # Remove from unwanted if it was there
                 if brand in self.session_context[context_key]['unwanted_brands']:
                     self.session_context[context_key]['unwanted_brands'].remove(brand)
 
@@ -911,11 +922,19 @@ class ChatbotEngine:
             
             usage = self._detect_usage_type(message)
             
+            # FIX 6: Merge current brands with session context brands
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
-            brands = wanted_brands if wanted_brands else None
             
-            if not brands and 'last_brands' in context:
-                brands = context['last_brands']  # ← Use previous brands!
+            # Get session context brands
+            session_wanted = context.get('wanted_brands', [])
+            session_unwanted = context.get('unwanted_brands', [])
+            
+            # Merge: Combine current message brands with session brands
+            all_wanted_brands = list(set(wanted_brands + session_wanted))
+            all_unwanted_brands = list(set(unwanted_brands + session_unwanted))
+            
+            # Use merged brands
+            brands = all_wanted_brands if all_wanted_brands else None
 
             # PRIORITY 1: User category (student, senior, professional) - handle first
             if user_category:
@@ -1257,6 +1276,7 @@ class ChatbotEngine:
                         'metadata': {'phones': phone_list, 'features': features, 'budget': budget}
                     }
 
+            criteria = self._extract_criteria(message)
             # PRIORITY 5: Budget/criteria only (e.g., "phone under RM2000")
             if criteria or budget:
                 recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=5)
