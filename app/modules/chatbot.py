@@ -192,7 +192,11 @@ class ChatbotEngine:
         elif intent == 'budget_query' or intent == 'timeline':
             # Extract budget from message
             budget = self._extract_budget(message)
-            brand_names = self._extract_multiple_brands(message)
+
+            # Use smart brand extraction with positive/negative preferences
+            wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
+            brand_names = wanted_brands  # Use wanted brands for filtering
+
             release_date_criteria = self._extract_release_date_criteria(message)
 
             if budget:
@@ -394,8 +398,10 @@ class ChatbotEngine:
                 budget = context['last_budget']  # ← Use previous budget!
             
             usage = self._detect_usage_type(message)
-            
-            brands = self._extract_multiple_brands(message)
+
+            # Use smart brand extraction with preferences
+            wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
+            brands = wanted_brands if wanted_brands else None
             if not brands and 'last_brands' in context:
                 brands = context['last_brands']  # ← Use previous brands!
 
@@ -781,7 +787,11 @@ class ChatbotEngine:
             usage = self._detect_usage_type(message)
             if usage:
                 budget = self._extract_budget(message)
-                brand_names = self._extract_multiple_brands(message)
+
+                # Use smart brand extraction
+                wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
+                brand_names = wanted_brands
+
                 phones = self.ai_engine.get_phones_by_usage(usage, budget, brand_names, top_n=5)
 
                 if phones:
@@ -843,8 +853,9 @@ class ChatbotEngine:
             }
 
         elif intent == 'brand_query':
-            # Extract all mentioned brands
-            brand_names = self._extract_multiple_brands(message)
+            # Extract all mentioned brands with preferences
+            wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
+            brand_names = wanted_brands  # Use wanted brands
 
             if brand_names:
                 # Check if budget is mentioned
@@ -1432,6 +1443,91 @@ Just ask me anything like:
                     break
 
         return found_brands
+
+    def _extract_brands_with_preferences(self, message):
+        """
+        Extract brand preferences from message, handling both positive and negative preferences
+        Returns: (wanted_brands, unwanted_brands)
+
+        Examples:
+        - "i want samsung" → (['Samsung'], [])
+        - "i don't like oppo i want samsung" → (['Samsung'], ['Oppo'])
+        - "not oppo, show me xiaomi" → (['Xiaomi'], ['Oppo'])
+        - "anything but apple" → ([], ['Apple'])
+        """
+        message_lower = message.lower()
+
+        # Negative indicators
+        negative_patterns = [
+            r"don't like\s+(\w+)",
+            r"dont like\s+(\w+)",
+            r"not\s+(\w+)",
+            r"no\s+(\w+)",
+            r"hate\s+(\w+)",
+            r"dislike\s+(\w+)",
+            r"avoid\s+(\w+)",
+            r"except\s+(\w+)",
+            r"but\s+(\w+)",
+            r"anything but\s+(\w+)",
+        ]
+
+        # Positive indicators
+        positive_patterns = [
+            r"i want\s+(\w+)",
+            r"want\s+(\w+)",
+            r"show me\s+(\w+)",
+            r"give me\s+(\w+)",
+            r"find\s+(\w+)",
+            r"looking for\s+(\w+)",
+            r"prefer\s+(\w+)",
+            r"like\s+(\w+)",
+        ]
+
+        brand_keywords_map = {
+            'apple': 'Apple', 'iphone': 'Apple',
+            'samsung': 'Samsung', 'galaxy': 'Samsung',
+            'xiaomi': 'Xiaomi',
+            'vivo': 'Vivo',
+            'oppo': 'Oppo',
+            'huawei': 'Huawei',
+            'honor': 'Honor',
+            'realme': 'Realme',
+            'redmi': 'Redmi',
+            'poco': 'Poco',
+            'google': 'Google', 'pixel': 'Google',
+            'asus': 'Asus', 'rog': 'Asus',
+            'infinix': 'Infinix',
+        }
+
+        wanted_brands = []
+        unwanted_brands = []
+
+        # Extract brands from negative context
+        for pattern in negative_patterns:
+            matches = re.finditer(pattern, message_lower)
+            for match in matches:
+                brand_keyword = match.group(1).lower()
+                if brand_keyword in brand_keywords_map:
+                    brand_name = brand_keywords_map[brand_keyword]
+                    if brand_name not in unwanted_brands:
+                        unwanted_brands.append(brand_name)
+
+        # Extract brands from positive context
+        for pattern in positive_patterns:
+            matches = re.finditer(pattern, message_lower)
+            for match in matches:
+                brand_keyword = match.group(1).lower()
+                if brand_keyword in brand_keywords_map:
+                    brand_name = brand_keywords_map[brand_keyword]
+                    if brand_name not in wanted_brands and brand_name not in unwanted_brands:
+                        wanted_brands.append(brand_name)
+
+        # If no explicit positive/negative context found, fall back to simple brand detection
+        if not wanted_brands and not unwanted_brands:
+            all_brands = self._extract_multiple_brands(message)
+            wanted_brands = all_brands
+
+        return (wanted_brands, unwanted_brands)
 
     def _save_chat_history(self, user_id, message, response, intent, session_id, metadata):
         """
