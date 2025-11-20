@@ -125,9 +125,7 @@ def chat():
             return jsonify({'error': 'Message is required'}), 400
 
         # Get user_id (None for guests)
-        user_id = current_user.id if current_user.is_authenticated else None
-
-        
+        user_id = current_user.id if current_user.is_authenticated else None    
         response = chatbot_engine.process_message(user_id, message, session_id)
       
         return jsonify({
