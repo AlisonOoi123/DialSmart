@@ -14,9 +14,11 @@ class ChatbotEngine:
 
     def __init__(self):
         self.ai_engine = AIRecommendationEngine()
+        # Session context for conversation memory
+        self.session_context = {}
         self.intents = {
             'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
-            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm'],
+            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm', 'within', 'under', 'below'],
             'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'show me', 'best'],
             'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
             'specification': ['specs', 'specification'],
@@ -37,11 +39,27 @@ class ChatbotEngine:
         Returns:
             Dictionary with response and metadata
         """
+        # Use user_id as session key if session_id not provided
+        context_key = session_id or f"user_{user_id}"
+
+        # Initialize context for this session if not exists
+        if context_key not in self.session_context:
+            self.session_context[context_key] = {}
+
         # Detect intent
         intent = self._detect_intent(message.lower())
 
-        # Generate response based on intent
-        response_data = self._generate_response(user_id, message, intent)
+        # Generate response based on intent, passing session context
+        response_data = self._generate_response(user_id, message, intent, context_key)
+
+        # Update session context with any extracted information
+        budget = self._extract_budget(message)
+        if budget:
+            self.session_context[context_key]['last_budget'] = budget
+
+        brands = self._extract_multiple_brands(message)
+        if brands:
+            self.session_context[context_key]['last_brands'] = brands
 
         # Save to chat history
         self._save_chat_history(
@@ -67,8 +85,11 @@ class ChatbotEngine:
 
         return 'general'
 
-    def _generate_response(self, user_id, message, intent):
+    def _generate_response(self, user_id, message, intent, context_key):
         """Generate appropriate response based on intent"""
+
+        # Get session context
+        context = self.session_context.get(context_key, {})
 
         if intent == 'greeting':
             return {
@@ -152,8 +173,20 @@ class ChatbotEngine:
             # Detect usage type
             usage = self._detect_usage_type(message)
             if usage:
+                # Try to get budget from current message first
                 budget = self._extract_budget(message)
+
+                # If no budget in current message, check context from previous message
+                if not budget and 'last_budget' in context:
+                    budget = context['last_budget']
+
+                # Try to get brands from current message first
                 brand_names = self._extract_multiple_brands(message)
+
+                # If no brand in current message, check context from previous message
+                if not brand_names and 'last_brands' in context:
+                    brand_names = context['last_brands']
+
                 phones = self.ai_engine.get_phones_by_usage(usage, budget, brand_names, top_n=5)
 
                 if phones:
@@ -288,28 +321,43 @@ Just ask me anything like:
             }
 
     def _extract_budget(self, message):
-        """Extract budget range from message"""
-        # Look for patterns like "RM1000", "1000", "under 2000", "between 1000 and 2000"
+        """
+        Extract budget range from message
+        Handles: RM2000, rm2000, RM 2000, rm 2000, 2000, under/within/below with all combinations
+        """
+        message_lower = message.lower()
+
+        # Enhanced patterns to handle all currency combinations (case-insensitive)
+        # Pattern priority: most specific to least specific
         patterns = [
-            r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)',  # RM1000 to RM2000
-            r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000
-            r'under\s*rm?\s*(\d+)',  # under RM2000
-            r'below\s*rm?\s*(\d+)',  # below 2000
-            r'rm\s*(\d+)',  # RM2000
+            # Range patterns with RM on both sides
+            (r'(?:rm|RM)\s*(\d+)\s*(?:to|-|and)\s*(?:rm|RM)\s*(\d+)', 'range'),  # RM1000 to RM2000 or rm 1000 to rm 2000
+            # Range patterns without RM
+            (r'(\d+)\s*(?:to|-|and)\s*(\d+)', 'range'),  # 1000 to 2000
+
+            # Within/under/below patterns WITH RM (with or without space)
+            (r'(?:within|under|below)\s+(?:rm|RM)\s*(\d+)', 'max'),  # within RM2000 or within rm 2000
+            # Within/under/below patterns WITHOUT RM
+            (r'(?:within|under|below)\s+(\d+)', 'max'),  # within 2000
+
+            # Single RM value (with or without space)
+            (r'(?:rm|RM)\s*(\d+)', 'single'),  # RM2000 or rm 2000
         ]
 
-        for pattern in patterns:
-            match = re.search(pattern, message.lower())
+        for pattern, pattern_type in patterns:
+            match = re.search(pattern, message_lower)
             if match:
-                if 'under' in message.lower() or 'below' in message.lower():
+                if pattern_type == 'range':
+                    # Two values: min and max
+                    return (int(match.group(1)), int(match.group(2)))
+                elif pattern_type == 'max':
+                    # Single value with within/under/below keyword
                     max_budget = int(match.group(1))
                     return (500, max_budget)
-                elif len(match.groups()) == 2:
-                    return (int(match.group(1)), int(match.group(2)))
-                else:
-                    # Single value mentioned
+                elif pattern_type == 'single':
+                    # Single RM value - check if it's part of within/under/below context
+                    # If keywords present, treat as max, otherwise also treat as max
                     value = int(match.group(1))
-                    # Assume it's max budget
                     return (500, value)
 
         return None
