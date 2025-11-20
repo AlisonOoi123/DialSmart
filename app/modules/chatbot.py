@@ -7,7 +7,7 @@ from app.models import ChatHistory, Phone, Brand, PhoneSpecification
 from app.modules.ai_engine import AIRecommendationEngine
 import re
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class ChatbotEngine:
     """Conversational AI chatbot for DialSmart"""
@@ -23,7 +23,8 @@ class ChatbotEngine:
             'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor', 'cpu'],
             'brand_query': ['brand', 'samsung', 'galaxy', 'apple', 'iphone', 'xiaomi', 'huawei', 'honor', 'oppo', 'vivo', 'realme', 'google', 'pixel', 'asus', 'rog', 'infinix', 'poco', 'redmi'],
             'help': ['help', 'how', 'what can you do'],
-            'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'photographer', 'gamer']
+            'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'photographer', 'gamer'],
+            'timeline': ['latest', 'newest', 'new', 'recent', 'released', 'from 2024', 'from 2023', 'year 2024', 'year 2023', 'last year', 'last month', 'this year', 'cheapest new']
         }
 
         # Feature keywords for enhanced understanding
@@ -152,6 +153,19 @@ class ChatbotEngine:
             if len(brands_mentioned) > 1 or (brands_mentioned and ' and ' in message_lower and 'phone' in message_lower):
                 skip_phone_model = True
 
+            # CRITICAL FIX: Skip if message is just "brand phone" or "brand phones" (e.g., "vivo phone", "xiaomi phones")
+            # This should be handled by brand_query intent, not as specific phone model query
+            if brands_mentioned and len(brands_mentioned) == 1:
+                # Remove brand name and common words to see what's left
+                test_message = message_lower
+                for brand in brands_mentioned:
+                    test_message = test_message.replace(brand.lower(), '')
+                # Remove common words
+                test_message = test_message.replace('phone', '').replace('phones', '').replace('smartphone', '').replace('smartphones', '').strip()
+                # If nothing meaningful left (or just articles/prepositions), it's a generic brand query
+                if len(test_message) < 3 or test_message in ['a', 'an', 'the', 'any', 'all', 'some']:
+                    skip_phone_model = True
+
         # Try to extract phone model if NOT asking for recommendations
         if not skip_phone_model:
             phone_model = self._extract_phone_model(message)
@@ -175,10 +189,12 @@ class ChatbotEngine:
             }
 
 
-        elif intent == 'budget_query':
+        elif intent == 'budget_query' or intent == 'timeline':
             # Extract budget from message
             budget = self._extract_budget(message)
             brand_names = self._extract_multiple_brands(message)
+            release_date_criteria = self._extract_release_date_criteria(message)
+
             if budget:
                 min_budget, max_budget = budget
                  # If brands mentioned, filter by brand
@@ -191,6 +207,12 @@ class ChatbotEngine:
                         if brand:
                             query = Phone.query.filter_by(brand_id=brand.id, is_active=True)
                             query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+                            # Apply release date filter if specified
+                            if release_date_criteria:
+                                start_date, end_date = release_date_criteria
+                                query = query.filter(Phone.release_date >= start_date, Phone.release_date <= end_date)
+
                             phones = query.limit(5).all()
 
                             if phones:
@@ -199,7 +221,18 @@ class ChatbotEngine:
 
                     if all_phones:
                         brands_text = ", ".join(found_brands[:-1]) + f" and {found_brands[-1]}" if len(found_brands) > 1 else found_brands[0]
-                        response = f"Here are {brands_text} phones within RM{min_budget:,.0f} - RM{max_budget:,.0f}:\n\n"
+
+                        # Build timeline text
+                        timeline_text = ""
+                        if release_date_criteria:
+                            start_date, end_date = release_date_criteria
+                            from datetime import datetime
+                            if start_date.year == end_date.year:
+                                timeline_text = f" from {start_date.year}"
+                            else:
+                                timeline_text = f" released between {start_date.strftime('%b %Y')} and {end_date.strftime('%b %Y')}"
+
+                        response = f"Here are {brands_text} phones within RM{min_budget:,.0f} - RM{max_budget:,.0f}{timeline_text}:\n\n"
 
                         phone_list = []
                         for phone, brand_name in all_phones:
@@ -208,13 +241,15 @@ class ChatbotEngine:
                                 'id': phone.id,
                                 'name': phone.model_name,
                                 'brand': brand_name,
-                                'price': phone.price
+                                'price': phone.price,
+                                'image': phone.main_image,
+                                'url': f'/phone/{phone.id}'
                             })
 
                         return {
                             'response': response,
                             'type': 'recommendation',
-                            'metadata': {'phones': phone_list, 'brands': found_brands, 'budget': budget}
+                            'metadata': {'phones': phone_list, 'brands': found_brands, 'budget': budget, 'release_date': release_date_criteria}
                         }
                     else:
                         brands_text = ", ".join(brand_names[:-1]) + f" and {brand_names[-1]}" if len(brand_names) > 1 else brand_names[0]
@@ -223,13 +258,35 @@ class ChatbotEngine:
                             'type': 'text'
                         }
 
-                phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), top_n=3)
+                # Build query with budget and optional timeline filter
+                query = Phone.query.join(Brand).filter(
+                    Phone.is_active == True,
+                    Phone.price >= min_budget,
+                    Phone.price <= max_budget
+                )
+
+                # Apply release date filter if specified
+                if release_date_criteria:
+                    start_date, end_date = release_date_criteria
+                    query = query.filter(Phone.release_date >= start_date, Phone.release_date <= end_date)
+
+                # Order by price and limit results
+                phones = query.order_by(Phone.price).limit(5).all()
 
                 if phones:
-                    response = f"Here are the top phones within RM{min_budget:,.0f} - RM{max_budget:,.0f}:\n\n"
+                    # Build timeline text
+                    timeline_text = ""
+                    if release_date_criteria:
+                        start_date, end_date = release_date_criteria
+                        from datetime import datetime
+                        if start_date.year == end_date.year:
+                            timeline_text = f" from {start_date.year}"
+                        else:
+                            timeline_text = f" released between {start_date.strftime('%b %Y')} and {end_date.strftime('%b %Y')}"
+
+                    response = f"Here are the top phones within RM{min_budget:,.0f} - RM{max_budget:,.0f}{timeline_text}:\n\n"
                     phone_list = []
-                    for item in phones:
-                        phone = item['phone']
+                    for phone in phones:
                         response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
                         phone_list.append({
                             'id': phone.id,
@@ -243,13 +300,83 @@ class ChatbotEngine:
                     return {
                         'response': response,
                         'type': 'recommendation',
-                        'metadata': {'phones': phone_list, 'budget': budget}
+                        'metadata': {'phones': phone_list, 'budget': budget, 'release_date': release_date_criteria}
                     }
                 else:
                     return {
                         'response': f"I couldn't find phones in that exact range. Would you like to adjust your budget?",
                         'type': 'text'
                     }
+
+            # Handle timeline-only queries (no budget specified, but has timeline)
+            elif release_date_criteria:
+                start_date, end_date = release_date_criteria
+
+                # Build query with timeline filter
+                query = Phone.query.join(Brand).filter(
+                    Phone.is_active == True,
+                    Phone.release_date >= start_date,
+                    Phone.release_date <= end_date
+                )
+
+                # If brand specified, filter by brand
+                if brand_names:
+                    brand_ids = []
+                    for brand_name in brand_names:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            brand_ids.append(brand.id)
+                    if brand_ids:
+                        query = query.filter(Phone.brand_id.in_(brand_ids))
+
+                # Special handling for "cheapest new" queries
+                if 'cheapest' in message.lower() or 'cheap' in message.lower():
+                    phones = query.order_by(Phone.price).limit(5).all()
+                    cheapest_text = "cheapest " if 'cheapest' in message.lower() else ""
+                else:
+                    # Order by release date (newest first)
+                    phones = query.order_by(Phone.release_date.desc()).limit(5).all()
+                    cheapest_text = ""
+
+                if phones:
+                    # Build timeline description
+                    from datetime import datetime
+                    if start_date.year == end_date.year:
+                        timeline_desc = f"from {start_date.year}"
+                    else:
+                        timeline_desc = f"released between {start_date.strftime('%b %Y')} and {end_date.strftime('%b %Y')}"
+
+                    brand_text = ""
+                    if brand_names:
+                        brand_text = f"{', '.join(brand_names)} "
+
+                    response = f"Here are the {cheapest_text}{brand_text}phones {timeline_desc}:\n\n"
+                    phone_list = []
+                    for phone in phones:
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        if phone.release_date:
+                            response += f"   📅 Released: {phone.release_date.strftime('%b %Y')}\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'url': f'/phone/{phone.id}',
+                            'release_date': phone.release_date.isoformat() if phone.release_date else None
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'release_date': release_date_criteria}
+                    }
+                else:
+                    return {
+                        'response': f"I couldn't find phones matching your criteria. Would you like to try a different time period?",
+                        'type': 'text'
+                    }
+
             else:
                 return {
                     'response': "What's your budget range? For example, 'I'm looking for phones under RM2000'",
@@ -1125,6 +1252,63 @@ Just ask me anything like:
             return True
 
         return False
+
+    def _extract_release_date_criteria(self, message):
+        """
+        Extract release date criteria from message
+        Returns a tuple (start_date, end_date) or None
+
+        Handles:
+        - Specific years: "2024", "2023"
+        - Relative periods: "last year", "last 5 months", "last 6 months", "this year"
+        - Latest/newest: shows most recent phones (last 12 months)
+        """
+        from datetime import datetime, timedelta
+        from dateutil.relativedelta import relativedelta
+
+        message_lower = message.lower()
+        today = datetime.now().date()
+
+        # Check for "latest" or "newest" - show phones from last 12 months
+        if any(word in message_lower for word in ['latest', 'newest', 'most recent']):
+            start_date = today - timedelta(days=365)
+            return (start_date, today)
+
+        # Check for specific year mentions (e.g., "2024", "year 2024", "from 2024", "released in 2024")
+        year_match = re.search(r'(?:year|from|in|released in)?\s*(\d{4})', message_lower)
+        if year_match:
+            year = int(year_match.group(1))
+            # Validate year is reasonable (between 2020 and current year + 1)
+            if 2020 <= year <= today.year + 1:
+                start_date = datetime(year, 1, 1).date()
+                end_date = datetime(year, 12, 31).date()
+                return (start_date, end_date)
+
+        # Check for "this year"
+        if 'this year' in message_lower:
+            start_date = datetime(today.year, 1, 1).date()
+            return (start_date, today)
+
+        # Check for "last year"
+        if 'last year' in message_lower:
+            last_year = today.year - 1
+            start_date = datetime(last_year, 1, 1).date()
+            end_date = datetime(last_year, 12, 31).date()
+            return (start_date, end_date)
+
+        # Check for "last X months" (e.g., "last 5 months", "last 6 months")
+        months_match = re.search(r'last\s+(\d+)\s+months?', message_lower)
+        if months_match:
+            months = int(months_match.group(1))
+            start_date = today - timedelta(days=months * 30)  # Approximate
+            return (start_date, today)
+
+        # Check for "recent" - show phones from last 6 months
+        if 'recent' in message_lower:
+            start_date = today - timedelta(days=180)
+            return (start_date, today)
+
+        return None
 
     def _extract_criteria(self, message):
         """Extract phone criteria from message"""
