@@ -2518,8 +2518,14 @@ Just ask me anything like:
         negative_patterns = [
             r"don't like\s+(\w+)",
             r"dont like\s+(\w+)",
+            r"don't like\s+(\w+)",
+            r"dont want\s+(\w+)",
+            r"don't want\s+(\w+)",
+            r"dont\s+(\w+)",
+            r"don't\s+(\w+)",
             r"not\s+(\w+)",
             r"no\s+(\w+)",
+            r"not prefer\s+(\w+)",
             r"hate\s+(\w+)",
             r"dislike\s+(\w+)",
             r"avoid\s+(\w+)",
@@ -2531,13 +2537,20 @@ Just ask me anything like:
         # Positive indicators
         positive_patterns = [
             r"i want\s+(\w+)",
+            r"i like\s+(\w+)",
+            r"i love\s+(\w+)",
+            r"i prefer\s+(\w+)",
+            r"i looking for\s+(\w+)",
+            r"i would like\s+(\w+)",
             r"want\s+(\w+)",
             r"show me\s+(\w+)",
             r"give me\s+(\w+)",
             r"find\s+(\w+)",
+            r"find me\s+(\w+)",
             r"looking for\s+(\w+)",
             r"prefer\s+(\w+)",
             r"like\s+(\w+)",
+            r"love\s+(\w+)",
         ]
 
         brand_keywords_map = {
