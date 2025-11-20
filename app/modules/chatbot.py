@@ -363,7 +363,7 @@ class ChatbotEngine:
             }
             
         # Extract brand preferences from current message
-        wanted, unwanted = self._extract_brand_preferences(message)
+        wanted, unwanted = self._extract_brands_with_preferences(message)
 
         # Update session context with brand preferences
         if wanted:
@@ -688,7 +688,16 @@ class ChatbotEngine:
             # Extract budget from message
             budget = self._extract_budget(message)
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
-            brand_names = wanted_brands  # Use wanted brands for filtering
+            context = self.session_context.get(context_key, {})
+            session_wanted = context.get('wanted_brands', [])
+            session_unwanted = context.get('unwanted_brands', [])
+
+            # Combine current message brands with session brands
+            all_wanted_brands = list(set(wanted_brands + session_wanted))
+            all_unwanted_brands = list(set(unwanted_brands + session_unwanted))
+
+            brand_names = all_wanted_brands
+            
             release_date_criteria = self._extract_release_date_criteria(message)
             if budget:
                 min_budget, max_budget = budget
@@ -755,6 +764,16 @@ class ChatbotEngine:
                     Phone.price >= min_budget,
                     Phone.price <= max_budget
                 )
+
+                # Exclude unwanted brands
+                if all_unwanted_brands:
+                    unwanted_brand_ids = []
+                    for brand_name in all_unwanted_brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            unwanted_brand_ids.append(brand.id)
+                    if unwanted_brand_ids:
+                        query = query.filter(~Phone.brand_id.in_(unwanted_brand_ids))
 
                 # Apply release date filter if specified
                 if release_date_criteria:
