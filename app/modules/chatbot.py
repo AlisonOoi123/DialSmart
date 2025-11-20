@@ -615,6 +615,9 @@ class ChatbotEngine:
             'which brand better', 'brand suggestions'
         ])
 
+        # Initialize brands_mentioned to avoid UnboundLocalError
+        brands_mentioned = None
+
         # Also skip if multiple brands are mentioned (e.g., "apple and samsung phone")
         if not skip_phone_model:
             brands_mentioned = self._extract_multiple_brands(message)
