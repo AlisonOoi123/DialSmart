@@ -15,6 +15,8 @@ import hashlib
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
+chatbot_engine = ChatbotEngine()
+
 # Authentication check endpoint
 @bp.route('/auth/check', methods=['GET'])
 def check_auth():
@@ -125,10 +127,9 @@ def chat():
         # Get user_id (None for guests)
         user_id = current_user.id if current_user.is_authenticated else None
 
-        # Process with chatbot engine
-        chatbot = ChatbotEngine()
-        response = chatbot.process_message(user_id, message, session_id)
-
+        
+        response = chatbot_engine.process_message(user_id, message, session_id)
+      
         return jsonify({
             'success': True,
             'response': response['response'],
@@ -153,9 +154,8 @@ def chat_history():
     """Get chat history"""
     session_id = request.args.get('session_id')
     limit = request.args.get('limit', 50, type=int)
-
-    chatbot = ChatbotEngine()
-    history = chatbot.get_chat_history(current_user.id, session_id, limit)
+    
+    history = chatbot_engine.get_chat_history(current_user.id, session_id, limit)
 
     chat_list = [{
         'id': chat.id,
