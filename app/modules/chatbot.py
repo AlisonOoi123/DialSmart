@@ -98,6 +98,14 @@ class ChatbotEngine:
                 'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
             }
 
+        # Check if the query is phone-related (skip for greetings and help)
+        if intent not in ['greeting', 'help'] and not self._is_phone_related(message):
+            return {
+                'response': "I'm DialSmart AI Assistant, and I specialize in helping you find the perfect smartphone! 📱\n\nI can assist you with:\n• Phone recommendations based on your needs\n• Budget-friendly options\n• Brand comparisons\n• Phone specifications\n• Phones for gaming, photography, business, etc.\n\nWhat kind of phone are you looking for today?",
+                'type': 'text',
+                'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
+            }
+
         elif intent == 'budget_query':
             # Extract budget from message
             budget = self._extract_budget(message)
@@ -406,59 +414,44 @@ Just ask me anything like:
         """
         message_lower = message.lower()
 
-        # Enhanced patterns to handle all currency combinations (case-insensitive)
-        # Pattern priority: most specific to least specific
+        # Look for patterns like "RM1000", "1000", "under 2000", "within 3000", "near 3000", "between 1000 and 2000", "above 3000"
         patterns = [
-            # Range patterns with RM on both sides
-            (r'(?:rm|RM)\s*(\d+)\s*(?:to|-|and)\s*(?:rm|RM)\s*(\d+)', 'range'),  # RM1000 to RM2000 or rm 1000 to rm 2000
-            # Near with range pattern (e.g., "near 2000-3000" or "near 2000 to 3000")
-            (r'near\s*(?:rm\s*)?(\d+)\s*(?:to|-)\s*(?:rm\s*)?(\d+)', 'range'),  # near 2000-3000 or near rm2000 to rm3000
-            # Range patterns without RM
-            (r'(\d+)\s*(?:to|-|and)\s*(\d+)', 'range'),  # 1000 to 2000
-
-            # Above patterns WITH RM (with or without space)
-            (r'(?:above|over|more than)\s+(?:rm|RM)\s*(\d+)', 'min'),  # above RM3000 or above rm 3000
-            # Above patterns WITHOUT RM
-            (r'(?:above|over|more than)\s+(\d+)', 'min'),  # above 3000
-
-            # Within/under/below/max/maximum patterns WITH RM (with or without space)
-            (r'(?:within|under|below|max|maximum)\s+(?:rm|RM)\s*(\d+)', 'max'),  # within RM2000 or within rm 2000
-            # Within/under/below/max/maximum patterns WITHOUT RM
-            (r'(?:within|under|below|max|maximum)\s+(\d+)', 'max'),  # within 2000
-
-            # Near/around single value pattern (±500 range)
-            (r'(?:near|around)\s+(?:rm\s*)?(\d+)', 'near'),  # near 2000 or near rm2000
-
-            # Single RM value (with or without space)
-            (r'(?:rm|RM)\s*(\d+)', 'single'),  # RM2000 or rm 2000
-
-            # Standalone number (3-5 digits)
-            (r'(?:^|\s)(\d{3,5})(?:\s|$)', 'single'),  # 1000, 2000, etc.
+            r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)',  # RM1000 to RM2000
+            r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000, within 2000-3000
+            r'near\s*rm?\s*(\d+)\s*(?:to|-)\s*rm?\s*(\d+)',  # near 2000-3000 or near 2000 to 3000
+            r'(?:under|below|within|max|maximum|near|around)\s+(?:rm\s+)?(\d+)',
+            r'(?:above|over|more than)\s+(?:rm\s+)?(\d+)',  # above 3000, over rm5000, more than 4000
+            r'rm\s*(\d+)',  # RM2000
+            r'(?:^|\s)(\d{3,5})(?:\s|$)',  # standalone number 1000-99999
         ]
 
-        for pattern, pattern_type in patterns:
+        for pattern in patterns:
             match = re.search(pattern, message_lower)
             if match:
-                if pattern_type == 'range':
-                    # Two values: min and max
-                    min_val = int(match.group(1))
-                    max_val = int(match.group(2))
-                    return (min_val, max_val)
-                elif pattern_type == 'min':
-                    # Single value with above/over/more than keyword
+                # First check if we have a range (2 groups)
+                if len(match.groups()) == 2 and match.group(2):
+                    # Handle "near X-Y" or "near X to Y" pattern (range)
+                    if 'near' in message_lower:
+                        return (int(match.group(1)), int(match.group(2)))
+                    # Regular range pattern (including "within 2000-3000")
+                    else:
+                        return (int(match.group(1)), int(match.group(2)))
+                # Handle "above/over/more than" keywords - minimum budget
+                elif any(word in message_lower for word in ['above', 'over', 'more than']):
                     min_budget = int(match.group(1))
                     return (min_budget, 15000)  # Set reasonable upper limit
-                elif pattern_type == 'max':
-                    # Single value with within/under/below/max/maximum keyword
-                    max_budget = int(match.group(1))
-                    return (500, max_budget)
-                elif pattern_type == 'near':
-                    # Single value with near/around keyword (±500 range)
+                # Handle "near X" pattern (±500 range)
+                elif 'near' in message_lower or 'around' in message_lower:
                     center = int(match.group(1))
                     return (max(500, center - 500), center + 500)
-                elif pattern_type == 'single':
-                    # Single RM value - treat as max budget
+                # Handle single max budget keywords
+                elif any(word in message_lower for word in ['under', 'below', 'within', 'max', 'maximum']):
+                    max_budget = int(match.group(1))
+                    return (500, max_budget)
+                else:
+                    # Single value mentioned
                     value = int(match.group(1))
+                    # Assume it's max budget
                     return (500, value)
 
         return None
@@ -526,6 +519,34 @@ Just ask me anything like:
             return 'Entertainment'
 
         return None
+
+    def _is_phone_related(self, message):
+        """Check if the message is related to phones/smartphones"""
+        message_lower = message.lower()
+
+        # Phone-related keywords
+        phone_keywords = [
+            'phone', 'smartphone', 'mobile', 'device', 'handset',
+            'android', 'ios', 'cell', 'cellular', 'telephone', 'iphone',
+            'galaxy', 'xiaomi', 'huawei', 'oppo', 'vivo', 'samsung',
+            'screen', 'display', 'camera', 'battery', 'processor',
+            'ram', 'storage', '5g', 'spec', 'specification'
+        ]
+
+        # Check if any phone keyword is in the message
+        for keyword in phone_keywords:
+            if keyword in message_lower:
+                return True
+
+        # Check if any brand is mentioned (brands are phone-related)
+        if self._extract_multiple_brands(message):
+            return True
+
+        # Check if budget is mentioned (likely phone shopping)
+        if self._extract_budget(message):
+            return True
+
+        return False
 
     def _extract_brand(self, message):
         """Extract single brand name from message (for backward compatibility)"""
