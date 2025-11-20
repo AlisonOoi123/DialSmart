@@ -1236,9 +1236,49 @@ Just ask me anything like:
 
         return None
     
+    def _contains_malicious_intent(self, message):
+        """
+        Detect malicious, attack, or inappropriate queries
+        Returns True if message contains negative/attack keywords
+
+        Examples:
+        - "i want to hack xiaomi" → True (contains "hack")
+        - "steal phone" → True (contains "steal")
+        - "crack samsung" → True (contains "crack")
+        - "xiaomi phone" → False (legitimate query)
+        """
+        message_lower = message.lower()
+
+        # Malicious/attack keywords that indicate inappropriate queries
+        malicious_keywords = [
+            'hack', 'hacking', 'hacker', 'hacked',
+            'steal', 'theft', 'stolen', 'rob',
+            'crack', 'cracking', 'cracked',
+            'exploit', 'vulnerability', 'breach',
+            'attack', 'attacking',
+            'malware', 'virus', 'trojan',
+            'illegal', 'pirate', 'piracy',
+            'fraud', 'scam', 'fake',
+            'jailbreak', 'root', 'unlock bootloader',
+            'bypass security', 'remove lock'
+        ]
+
+        # Check if any malicious keyword is present
+        for keyword in malicious_keywords:
+            # Use word boundary to avoid false positives
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            if re.search(pattern, message_lower):
+                return True
+
+        return False
+
     def _is_phone_related(self, message):
         """Check if the message is related to phones/smartphones"""
         message_lower = message.lower()
+
+        # SAFETY CHECK: Reject malicious/attack queries first
+        if self._contains_malicious_intent(message):
+            return False
 
         # Phone-related keywords
         phone_keywords = [
