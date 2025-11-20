@@ -18,7 +18,7 @@ class ChatbotEngine:
         self.session_context = {}
         self.intents = {
             'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
-            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm', 'within', 'under', 'below', 'above', 'over'],
+            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm', 'within', 'under', 'below', 'above', 'over', 'near', 'around', 'max', 'maximum'],
             'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'show me', 'best'],
             'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
             'specification': ['specs', 'specification'],
@@ -401,7 +401,8 @@ Just ask me anything like:
     def _extract_budget(self, message):
         """
         Extract budget range from message
-        Handles: RM2000, rm2000, RM 2000, rm 2000, 2000, under/within/below/above with all combinations
+        Handles: RM2000, rm2000, RM 2000, rm 2000, 2000
+        Keywords: under/within/below/above/over/near/around/max/maximum with all combinations
         """
         message_lower = message.lower()
 
@@ -410,6 +411,8 @@ Just ask me anything like:
         patterns = [
             # Range patterns with RM on both sides
             (r'(?:rm|RM)\s*(\d+)\s*(?:to|-|and)\s*(?:rm|RM)\s*(\d+)', 'range'),  # RM1000 to RM2000 or rm 1000 to rm 2000
+            # Near with range pattern (e.g., "near 2000-3000" or "near 2000 to 3000")
+            (r'near\s*(?:rm\s*)?(\d+)\s*(?:to|-)\s*(?:rm\s*)?(\d+)', 'range'),  # near 2000-3000 or near rm2000 to rm3000
             # Range patterns without RM
             (r'(\d+)\s*(?:to|-|and)\s*(\d+)', 'range'),  # 1000 to 2000
 
@@ -418,13 +421,19 @@ Just ask me anything like:
             # Above patterns WITHOUT RM
             (r'(?:above|over|more than)\s+(\d+)', 'min'),  # above 3000
 
-            # Within/under/below patterns WITH RM (with or without space)
-            (r'(?:within|under|below)\s+(?:rm|RM)\s*(\d+)', 'max'),  # within RM2000 or within rm 2000
-            # Within/under/below patterns WITHOUT RM
-            (r'(?:within|under|below)\s+(\d+)', 'max'),  # within 2000
+            # Within/under/below/max/maximum patterns WITH RM (with or without space)
+            (r'(?:within|under|below|max|maximum)\s+(?:rm|RM)\s*(\d+)', 'max'),  # within RM2000 or within rm 2000
+            # Within/under/below/max/maximum patterns WITHOUT RM
+            (r'(?:within|under|below|max|maximum)\s+(\d+)', 'max'),  # within 2000
+
+            # Near/around single value pattern (±500 range)
+            (r'(?:near|around)\s+(?:rm\s*)?(\d+)', 'near'),  # near 2000 or near rm2000
 
             # Single RM value (with or without space)
             (r'(?:rm|RM)\s*(\d+)', 'single'),  # RM2000 or rm 2000
+
+            # Standalone number (3-5 digits)
+            (r'(?:^|\s)(\d{3,5})(?:\s|$)', 'single'),  # 1000, 2000, etc.
         ]
 
         for pattern, pattern_type in patterns:
@@ -432,18 +441,23 @@ Just ask me anything like:
             if match:
                 if pattern_type == 'range':
                     # Two values: min and max
-                    return (int(match.group(1)), int(match.group(2)))
+                    min_val = int(match.group(1))
+                    max_val = int(match.group(2))
+                    return (min_val, max_val)
                 elif pattern_type == 'min':
                     # Single value with above/over/more than keyword
                     min_budget = int(match.group(1))
                     return (min_budget, 15000)  # Set reasonable upper limit
                 elif pattern_type == 'max':
-                    # Single value with within/under/below keyword
+                    # Single value with within/under/below/max/maximum keyword
                     max_budget = int(match.group(1))
                     return (500, max_budget)
+                elif pattern_type == 'near':
+                    # Single value with near/around keyword (±500 range)
+                    center = int(match.group(1))
+                    return (max(500, center - 500), center + 500)
                 elif pattern_type == 'single':
-                    # Single RM value - check if it's part of within/under/below context
-                    # If keywords present, treat as max, otherwise also treat as max
+                    # Single RM value - treat as max budget
                     value = int(match.group(1))
                     return (500, value)
 
