@@ -16,26 +16,319 @@ class ChatbotEngine:
         self.ai_engine = AIRecommendationEngine()
         self.session_context = {}
         self.intents = {
-            'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
-            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm', 'within', 'under', 'below', 'above', 'over', 'near', 'around', 'max', 'maximum'],
-            'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'i want', 'show me', 'best'],
-            'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
-            'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor', 'cpu'],
-            'brand_query': ['brand', 'samsung', 'galaxy', 'apple', 'iphone', 'xiaomi', 'huawei', 'honor', 'oppo', 'vivo', 'realme', 'google', 'pixel', 'asus', 'rog', 'infinix', 'poco', 'redmi'],
-            'help': ['help', 'how', 'what can you do'],
-            'usage_type': ['gaming', 'photography', 'camera', 'business', 'work', 'social media', 'entertainment', 'photographer', 'gamer'],
-            'timeline': ['latest', 'newest', 'new', 'recent', 'released', 'from 2024', 'from 2023', 'year 2024', 'year 2023', 'last year', 'last month', 'this year', 'cheapest new']
+            'greeting': [
+                'hello', 'hi', 'hey', 'good morning', 'good afternoon', 
+                'good evening', 'greetings', 'hola', 'yo', 'sup',
+                'whats up', "what's up", 'howdy', 'hiya'
+            ],
+            
+            'budget_query': [
+                # Price terms
+                'budget', 'price', 'cost', 'cheap', 'affordable', 'expensive',
+                'pricing', 'rate', 'value', 'worth', 'spend',
+                # Currency
+                'rm', 'ringgit', 'dollar', 'usd', 'sgd', 'myr',
+                # Range terms
+                'within', 'under', 'below', 'above', 'over', 'near',
+                'around', 'between', 'from', 'to',
+                # Limits
+                'max', 'maximum', 'min', 'minimum', 'limit', 'cap',
+                # Value terms
+                'value for money', 'vfm', 'bang for buck', 'best price',
+                'good deal', 'bargain', 'discount', 'sale', 'offer',
+                'promotion', 'promo', 'clearance'
+            ],
+            
+            'recommendation': [
+                'recommend', 'suggestion', 'suggest', 'advice', 'advise',
+                'find', 'search', 'looking for', 'looking to buy',
+                'need', 'want', 'i want', 'i need', 'help me find',
+                'show me', 'can you show', 'which phone',
+                'best', 'top', 'good', 'great', 'excellent',
+                'should i buy', 'should i get', 'what to buy',
+                'help me choose', 'help me pick', 'help me select'
+            ],
+            
+            'comparison': [
+                'compare', 'comparison', 'difference', 'different',
+                'vs', 'versus', 'or', 'better', 'best',
+                'which is better', 'which one', 'prefer', 'choose between',
+                'decide between', 'pick between', 'a or b',
+                'pros and cons', 'advantage', 'disadvantage'
+            ],
+            
+            'specification': [
+                # General
+                'specs', 'specification', 'specifications', 'features',
+                'details', 'tech specs', 'full specs',
+                # Display
+                'camera', 'battery', 'ram', 'storage', 'screen', 'display',
+                'processor', 'cpu', 'gpu', 'chipset',
+                # Camera specific
+                'megapixel', 'mp', 'front camera', 'rear camera',
+                'selfie', 'photo quality', 'video recording',
+                'night mode', 'portrait', 'zoom', 'lens',
+                # Battery specific
+                'mah', 'battery life', 'charging', 'fast charging',
+                'wireless charging', 'battery capacity',
+                # Performance
+                'performance', 'speed', 'benchmark', 'antutu',
+                'gaming performance', 'multitasking',
+                # Display specific
+                'refresh rate', '90hz', '120hz', '144hz',
+                'resolution', 'oled', 'amoled', 'lcd',
+                # Connectivity
+                '5g', '4g', 'wifi', 'bluetooth', 'nfc',
+                # Build
+                'build quality', 'design', 'weight', 'dimensions'
+            ],
+            
+            'brand_query': [
+                # General brand terms
+                'brand', 'manufacturer', 'company', 'make',
+                # All brands (from brand_keywords_map)
+                'samsung', 'galaxy', 'apple', 'iphone', 'xiaomi',
+                'huawei', 'honor', 'oppo', 'vivo', 'realme',
+                'google', 'pixel', 'asus', 'rog', 'infinix',
+                'poco', 'redmi', 'oneplus', 'motorola', 'moto',
+                'nokia', 'sony', 'xperia', 'nothing', 'tecno'
+            ],
+            
+            'help': [
+                'help', 'how', 'what can you do', 'what do you do',
+                'how to use', 'how does this work', 'guide',
+                'assist', 'assistance', 'support', 'tutorial',
+                'explain', 'tell me about', 'information'
+            ],
+            
+            'usage_type': [
+                # Gaming
+                'gaming', 'game', 'gamer', 'mobile gaming',
+                'pubg', 'cod', 'free fire', 'mobile legends',
+                'esports', 'gaming phone',
+                # Photography
+                'photography', 'photographer', 'photo', 'picture',
+                'camera phone', 'best camera', 'vlogging', 'content creation',
+                'instagram', 'tiktok', 'youtube',
+                # Business/Work
+                'business', 'work', 'office', 'professional',
+                'productivity', 'email', 'video call', 'zoom',
+                'teams', 'conference',
+                # Entertainment
+                'social media', 'entertainment', 'streaming',
+                'netflix', 'youtube', 'video', 'music',
+                'multimedia', 'media consumption',
+                # General usage
+                'daily use', 'everyday use', 'casual use',
+                'basic use', 'browsing', 'calling', 'messaging'
+            ],
+            
+            'timeline': [
+                # Latest
+                'latest', 'newest', 'new', 'recent', 'recently released',
+                'just launched', 'just released', 'brand new',
+                # Specific years
+                'released', 'from 2024', 'from 2023', 'from 2025',
+                'year 2024', 'year 2023', 'year 2025',
+                '2024 phone', '2023 phone', '2025 phone',
+                # Relative time
+                'last year', 'last month', 'this year', 'this month',
+                'past year', 'past month', 'recent months',
+                # Upcoming
+                'upcoming', 'coming soon', 'future', 'next month',
+                'next year', 'to be released', 'pre-order',
+                # Combined
+                'cheapest new', 'latest budget', 'newest flagship'
+            ],
+            
+            # NEW INTENT CATEGORIES
+            
+            'purchase_intent': [
+                'buy', 'purchase', 'get', 'order', 'shopping',
+                'where to buy', 'how to buy', 'available',
+                'in stock', 'out of stock', 'pre-order',
+                'shop', 'store', 'retail', 'online'
+            ],
+            
+            'color_preference': [
+                'color', 'colour', 'black', 'white', 'blue',
+                'red', 'green', 'purple', 'silver', 'gold',
+                'pink', 'yellow', 'gray', 'grey', 'rose',
+                'midnight', 'starlight', 'graphite', 'sierra blue'
+            ],
+            
+            'condition': [
+                'new', 'brand new', 'sealed', 'original',
+                'used', 'second hand', 'refurbished', 'pre-owned',
+                'like new', 'open box', 'reconditioned'
+            ],
+            
+            'size_preference': [
+                'small', 'compact', 'mini', 'pocket size',
+                'large', 'big', 'big screen', 'large display',
+                'medium', 'standard size', 'normal size',
+                'lightweight', 'heavy', 'portable'
+            ],
+            
+            'urgency': [
+                'urgent', 'asap', 'immediately', 'right now',
+                'today', 'this week', 'soon', 'quickly',
+                'fast delivery', 'quick'
+            ]
         }
 
-        # Feature keywords for enhanced understanding
+        # EXPANDED FEATURE KEYWORDS
         self.feature_keywords = {
-            'battery': ['battery', 'long lasting', 'battery life', 'long battery', 'all day battery'],
-            'camera': ['camera', 'photo', 'photography', 'photographer', 'selfie', 'picture'],
-            'display': ['display', 'screen', 'amoled', 'oled', 'lcd', 'retina'],
-            'performance': ['fast', 'processor', 'cpu', 'performance', 'speed', 'powerful', 'snapdragon', 'flagship'],
-            '5g': ['5g', '5g support', '5g network'],
-            'storage': ['storage', 'memory', 'gb storage', 'space'],
-            'ram': ['ram', 'memory'],
+            'battery': [
+                'battery', 'long lasting', 'battery life', 'long battery',
+                'all day battery', 'mah', 'battery capacity',
+                'power', 'endurance', 'standby time', 'screen on time',
+                'battery drain', 'battery backup', 'battery performance',
+                '5000mah', '6000mah', 'big battery', 'huge battery'
+            ],
+            
+            'camera': [
+                'camera', 'photo', 'photography', 'photographer',
+                'selfie', 'picture', 'image quality', 'photo quality',
+                'megapixel', 'mp', '50mp', '64mp', '108mp', '200mp',
+                'front camera', 'rear camera', 'main camera',
+                'ultra wide', 'telephoto', 'macro', 'depth',
+                'night mode', 'portrait', 'zoom', 'optical zoom',
+                'video recording', '4k video', '8k video',
+                'slow motion', 'time lapse', 'pro mode',
+                'ai camera', 'ois', 'image stabilization'
+            ],
+            
+            'display': [
+                'display', 'screen', 'amoled', 'oled', 'lcd',
+                'super amoled', 'retina', 'ips',
+                'screen size', 'big screen', 'large display',
+                '6.5 inch', '6.7 inch', 'inch display',
+                'resolution', 'full hd', 'quad hd', '4k display',
+                'brightness', 'outdoor visibility', 'sunlight',
+                'gorilla glass', 'screen protection',
+                'curved display', 'flat screen', 'edge screen',
+                'notch', 'punch hole', 'under display'
+            ],
+            
+            'performance': [
+                'fast', 'processor', 'cpu', 'performance', 'speed',
+                'powerful', 'snapdragon', 'flagship', 'chipset',
+                'dimensity', 'exynos', 'bionic', 'tensor',
+                'benchmark', 'antutu', 'geekbench', 'smooth',
+                'lag free', 'no lag', 'smooth performance',
+                'multitasking', 'app switching', 'loading speed',
+                'gaming performance', 'graphics', 'gpu',
+                'heating', 'thermal', 'cooling', 'temperature'
+            ],
+            
+            '5g': [
+                '5g', '5g support', '5g network', '5g connectivity',
+                '5g enabled', '5g phone', 'dual 5g', 'sa nsa',
+                'network speed', 'fast internet'
+            ],
+            
+            'storage': [
+                'storage', 'memory', 'gb storage', 'space',
+                'internal storage', 'rom', '64gb', '128gb',
+                '256gb', '512gb', '1tb', 'expandable storage',
+                'sd card', 'micro sd', 'storage expansion',
+                'ufs', 'storage speed'
+            ],
+            
+            'ram': [
+                'ram', 'memory', 'gb ram', '4gb', '6gb', '8gb',
+                '12gb', '16gb', 'lpddr', 'multitasking',
+                'app memory', 'virtual ram', 'ram expansion'
+            ],
+            
+            'charging': [
+                'charging', 'fast charging', 'quick charge',
+                'rapid charge', 'super vooc', 'warp charge',
+                'turbo charge', 'hypercharge', 'flash charge',
+                'wireless charging', 'reverse charging',
+                '15w', '18w', '25w', '33w', '45w', '65w',
+                '120w', '150w', 'charging speed',
+                'charger', 'charging cable', 'usb-c'
+            ],
+            
+            'design': [
+                'design', 'build quality', 'premium', 'looks',
+                'aesthetics', 'beautiful', 'stylish', 'elegant',
+                'sleek', 'modern', 'minimalist', 'color',
+                'finish', 'matte', 'glossy', 'glass back',
+                'metal frame', 'plastic', 'weight', 'slim',
+                'thin', 'compact', 'ergonomic', 'grip'
+            ],
+            
+            'security': [
+                'fingerprint', 'face unlock', 'face id',
+                'biometric', 'security', 'in-display fingerprint',
+                'side fingerprint', 'rear fingerprint',
+                'unlock speed', 'secure', 'privacy'
+            ],
+            
+            'audio': [
+                'speaker', 'audio', 'sound', 'sound quality',
+                'stereo speaker', 'dual speaker', 'loud',
+                'dolby atmos', 'headphone jack', '3.5mm',
+                'audio jack', 'call quality', 'microphone'
+            ],
+            
+            'durability': [
+                'durable', 'durability', 'water resistant',
+                'waterproof', 'ip67', 'ip68', 'ip rating',
+                'dust proof', 'splash proof', 'rugged',
+                'drop test', 'gorilla glass', 'protection'
+            ]
+        }
+
+        # EXPANDED USER CATEGORIES
+        self.user_categories = {
+            'senior': [
+                'senior', 'elderly', 'senior citizen', 'old age',
+                'old people', 'retiree', 'retired', 'grandparent',
+                'grandma', 'grandpa', 'older person', 'aged',
+                'pension', 'senior friendly', 'easy to use',
+                'simple phone', 'basic phone', 'large font',
+                'loud speaker', 'hearing aid compatible'
+            ],
+            
+            'student': [
+                'student', 'college', 'university', 'school',
+                'teen', 'teenager', 'young', 'youth',
+                'studying', 'education', 'campus', 'dorm',
+                'undergrad', 'graduate', 'high school',
+                'budget student', 'affordable for student'
+            ],
+            
+            'professional': [
+                'professional', 'business', 'work', 'office',
+                'worker', 'working', 'employee', 'businessman',
+                'businesswoman', 'corporate', 'executive',
+                'manager', 'entrepreneur', 'freelancer',
+                'work from home', 'remote work', 'productivity'
+            ],
+            
+            'gamer': [
+                'gamer', 'gaming', 'mobile gamer', 'esports',
+                'competitive gaming', 'pro gamer', 'streamer',
+                'pubg player', 'cod player', 'mobile legends',
+                'gaming enthusiast'
+            ],
+            
+            'content_creator': [
+                'content creator', 'vlogger', 'youtuber',
+                'influencer', 'tiktoker', 'instagrammer',
+                'blogger', 'videographer', 'photographer',
+                'social media', 'streaming', 'live stream'
+            ],
+            
+            'parent': [
+                'parent', 'mom', 'dad', 'mother', 'father',
+                'family', 'kids', 'children', 'for my child',
+                'for my son', 'for my daughter', 'family phone'
+            ]
         }
 
         # User category keywords
@@ -141,11 +434,189 @@ class ChatbotEngine:
 
         # Skip phone model extraction if message contains recommendation keywords with requirements
         skip_phone_model = any(keyword in message_lower for keyword in [
-            'recommend', 'suggest', 'find me', 'looking for', 'need a phone', 'want a phone', 'best phone',
-            'photographer', 'photography phone', 'gaming phone', 'gamer phone', 'business phone',
-            'social media', 'entertainment', 'long lasting', 'amoled',
-            'i want a phone', 'show me phones', 'within', 'under rm'
+            # Direct recommendation requests
+            'recommend', 'recommendation', 'suggest', 'suggestion', 'advise', 'advice',
+            'help me find', 'help me choose', 'help me pick', 'help me select',
+            'find me', 'find a', 'show me', 'give me', 'suggest me',
+            'can you recommend', 'can you suggest', 'what phone should',
+            'which phone should', 'what do you recommend', 'any recommendation',
+            
+            # Looking/searching phrases
+            'looking for', 'looking to buy', 'searching for', 'search for',
+            'want to buy', 'planning to buy', 'thinking of buying',
+            'in the market for', 'shopping for',
+            
+            # Need/want expressions
+            'need a phone', 'need phone', 'want a phone', 'want phone',
+            'i need', 'i want', 'i am looking', "i'm looking",
+            'need recommendations', 'want suggestions',
+            
+            # Best/top queries
+            'best phone', 'best smartphone', 'top phone', 'top smartphone',
+            'best option', 'best choice', 'good phone', 'great phone',
+            'excellent phone', 'perfect phone', 'ideal phone',
+            'which is best', 'what is best', 'whats the best', "what's the best",
+            'top rated', 'highest rated', 'most popular',
+            
+            # Budget-related searches
+            'within', 'under rm', 'below rm', 'around rm', 'near rm',
+            'budget of', 'price range', 'rm budget', 'under budget',
+            'cheap phone', 'affordable phone', 'budget phone',
+            'phone under', 'phone within', 'phone below', 'phone around',
+            'best under', 'best within', 'best below',
+            'cheapest', 'most affordable', 'value for money',
+            
+            # Usage-specific requests
+            'photographer', 'photography phone', 'camera phone',
+            'for photography', 'best camera', 'good camera',
+            'gaming phone', 'gamer phone', 'for gaming', 'best for gaming',
+            'good for gaming', 'gaming performance',
+            'business phone', 'for business', 'work phone', 'for work',
+            'office phone', 'professional phone', 'productivity phone',
+            'social media', 'for social media', 'instagram phone',
+            'content creation', 'for content creator', 'vlogging phone',
+            'video recording', 'for vlogging',
+            
+            # Feature-specific searches
+            'entertainment', 'streaming phone', 'media phone',
+            'long lasting', 'long battery', 'big battery', 'best battery',
+            'all day battery', 'battery life',
+            'amoled', 'oled display', 'good display', 'best display',
+            'large screen', 'big screen', '120hz', 'high refresh',
+            '5g phone', 'with 5g', '5g support', 'best 5g',
+            'fast charging', 'wireless charging', 'quick charge',
+            'good performance', 'fast phone', 'powerful phone',
+            
+            # User category searches
+            'student phone', 'for student', 'college phone',
+            'senior phone', 'elderly phone', 'for senior citizen',
+            'simple phone', 'easy to use', 'basic phone',
+            'parent phone', 'for mom', 'for dad', 'family phone',
+            
+            # General shopping queries
+            'i want a phone', 'show me phones', 'what phones',
+            'which phones', 'any phones', 'phones with',
+            'phones that have', 'phones under', 'phones within',
+            'suitable phone', 'right phone', 'perfect match',
+            
+            # Comparison shopping (looking for options, not specific models)
+            'compare phones', 'phone comparison', 'options under',
+            'alternatives', 'similar phones', 'other phones',
+            'what else', 'any other', 'more options',
+            
+            # New/latest searches
+            'latest phone', 'newest phone', 'new release',
+            'recently released', 'just launched', 'new phones',
+            'latest models', 'newest models', '2024 phones',
+            '2025 phones', 'this year', 'recent phones',
+            
+            # Open-ended requests
+            'what should i buy', 'what should i get', 'what to buy',
+            'help me buy', 'buying advice', 'purchase advice',
+            'phone advice', 'phone suggestion',
+            
+            # Size preference searches
+            'small phone', 'compact phone', 'mini phone',
+            'large phone', 'big phone', 'phablet',
+            'lightweight phone', 'pocket size',
+            
+            # Brand comparison (without specific model)
+            'samsung or iphone', 'xiaomi or realme', 'oppo or vivo',
+            'which brand', 'best brand', 'reliable brand',
+            'good brand', 'trusted brand',
+            
+            # Specific needs without model
+            'dual sim', 'expandable storage', 'sd card',
+            'headphone jack', 'water resistant', 'ip68',
+            'wireless charging', 'nfc support', 'ir blaster',
+            
+            # Quality indicators
+            'quality phone', 'reliable phone', 'durable phone',
+            'premium phone', 'flagship phone', 'mid range',
+            'entry level', 'high end', 'top tier',
+            
+            # Usage duration
+            'for daily use', 'everyday phone', 'all rounder',
+            'versatile phone', 'multipurpose phone',
+            
+            # Upgrade/replacement scenarios
+            'upgrade', 'replace', 'replacement', 'new phone',
+            'switch from', 'move from', 'upgrade from',
+            
+            # Gift/purchase for others
+            'gift', 'for my', 'buying for', 'present for',
+            'gift for mom', 'gift for dad', 'for someone',
+            
+            # Feature priority
+            'prioritize', 'focus on', 'mainly for', 'primarily for',
+            'important features', 'must have', 'should have',
+            
+            # Condition specifications
+            'brand new', 'new phone', 'fresh phone', 'unused',
+            
+            # Availability searches
+            'available phones', 'in stock', 'can buy now',
+            'currently available', 'on sale',
+            
+            # Review-based searches
+            'highly rated', 'good reviews', 'positive reviews',
+            'recommended by', 'popular choice',
+            
+            # Problem-solving searches
+            'better than', 'improvement over', 'instead of',
+            'to replace', 'as alternative',
+            
+            # Multiple options
+            'few options', 'some options', 'several phones',
+            'list of phones', 'top 5', 'top 10', 'best 5',
+            
+            # Specification ranges (without specific model)
+            'with 8gb ram', 'with 128gb', 'with 5000mah',
+            'has 108mp', 'has 120hz', 'with snapdragon',
+            
+            # Intent indicators
+            'planning to', 'thinking about', 'considering',
+            'interested in', 'curious about', 'exploring',
+            
+            # Requirement-based
+            'that meets', 'matching my needs', 'fits my needs',
+            'according to', 'based on my', 'suitable for',
+            
+            # Exploration phrases
+            'what are', 'are there', 'do you have',
+            'can you show', 'could you suggest', 'would you recommend',
+            
+            # Preference indicators
+            'prefer', 'preference', 'like to have', 'would like',
+            'hoping for', 'wish to have',
+            
+            # Budget consciousness
+            'worth buying', 'value phone', 'bang for buck',
+            'worth the price', 'good deal', 'best deal',
+            
+            # Urgency without specific model
+            'need urgently', 'asap', 'right now', 'immediately',
+            'quick recommendation', 'fast suggestion',
+            
+            # Lifestyle-based
+            'minimalist phone', 'flashy phone', 'stylish phone',
+            'professional looking', 'trendy phone', 'modern phone',
+            
+            # Multiple criteria
+            'good camera and battery', 'gaming and camera',
+            'performance and battery', 'display and camera',
+            
+            # Negative searches (what to avoid)
+            'without', 'avoid', 'not', 'except', 'excluding',
+            'dont want', "don't want", 'no need for',
+            
+            # Open comparison
+            'difference between brands', 'brand comparison',
+            'which brand better', 'brand suggestions'
         ])
+
+        # Initialize brands_mentioned to avoid UnboundLocalError
+        brands_mentioned = None
 
         # Also skip if multiple brands are mentioned (e.g., "apple and samsung phone")
         if not skip_phone_model:
@@ -153,9 +624,7 @@ class ChatbotEngine:
             if len(brands_mentioned) > 1 or (brands_mentioned and ' and ' in message_lower and 'phone' in message_lower):
                 skip_phone_model = True
 
-            # CRITICAL FIX: Skip if message is just "brand phone" or "brand phones" (e.g., "vivo phone", "xiaomi phones")
-            # This should be handled by brand_query intent, not as specific phone model query
-            if brands_mentioned and len(brands_mentioned) == 1:
+        if brands_mentioned and len(brands_mentioned) == 1:
                 # Remove brand name and common words to see what's left
                 test_message = message_lower
                 for brand in brands_mentioned:
@@ -192,13 +661,9 @@ class ChatbotEngine:
         elif intent == 'budget_query' or intent == 'timeline':
             # Extract budget from message
             budget = self._extract_budget(message)
-
-            # Use smart brand extraction with positive/negative preferences
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
             brand_names = wanted_brands  # Use wanted brands for filtering
-
             release_date_criteria = self._extract_release_date_criteria(message)
-
             if budget:
                 min_budget, max_budget = budget
                  # If brands mentioned, filter by brand
@@ -211,12 +676,9 @@ class ChatbotEngine:
                         if brand:
                             query = Phone.query.filter_by(brand_id=brand.id, is_active=True)
                             query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
-
-                            # Apply release date filter if specified
                             if release_date_criteria:
                                 start_date, end_date = release_date_criteria
                                 query = query.filter(Phone.release_date >= start_date, Phone.release_date <= end_date)
-
                             phones = query.limit(5).all()
 
                             if phones:
@@ -225,7 +687,6 @@ class ChatbotEngine:
 
                     if all_phones:
                         brands_text = ", ".join(found_brands[:-1]) + f" and {found_brands[-1]}" if len(found_brands) > 1 else found_brands[0]
-
                         # Build timeline text
                         timeline_text = ""
                         if release_date_criteria:
@@ -311,8 +772,7 @@ class ChatbotEngine:
                         'response': f"I couldn't find phones in that exact range. Would you like to adjust your budget?",
                         'type': 'text'
                     }
-
-            # Handle timeline-only queries (no budget specified, but has timeline)
+                # Handle timeline-only queries (no budget specified, but has timeline)
             elif release_date_criteria:
                 start_date, end_date = release_date_criteria
 
@@ -380,7 +840,6 @@ class ChatbotEngine:
                         'response': f"I couldn't find phones matching your criteria. Would you like to try a different time period?",
                         'type': 'text'
                     }
-
             else:
                 return {
                     'response': "What's your budget range? For example, 'I'm looking for phones under RM2000'",
@@ -398,10 +857,10 @@ class ChatbotEngine:
                 budget = context['last_budget']  # ← Use previous budget!
             
             usage = self._detect_usage_type(message)
-
-            # Use smart brand extraction with preferences
+            
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
             brands = wanted_brands if wanted_brands else None
+            
             if not brands and 'last_brands' in context:
                 brands = context['last_brands']  # ← Use previous brands!
 
@@ -787,11 +1246,8 @@ class ChatbotEngine:
             usage = self._detect_usage_type(message)
             if usage:
                 budget = self._extract_budget(message)
-
-                # Use smart brand extraction
                 wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
                 brand_names = wanted_brands
-
                 phones = self.ai_engine.get_phones_by_usage(usage, budget, brand_names, top_n=5)
 
                 if phones:
@@ -853,7 +1309,7 @@ class ChatbotEngine:
             }
 
         elif intent == 'brand_query':
-            # Extract all mentioned brands with preferences
+            # Extract all mentioned brands
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
             brand_names = wanted_brands  # Use wanted brands
 
@@ -1003,7 +1459,7 @@ Just ask me anything like:
             'redmi': ['redmi'],
             'samsung': ['samsung', 'galaxy'],
             'vivo': ['vivo'],
-            'xiaomi': ['xiaomi']  # Removed 'mi ' to avoid conflicts
+            'xiaomi': ['xiaomi']  
         }
 
         for brand_name, keywords in brand_keywords.items():
@@ -1012,8 +1468,184 @@ Just ask me anything like:
                 break
 
         # Step 2: Remove common query words to extract model name
-        query_words = ['price', 'cost', 'how much', 'specs', 'specification', 'details', 'info', 'information',
-                      'about', 'tell me', 'show me', 'what is', 'whats', 'the', 'of', 'spec', 'battery']
+        query_words = [
+            # Question words
+            'what', 'whats', "what's", 'which', 'how', 'when', 'where', 'why', 'who',
+            'what is', 'what are', 'whats the', "what's the", 'which is', 'which are',
+            'how much', 'how about', 'how good', 'how is', 'how does',
+            
+            # Articles and determiners
+            'the', 'a', 'an', 'this', 'that', 'these', 'those', 'my', 'your',
+            'its', "it's", 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+            
+            # Prepositions
+            'of', 'in', 'on', 'at', 'to', 'for', 'with', 'from', 'by', 'about',
+            'as', 'into', 'like', 'through', 'after', 'over', 'between', 'out',
+            'against', 'during', 'without', 'before', 'under', 'around', 'among',
+            
+            # Common verbs in queries
+            'tell', 'tell me', 'show', 'show me', 'give', 'give me', 'provide',
+            'get', 'find', 'search', 'look', 'looking', 'want', 'need', 'have',
+            'has', 'do', 'does', 'did', 'can', 'could', 'would', 'should', 'will',
+            'know', 'see', 'check', 'compare', 'review',
+            
+            # Price-related words
+            'price', 'cost', 'costs', 'priced', 'pricing', 'how much', 'worth',
+            'expensive', 'cheap', 'affordable', 'budget', 'rate', 'rates',
+            'value', 'rm', 'ringgit', 'dollar', 'myr', 'usd', 'sgd',
+            
+            # Specification-related words
+            'specs', 'spec', 'specification', 'specifications', 'details', 'detail',
+            'info', 'information', 'feature', 'features', 'about', 'description',
+            'review', 'reviews', 'overview', 'summary', 'complete', 'full',
+            'technical', 'tech', 'detailed',
+            
+            # Individual spec terms
+            'battery', 'camera', 'display', 'screen', 'processor', 'chipset',
+            'ram', 'storage', 'memory', 'performance', 'cpu', 'gpu',
+            '5g', '4g', 'connectivity', 'network', 'charging', 'fast charging',
+            
+            # Comparison words
+            'vs', 'versus', 'or', 'compare', 'comparison', 'difference', 'different',
+            'better', 'best', 'worse', 'worst', 'between', 'against',
+            
+            # Quality/opinion words
+            'good', 'bad', 'great', 'excellent', 'poor', 'better', 'best',
+            'worth', 'quality', 'recommend', 'recommended', 'opinion',
+            'think', 'thoughts', 'review', 'rating', 'rated',
+            
+            # Possession and relationships
+            'my', 'your', 'his', 'her', 'their', 'our', 'mine', 'yours',
+            'owned', 'own', 'have', 'has', 'had', 'got', 'getting',
+            
+            # Action words
+            'buy', 'buying', 'purchase', 'purchasing', 'get', 'getting',
+            'looking', 'search', 'searching', 'find', 'finding',
+            'choose', 'choosing', 'pick', 'picking', 'select', 'selecting',
+            
+            # Time-related
+            'new', 'old', 'latest', 'newest', 'current', 'now', 'today',
+            'recent', 'recently', 'just', 'year', 'month', 'time',
+            '2024', '2023', '2025', 'this year', 'last year',
+            
+            # Condition/state
+            'available', 'availability', 'stock', 'in stock', 'out of stock',
+            'released', 'launched', 'launch', 'release', 'coming', 'upcoming',
+            
+            # Modifiers
+            'very', 'really', 'quite', 'pretty', 'too', 'so', 'such',
+            'much', 'many', 'more', 'most', 'less', 'least', 'enough',
+            'just', 'only', 'even', 'also', 'still', 'already',
+            
+            # Connecting words
+            'and', 'but', 'or', 'nor', 'yet', 'so', 'because', 'since',
+            'if', 'then', 'than', 'though', 'although', 'while', 'whereas',
+            
+            # Polite phrases
+            'please', 'kindly', 'thank', 'thanks', 'sorry', 'excuse',
+            'hello', 'hi', 'hey', 'can you', 'could you', 'would you',
+            'may i', 'can i', 'i want', 'i need', 'i would like',
+            
+            # Negation
+            'not', 'no', 'never', 'nothing', 'none', 'neither', 'nobody',
+            "don't", "doesn't", "didn't", "won't", "wouldn't", "can't", "couldn't",
+            "isn't", "aren't", "wasn't", "weren't", "haven't", "hasn't", "hadn't",
+            
+            # Pronouns
+            'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her',
+            'us', 'them', 'myself', 'yourself', 'himself', 'herself', 'itself',
+            'ourselves', 'themselves', 'someone', 'anyone', 'everyone',
+            
+            # Size/quantity descriptors
+            'big', 'small', 'large', 'huge', 'tiny', 'mini', 'compact',
+            'full', 'half', 'whole', 'entire', 'complete',
+            
+            # Availability questions
+            'where can', 'when can', 'how can', 'can i', 'is there',
+            'are there', 'do they', 'does it', 'will it',
+            
+            # Phone-specific query terms
+            'phone', 'smartphone', 'mobile', 'device', 'handset', 'model',
+            'series', 'version', 'variant', 'edition', 'type', 'kind',
+            
+            # Brand mentions (will be handled separately but good to remove from model name)
+            'brand', 'make', 'manufacturer', 'company', 'made by',
+            
+            # Recommendation context
+            'recommend', 'suggest', 'advice', 'opinion', 'think about',
+            'thoughts on', 'what about', 'how about',
+            
+            # Ownership/experience
+            'using', 'used', 'use', 'user', 'owner', 'owned', 'experience',
+            'tried', 'tested', 'test', 'hands on',
+            
+            # Availability/stock
+            'available in', 'sold in', 'buy from', 'purchase from',
+            'shop', 'store', 'retail', 'online', 'offline',
+            
+            # Comparison modifiers
+            'more', 'less', 'better than', 'worse than', 'same as',
+            'similar to', 'like', 'unlike', 'as good as',
+            
+            # Uncertainty phrases
+            'maybe', 'perhaps', 'possibly', 'probably', 'might', 'may',
+            'could be', 'would be', 'seems', 'looks', 'appears',
+            
+            # Question starters
+            'is it', 'does it', 'can it', 'will it', 'should i',
+            'would it', 'has it', 'do you', 'did you', 'have you',
+            
+            # Color/appearance (unless part of actual model name)
+            'color', 'colour', 'black', 'white', 'blue', 'red', 'green',
+            'silver', 'gold', 'gray', 'grey', 'pink', 'purple', 'yellow',
+            
+            # Condition descriptors
+            'new', 'used', 'refurbished', 'second hand', 'original',
+            'genuine', 'authentic', 'fake', 'real', 'official',
+            
+            # Size descriptors that aren't part of model names
+            'inch', 'inches', 'cm', 'mm', 'gram', 'grams', 'kg',
+            
+            # Performance descriptors
+            'fast', 'slow', 'smooth', 'laggy', 'powerful', 'weak',
+            'strong', 'reliable', 'unreliable', 'stable', 'unstable',
+            
+            # Value judgments
+            'worth buying', 'worth it', 'worthwhile', 'overpriced',
+            'underpriced', 'fair price', 'reasonable', 'unreasonable',
+            
+            # Possession questions
+            'have you', 'do you have', 'got any', 'any available',
+            'in your', 'from your',
+            
+            # General descriptors
+            'nice', 'beautiful', 'ugly', 'pretty', 'amazing', 'awesome',
+            'terrible', 'horrible', 'fantastic', 'wonderful', 'perfect',
+            
+            # Technical jargon (common non-model terms)
+            'flagship', 'mid range', 'entry level', 'budget', 'premium',
+            'high end', 'low end', 'top tier', 'bottom tier',
+            
+            # Launch/release terms
+            'when will', 'when did', 'release date', 'launch date',
+            'coming out', 'come out', 'announced', 'announcement',
+            
+            # Update/version terms (unless part of model)
+            'update', 'updated', 'version', 'upgraded', 'upgrade',
+            'downgrade', 'downgraded', 'software', 'firmware',
+            
+            # Measurement units
+            'mp', 'megapixel', 'mah', 'gb', 'tb', 'hz', 'ghz',
+            'watt', 'w', 'v', 'volt', 'amp', 'ampere',
+            
+            # Punctuation words
+            'yes', 'no', 'ok', 'okay', 'sure', 'fine', 'alright',
+            'yeah', 'yep', 'nope', 'yup', 'uh', 'um', 'hmm',
+            
+            # Internet slang (common in queries)
+            'lol', 'btw', 'omg', 'tbh', 'imo', 'imho', 'fyi',
+            'asap', 'etc', 'aka', 'ps',
+        ]
 
         cleaned_message = message_lower
         for word in query_words:
@@ -1207,30 +1839,55 @@ Just ask me anything like:
         ]
 
         for pattern, pattern_type in patterns:
+
             match = re.search(pattern, message.lower())
+
             if match:
+
                 # Handle based on pattern type
+
                 if pattern_type == 'range':
+
                     # Range pattern (e.g., "1000-2000", "near 1000-2000")
+
                     return (int(match.group(1)), int(match.group(2)))
 
+ 
+
                 elif pattern_type == 'min':
+
                     # Minimum budget pattern (e.g., "above 3000", "over rm 5000")
+
                     min_budget = int(match.group(1))
+
                     return (min_budget, 15000)  # Set reasonable upper limit
 
+ 
+
                 elif pattern_type == 'max':
+
                     # Maximum budget pattern (e.g., "under 2000", "within rm 3000")
+
                     max_budget = int(match.group(1))
+
                     return (500, max_budget)
 
+ 
+
                 elif pattern_type == 'near':
+
                     # Near/around pattern (±500 range)
+
                     center = int(match.group(1))
+
                     return (max(500, center - 500), center + 500)
 
+ 
+
                 elif pattern_type == 'single':
+
                     # Single value mentioned (assume max budget)
+
                     value = int(match.group(1))
                     return (500, value)
 
@@ -1251,16 +1908,133 @@ Just ask me anything like:
 
         # Malicious/attack keywords that indicate inappropriate queries
         malicious_keywords = [
-            'hack', 'hacking', 'hacker', 'hacked',
-            'steal', 'theft', 'stolen', 'rob',
-            'crack', 'cracking', 'cracked',
-            'exploit', 'vulnerability', 'breach',
-            'attack', 'attacking',
-            'malware', 'virus', 'trojan',
-            'illegal', 'pirate', 'piracy',
-            'fraud', 'scam', 'fake',
-            'jailbreak', 'root', 'unlock bootloader',
-            'bypass security', 'remove lock'
+            # Hacking & Unauthorized Access
+            'hack', 'hacking', 'hacker', 'hacked', 'hax', 'h4ck',
+            'exploit', 'exploiting', 'exploited', 'vulnerability', 'vuln',
+            'breach', 'breaching', 'breached', 'penetrate', 'penetration',
+            'backdoor', 'rootkit', 'shell', 'remote access',
+            'brute force', 'bruteforce', 'dictionary attack',
+            'sql injection', 'xss', 'csrf', 'code injection',
+            'zero day', 'zeroday', '0day',
+            
+            # Theft & Stealing
+            'steal', 'stealing', 'theft', 'stolen', 'thief',
+            'rob', 'robbing', 'robbery', 'robbed',
+            'swipe', 'snatch', 'pilfer', 'loot',
+            
+            # Cracking & Breaking
+            'crack', 'cracking', 'cracked', 'cracker',
+            'break', 'breaking', 'broke', 'broken',
+            'bypass', 'bypassing', 'bypassed',
+            'circumvent', 'workaround', 'evade',
+            
+            # Malware & Viruses
+            'malware', 'virus', 'trojan', 'worm',
+            'ransomware', 'spyware', 'adware', 'keylogger',
+            'botnet', 'rat', 'remote administration tool',
+            'payload', 'dropper', 'backdoor',
+            
+            # Fraud & Scams
+            'fraud', 'fraudulent', 'scam', 'scammer', 'scamming',
+            'fake', 'counterfeit', 'forged', 'phishing',
+            'spoof', 'spoofing', 'impersonate', 'impersonation',
+            'ponzi', 'pyramid scheme',
+            
+            # Illegal Activities
+            'illegal', 'unlawful', 'illicit', 'criminal',
+            'pirate', 'piracy', 'pirated', 'warez',
+            'torrent', 'crack download', 'keygen',
+            'serial key', 'activation code', 'license crack',
+            
+            # Device Manipulation
+            'jailbreak', 'jailbreaking', 'jailbroken',
+            'root', 'rooting', 'rooted', 'superuser',
+            'unlock bootloader', 'bootloader unlock',
+            'custom rom', 'flash rom', 'mod',
+            'remove lock', 'bypass lock', 'unlock stolen',
+            'imei change', 'imei hack', 'network unlock',
+            'carrier unlock', 'sim unlock',
+            
+            # Security Bypass
+            'bypass security', 'disable security', 'remove security',
+            'bypass password', 'password crack', 'password reset hack',
+            'bypass frp', 'frp bypass', 'factory reset protection',
+            'bypass mdm', 'remove mdm', 'mdm bypass',
+            'bypass authentication', 'disable encryption',
+            
+            # Attack Methods
+            'attack', 'attacking', 'attacked', 'attacker',
+            'dos', 'ddos', 'denial of service',
+            'man in the middle', 'mitm',
+            'session hijack', 'packet sniff', 'intercept',
+            'eavesdrop', 'wiretap', 'surveillance',
+            
+            # Data Theft
+            'data breach', 'data leak', 'leak data',
+            'extract data', 'dump database', 'database dump',
+            'scrape data', 'harvest data',
+            'steal credentials', 'steal password', 'phish',
+            
+            # Damage & Destruction
+            'destroy', 'damage', 'sabotage', 'vandalize',
+            'corrupt', 'corrupting', 'brick', 'bricking',
+            'delete system', 'wipe data malicious',
+            
+            # Surveillance & Spying
+            'spy', 'spying', 'spyware', 'monitor secretly',
+            'track without permission', 'stalk', 'stalking',
+            'hidden camera', 'secret recording',
+            'keylogger', 'screen capture malicious',
+            
+            # Social Engineering
+            'social engineering', 'manipulate', 'trick',
+            'pretexting', 'baiting', 'tailgate',
+            
+            # Money-related Fraud
+            'money laundering', 'embezzle', 'extort', 'blackmail',
+            'credit card fraud', 'identity theft', 'wire fraud',
+            
+            # Network Attacks
+            'port scan', 'network scan', 'vulnerability scan malicious',
+            'packet injection', 'arp spoofing', 'dns poisoning',
+            
+            # Cryptocurrency Attacks
+            'crypto mining malware', 'cryptojacking',
+            'wallet hack', 'blockchain attack',
+            
+            # Mobile-specific Attacks
+            'sms bombing', 'call flooding', 'sim swap',
+            'baseband exploit', 'modem hack',
+            
+            # Evasion Techniques
+            'hide malware', 'obfuscate code', 'anti-detection',
+            'sandbox escape', 'vm detection bypass',
+            
+            # Harmful Intent Indicators
+            'how to harm', 'destroy someone', 'revenge hack',
+            'get back at', 'teach them lesson hack',
+            
+            # Brand-specific Attacks (add more as needed)
+            'xiaomi exploit', 'samsung vulnerability hack',
+            'iphone jailbreak stolen', 'huawei backdoor',
+            
+            # l33t speak variations (common obfuscations)
+            'h4ck', 'cr4ck', 'expl0it', 'br3ach',
+            'pwn', 'pwned', 'pwning', '0wn', 'owned',
+            
+            # Combination phrases (high confidence indicators)
+            'steal phone', 'hack phone', 'crack phone',
+            'bypass icloud', 'remove google account',
+            'unlock without password', 'access without permission',
+            
+            # Tools commonly used for attacks
+            'metasploit', 'burp suite malicious', 'kali linux hack',
+            'nmap malicious', 'wireshark intercept', 'aircrack',
+            
+            # Additional suspicious intents
+            'unauthorized access', 'without authorization',
+            'without permission', 'illegally access',
+            'black hat', 'grey hat', 'dark web'
         ]
 
         # Check if any malicious keyword is present
@@ -1271,7 +2045,7 @@ Just ask me anything like:
                 return True
 
         return False
-
+    
     def _is_phone_related(self, message):
         """Check if the message is related to phones/smartphones"""
         message_lower = message.lower()
@@ -1282,11 +2056,178 @@ Just ask me anything like:
 
         # Phone-related keywords
         phone_keywords = [
-            'phone', 'smartphone', 'mobile', 'device', 'handset',
-            'android', 'ios', 'cell', 'cellular', 'telephone', 'iphone',
-            'galaxy', 'xiaomi', 'huawei', 'oppo', 'vivo', 'samsung',
-            'screen', 'display', 'camera', 'battery', 'processor',
-            'ram', 'storage', '5g', 'spec', 'specification'
+            # General Device Terms
+            'phone', 'smartphone', 'mobile', 'device', 'handset', 
+            'cell', 'cellular', 'telephone', 'cellphone', 'mobile phone',
+            'smart phone', 'feature phone', 'flip phone', 'slider phone',
+            'phablet', 'mini phone', 'compact phone',
+            
+            # Operating Systems
+            'android', 'ios', 'iphone os', 'one ui', 'miui', 'coloros',
+            'funtouch', 'emui', 'harmonyos', 'oxygenos', 'realme ui',
+            'flyme', 'magic ui', 'origin os', 'pixel experience',
+            
+            # Major Brands
+            'iphone', 'samsung', 'galaxy', 'xiaomi', 'redmi', 'poco',
+            'huawei', 'honor', 'oppo', 'vivo', 'realme', 'oneplus',
+            'google pixel', 'pixel', 'motorola', 'moto', 'nokia',
+            'sony xperia', 'xperia', 'lg', 'asus', 'rog phone',
+            'zenfone', 'blackberry', 'htc', 'lenovo', 'zte',
+            'meizu', 'infinix', 'tecno', 'itel', 'alcatel',
+            'nothing phone', 'fairphone', 'cat phone', 'doogee',
+            'ulefone', 'blackview', 'oukitel', 'umidigi',
+            
+            # Popular Model Series
+            's series', 'note series', 'ultra', 'plus', 'pro', 'max',
+            'lite', 'mini', 'fold', 'flip', 'edge', 'a series',
+            'm series', 'f series', 'k series', 'mi series',
+            'redmi note', 'galaxy s', 'galaxy a', 'galaxy z',
+            'iphone pro', 'iphone plus', 'se', 'xr', 'xs',
+            
+            # Display/Screen Terms
+            'screen', 'display', 'lcd', 'oled', 'amoled', 'super amoled',
+            'retina', 'gorilla glass', 'screen size', 'inch display',
+            'resolution', 'pixel density', 'ppi', 'refresh rate',
+            '60hz', '90hz', '120hz', '144hz', 'adaptive sync',
+            'hdr', 'hdr10', 'hdr10+', 'dolby vision',
+            'notch', 'punch hole', 'bezel', 'screen protector',
+            'tempered glass', 'curved screen', 'flat display',
+            'foldable screen', 'flexible display',
+            
+            # Camera Terms
+            'camera', 'megapixel', 'mp camera', 'front camera',
+            'rear camera', 'selfie camera', 'main camera',
+            'ultra wide', 'telephoto', 'macro', 'depth sensor',
+            'periscope', 'optical zoom', 'digital zoom', 'hybrid zoom',
+            'night mode', 'portrait mode', 'pro mode', 'ai camera',
+            'image stabilization', 'ois', 'eis', 'gimbal',
+            '4k video', '8k video', 'slow motion', 'time lapse',
+            'dual camera', 'triple camera', 'quad camera', 'penta camera',
+            'camera setup', 'lens', 'aperture', 'sensor size',
+            
+            # Battery & Charging
+            'battery', 'mah', 'battery life', 'battery capacity',
+            'charging', 'fast charging', 'quick charge', 'rapid charge',
+            'super vooc', 'warp charge', 'dash charge', 'turbo charge',
+            'wireless charging', 'reverse charging', 'power bank',
+            'battery drain', 'screen on time', 'standby time',
+            '15w', '18w', '25w', '33w', '45w', '65w', '120w', '150w',
+            'charger', 'charging speed', 'charging cable', 'usb-c',
+            
+            # Processor/Performance
+            'processor', 'chipset', 'cpu', 'gpu', 'soc',
+            'snapdragon', 'dimensity', 'exynos', 'kirin', 'bionic',
+            'helio', 'tensor', 'unisoc', 'mediatek',
+            'performance', 'benchmark', 'antutu', 'geekbench',
+            'gaming performance', 'multitasking', 'smooth',
+            'lag', 'heating', 'thermal', 'throttling',
+            
+            # Memory & Storage
+            'ram', 'rom', 'storage', 'internal storage', 'memory',
+            'gb ram', 'gb storage', 'expandable storage', 'sd card',
+            'micro sd', 'ufs', 'emmc', 'nvme',
+            '64gb', '128gb', '256gb', '512gb', '1tb',
+            '4gb ram', '6gb ram', '8gb ram', '12gb ram', '16gb ram',
+            
+            # Connectivity
+            '5g', '4g', 'lte', '3g', 'network', 'connectivity',
+            'wifi', 'wi-fi', 'bluetooth', 'nfc', 'infrared',
+            'gps', 'dual sim', 'dual standby', 'esim',
+            'wifi 6', 'wifi 6e', 'wifi 7', 'bluetooth 5.0',
+            'usb-c', 'usb type-c', 'micro usb', 'headphone jack',
+            '3.5mm jack', 'aux port',
+            
+            # Features & Sensors
+            'fingerprint', 'face unlock', 'face id', 'in-display fingerprint',
+            'side mounted', 'rear fingerprint', 'biometric',
+            'sensor', 'proximity sensor', 'gyroscope', 'accelerometer',
+            'compass', 'barometer', 'ambient light',
+            'water resistant', 'ip67', 'ip68', 'ip rating',
+            'dust proof', 'splash proof', 'waterproof',
+            
+            # Audio
+            'speaker', 'stereo speaker', 'dual speaker', 'mono speaker',
+            'dolby atmos', 'audio quality', 'microphone',
+            'noise cancellation', 'call quality', 'earpiece',
+            
+            # Build & Design
+            'design', 'build quality', 'premium', 'plastic', 'metal',
+            'glass back', 'matte finish', 'glossy', 'color',
+            'weight', 'dimensions', 'thickness', 'slim', 'compact',
+            'ergonomic', 'grip', 'button placement',
+            
+            # Software & UI
+            'software', 'firmware', 'update', 'android version',
+            'android 14', 'android 13', 'ios 17', 'ios 16',
+            'system update', 'security patch', 'bloatware',
+            'custom rom', 'stock android', 'clean ui',
+            'features', 'customization', 'themes', 'launcher',
+            
+            # Price & Value
+            'price', 'cost', 'budget', 'affordable', 'cheap',
+            'expensive', 'value for money', 'worth it', 'deal',
+            'discount', 'offer', 'sale', 'promotion',
+            'flagship', 'mid range', 'entry level', 'premium',
+            'best phone', 'top phone', 'phone under',
+            
+            # Usage & Requirements
+            'gaming phone', 'camera phone', 'photography',
+            'video recording', 'content creation', 'vlogging',
+            'business phone', 'work phone', 'daily driver',
+            'backup phone', 'second phone', 'spare phone',
+            
+            # Accessories
+            'case', 'cover', 'screen guard', 'protector',
+            'charger', 'cable', 'earphone', 'earbuds',
+            'power adapter', 'accessories',
+            
+            # Shopping/Purchase Terms
+            'buy', 'purchase', 'recommend', 'recommendation',
+            'suggest', 'suggestion', 'best', 'top', 'which phone',
+            'what phone', 'should i buy', 'worth buying',
+            'comparison', 'compare', 'vs', 'versus', 'or',
+            'difference between', 'better', 'best option',
+            
+            # Technical Specs
+            'specification', 'specs', 'spec sheet', 'features list',
+            'full specs', 'technical details', 'review',
+            'hands on', 'unboxing', 'first impression',
+            
+            # Issues/Problems
+            'problem', 'issue', 'error', 'bug', 'glitch',
+            'not working', 'broken', 'repair', 'fix',
+            'troubleshoot', 'warranty', 'service center',
+            
+            # Carrier/Network
+            'carrier', 'network provider', 'operator',
+            'sim card', 'prepaid', 'postpaid', 'plan',
+            'data plan', 'unlimited', 'coverage',
+            
+            # Second-hand/Used
+            'used phone', 'second hand', 'refurbished',
+            'pre owned', 'reconditioned', 'renewed',
+            
+            # Release/Launch
+            'launch', 'release', 'launch date', 'coming soon',
+            'upcoming', 'leaked', 'rumor', 'announcement',
+            'pre order', 'available', 'in stock',
+            
+            # Ratings/Reviews
+            'rating', 'review', 'user review', 'expert review',
+            'pros and cons', 'advantage', 'disadvantage',
+            'good', 'bad', 'excellent', 'poor',
+            
+            # Common Questions
+            'how much', 'which is better', 'is it good',
+            'should i get', 'worth it', 'recommend for',
+            'suitable for', 'good for', 'best for',
+            
+            # Regional/Market Terms
+            'global version', 'china version', 'international',
+            'variant', 'model number', 'region lock',
+            
+            # Measurements
+            'inch', 'mm', 'cm', 'gram', 'ounce', 'hz', 'ghz'
         ]
 
         # Check if any phone keyword is in the message
@@ -1303,7 +2244,7 @@ Just ask me anything like:
             return True
 
         return False
-
+    
     def _extract_release_date_criteria(self, message):
         """
         Extract release date criteria from message
@@ -1483,7 +2424,7 @@ Just ask me anything like:
                     break
 
         return found_brands
-
+    
     def _extract_brands_with_preferences(self, message):
         """
         Extract brand preferences from message, handling both positive and negative preferences
