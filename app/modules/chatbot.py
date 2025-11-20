@@ -1068,33 +1068,57 @@ Just ask me anything like:
             (r'(?:^|\s)(\d{3,5})(?:\s|$)', 'single'),  # 1000, 2000, etc.
         ]
 
-        for pattern in patterns:
+        for pattern, pattern_type in patterns:
+
             match = re.search(pattern, message.lower())
+
             if match:
-               # First check if we have a range (2 groups)
-                if len(match.groups()) == 2 and match.group(2):
-                    # Handle "near X-Y" or "near X to Y" pattern (range)
-                    if 'near' in message.lower:
-                        return (int(match.group(1)), int(match.group(2)))
-                    # Regular range pattern (including "within 2000-3000")
-                    else:
-                        return (int(match.group(1)), int(match.group(2)))
-                # Handle "above/over/more than" keywords - minimum budget
-                elif any(word in message.lower for word in ['above', 'over', 'more than']):
-                    # Single value with above/over/more than keyword
+
+                # Handle based on pattern type
+
+                if pattern_type == 'range':
+
+                    # Range pattern (e.g., "1000-2000", "near 1000-2000")
+
+                    return (int(match.group(1)), int(match.group(2)))
+
+ 
+
+                elif pattern_type == 'min':
+
+                    # Minimum budget pattern (e.g., "above 3000", "over rm 5000")
+
                     min_budget = int(match.group(1))
+
                     return (min_budget, 15000)  # Set reasonable upper limit
-                elif 'near' in message.lower or 'around' in message.lower:
-                    # Single value with within/under/below/max/maximum keyword
-                    center = int(match.group(1))
-                    return (max(500, center - 500), center + 500)
-                elif any(word in message.lower for word in ['under', 'below', 'within', 'max', 'maximum']):
+
+ 
+
+                elif pattern_type == 'max':
+
+                    # Maximum budget pattern (e.g., "under 2000", "within rm 3000")
+
                     max_budget = int(match.group(1))
+
                     return (500, max_budget)
-                else:
-                    # Single value mentioned
+
+ 
+
+                elif pattern_type == 'near':
+
+                    # Near/around pattern (±500 range)
+
+                    center = int(match.group(1))
+
+                    return (max(500, center - 500), center + 500)
+
+ 
+
+                elif pattern_type == 'single':
+
+                    # Single value mentioned (assume max budget)
+
                     value = int(match.group(1))
-                    # Assume it's max budget
                     return (500, value)
 
         return None
