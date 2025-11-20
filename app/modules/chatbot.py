@@ -52,13 +52,27 @@ class ChatbotEngine:
         # Extract brand preferences from current message
         wanted, unwanted = self._extract_brand_preferences(message)
 
+        # Detect if message is ONLY a brand name (e.g., just "oppo" or "samsung xiaomi")
+        # If so, REPLACE previous brands instead of adding to them
+        message_words = message.lower().strip().split()
+        all_brand_keywords = ['apple', 'iphone', 'samsung', 'galaxy', 'xiaomi', 'vivo', 'oppo',
+                               'huawei', 'honor', 'realme', 'redmi', 'poco', 'google', 'pixel',
+                               'nokia', 'lenovo', 'asus']
+        is_brand_only = len(message_words) <= 3 and all(word in all_brand_keywords for word in message_words)
+
         # Update session context with brand preferences
         if wanted:
-            # Add to wanted brands if not already there
+            if is_brand_only:
+                # REPLACE: Clear previous brands and set new ones
+                self.session_context[context_key]['wanted_brands'] = wanted.copy()
+            else:
+                # ADD: Merge with previous brands (for queries like "i love samsung")
+                for brand in wanted:
+                    if brand not in self.session_context[context_key]['wanted_brands']:
+                        self.session_context[context_key]['wanted_brands'].append(brand)
+
+            # Remove from unwanted if it was there
             for brand in wanted:
-                if brand not in self.session_context[context_key]['wanted_brands']:
-                    self.session_context[context_key]['wanted_brands'].append(brand)
-                # Remove from unwanted if it was there
                 if brand in self.session_context[context_key]['unwanted_brands']:
                     self.session_context[context_key]['unwanted_brands'].remove(brand)
 
@@ -436,7 +450,16 @@ Just ask me anything like:
         negative_patterns = [
             (r"don't like\s+(\w+)", 1),
             (r"dont like\s+(\w+)", 1),
-            (r"not\s+(\w+)", 1),
+            (r"don't love\s+(\w+)", 1),
+            (r"dont love\s+(\w+)", 1),
+            (r"not love\s+(\w+)", 1),
+            (r"not like\s+(\w+)", 1),
+            (r"not prefer\s+(\w+)", 1),
+            (r"don't prefer\s+(\w+)", 1),
+            (r"dont prefer\s+(\w+)", 1),
+            (r"don't want\s+(\w+)", 1),
+            (r"dont want\s+(\w+)", 1),
+            (r"not want\s+(\w+)", 1),
             (r"no\s+(\w+)", 1),
             (r"hate\s+(\w+)", 1),
             (r"dislike\s+(\w+)", 1),
