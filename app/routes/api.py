@@ -38,26 +38,37 @@ def check_auth():
 @bp.route('/chat', methods=['POST'])
 def chat():
     """Process chatbot message (available for both guests and logged-in users)"""
-    data = request.get_json()
-    message = data.get('message', '')
-    session_id = data.get('session_id') or str(uuid.uuid4())
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        session_id = data.get('session_id') or str(uuid.uuid4())
 
-    if not message:
-        return jsonify({'error': 'Message is required'}), 400
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
 
-    # Process with chatbot engine (use persistent instance for conversation context)
-    # Use current_user.id if authenticated, otherwise use None for guest
-    user_id = current_user.id if current_user.is_authenticated else None
-    response = chatbot_engine.process_message(user_id, message, session_id)
+        # Process with chatbot engine (use persistent instance for conversation context)
+        # Use current_user.id if authenticated, otherwise use None for guest
+        user_id = current_user.id if current_user.is_authenticated else None
+        response = chatbot_engine.process_message(user_id, message, session_id)
 
-    return jsonify({
-        'success': True,
-        'response': response['response'],
-        'type': response.get('type', 'text'),
-        'metadata': response.get('metadata', {}),
-        'quick_replies': response.get('quick_replies', []),
-        'session_id': session_id
-    })
+        return jsonify({
+            'success': True,
+            'response': response['response'],
+            'type': response.get('type', 'text'),
+            'metadata': response.get('metadata', {}),
+            'quick_replies': response.get('quick_replies', []),
+            'session_id': session_id
+        })
+    except Exception as e:
+        # Log the error for debugging
+        import traceback
+        print(f"ERROR in chat endpoint: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'An error occurred processing your message'
+        }), 500
 
 @bp.route('/chat/history', methods=['GET'])
 @login_required
