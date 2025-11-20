@@ -720,6 +720,14 @@ class ChatbotEngine:
                                 found_brands.append(brand.name)
                                 all_phones.extend([(phone, brand.name) for phone in phones])
 
+                    # FILTER OUT UNWANTED BRANDS
+                    if all_unwanted_brands:
+                        filtered_phones = []
+                        for phone, brand_name in all_phones:
+                            if brand_name not in all_unwanted_brands:
+                                filtered_phones.append((phone, brand_name))
+                        all_phones = filtered_phones
+
                     if all_phones:
                         brands_text = ", ".join(found_brands[:-1]) + f" and {found_brands[-1]}" if len(found_brands) > 1 else found_brands[0]
                         # Build timeline text
@@ -2542,14 +2550,11 @@ Just ask me anything like:
             r"i prefer\s+(\w+)",
             r"i looking for\s+(\w+)",
             r"i would like\s+(\w+)",
-            r"want\s+(\w+)",
             r"show me\s+(\w+)",
             r"give me\s+(\w+)",
             r"find\s+(\w+)",
             r"find me\s+(\w+)",
             r"looking for\s+(\w+)",
-            r"prefer\s+(\w+)",
-            r"like\s+(\w+)",
             r"love\s+(\w+)",
         ]
 
