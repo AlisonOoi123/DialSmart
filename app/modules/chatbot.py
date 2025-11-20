@@ -14,9 +14,10 @@ class ChatbotEngine:
 
     def __init__(self):
         self.ai_engine = AIRecommendationEngine()
+        self.session_context = {}
         self.intents = {
             'greeting': ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
-            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm'],
+            'budget_query': ['budget', 'price', 'cost', 'cheap', 'affordable', 'expensive', 'rm', 'within', 'under', 'below', 'above'],
             'recommendation': ['recommend', 'suggest', 'find', 'looking for', 'need', 'want', 'i want', 'show me', 'best'],
             'comparison': ['compare', 'difference', 'vs', 'versus', 'better'],
             'specification': ['specs', 'specification', 'camera', 'battery', 'ram', 'storage', 'screen', 'display', 'processor', 'cpu'],
@@ -55,11 +56,27 @@ class ChatbotEngine:
         Returns:
             Dictionary with response and metadata
         """
+
+         # Use user_id as session key if session_id not provided
+        context_key = session_id or f"user_{user_id}"
+
+        # Initialize context for this session if not exists
+        if context_key not in self.session_context:
+            self.session_context[context_key] = {}
+
         # Detect intent
         intent = self._detect_intent(message.lower())
 
-        # Generate response based on intent
-        response_data = self._generate_response(user_id, message, intent)
+        response_data = self._generate_response(user_id, message, intent, context_key)
+
+        # Update session context with any extracted information
+        budget = self._extract_budget(message)
+        if budget:
+            self.session_context[context_key]['last_budget'] = budget
+
+        brands = self._extract_multiple_brands(message)
+        if brands:
+            self.session_context[context_key]['last_brands'] = brands
 
         # Save to chat history
         self._save_chat_history(
@@ -111,8 +128,11 @@ class ChatbotEngine:
 
         return 'general'
 
-    def _generate_response(self, user_id, message, intent):
+    def _generate_response(self, user_id, message, intent, context_key):
         """Generate appropriate response based on intent"""
+
+        # Get session context
+        context = self.session_context.get(context_key, {})
 
         # NEW: Check for specific phone model query
         # Skip phone model extraction ONLY if asking for recommendations with specific requirements
@@ -188,10 +208,17 @@ class ChatbotEngine:
             # Detect all parameters from message
             features = self._detect_feature_priority(message)
             user_category = self._detect_user_category(message)
+            
+            # Check current message first, then context
             budget = self._extract_budget(message)
+            if not budget and 'last_budget' in context:
+                budget = context['last_budget']  # ← Use previous budget!
+            
             usage = self._detect_usage_type(message)
+            
             brands = self._extract_multiple_brands(message)
-            criteria = self._extract_criteria(message)
+            if not brands and 'last_brands' in context:
+                brands = context['last_brands']  # ← Use previous brands!
 
             # PRIORITY 1: User category (student, senior, professional) - handle first
             if user_category:
@@ -937,7 +964,7 @@ Just ask me anything like:
             r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)',  # RM1000 to RM2000
             r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000, within 2000-3000
             r'near\s*rm?\s*(\d+)\s*(?:to|-)\s*rm?\s*(\d+)',  # near 2000-3000 or near 2000 to 3000
-            r'(?:under|below|within|max|maximum|near|around)\s*rm?\s*(\d+)',  # under/below/within/near RM2000
+            r'(?:under|below|within|max|maximum|near|around)\s+(?:rm\s+)?(\d+)',
             r'rm\s*(\d+)',  # RM2000
             r'(?:^|\s)(\d{3,5})(?:\s|$)',  # standalone number 1000-99999
         ]
