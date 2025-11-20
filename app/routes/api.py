@@ -10,6 +10,10 @@ import uuid
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
+# Create a single persistent chatbot instance for conversation context
+# This allows session_context to persist across requests
+chatbot_engine = ChatbotEngine()
+
 # Authentication check endpoint
 @bp.route('/auth/check', methods=['GET'])
 def check_auth():
@@ -41,11 +45,10 @@ def chat():
     if not message:
         return jsonify({'error': 'Message is required'}), 400
 
-    # Process with chatbot engine
-    chatbot = ChatbotEngine()
+    # Process with chatbot engine (use persistent instance for conversation context)
     # Use current_user.id if authenticated, otherwise use None for guest
     user_id = current_user.id if current_user.is_authenticated else None
-    response = chatbot.process_message(user_id, message, session_id)
+    response = chatbot_engine.process_message(user_id, message, session_id)
 
     return jsonify({
         'success': True,
@@ -63,8 +66,8 @@ def chat_history():
     session_id = request.args.get('session_id')
     limit = request.args.get('limit', 50, type=int)
 
-    chatbot = ChatbotEngine()
-    history = chatbot.get_chat_history(current_user.id, session_id, limit)
+    # Use persistent chatbot instance
+    history = chatbot_engine.get_chat_history(current_user.id, session_id, limit)
 
     chat_list = [{
         'id': chat.id,
