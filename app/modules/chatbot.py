@@ -356,7 +356,33 @@ class ChatbotEngine:
 
         # Initialize context for this session if not exists
         if context_key not in self.session_context:
-            self.session_context[context_key] = {}
+            self.session_context[context_key] = {
+                'wanted_brands': [],
+                'unwanted_brands': [],
+                'last_budget': None
+            }
+            
+        # Extract brand preferences from current message
+        wanted, unwanted = self._extract_brand_preferences(message)
+
+        # Update session context with brand preferences
+        if wanted:
+            # Add to wanted brands if not already there
+            for brand in wanted:
+                if brand not in self.session_context[context_key]['wanted_brands']:
+                    self.session_context[context_key]['wanted_brands'].append(brand)
+                # Remove from unwanted if it was there
+                if brand in self.session_context[context_key]['unwanted_brands']:
+                    self.session_context[context_key]['unwanted_brands'].remove(brand)
+
+        if unwanted:
+            # Add to unwanted brands if not already there
+            for brand in unwanted:
+                if brand not in self.session_context[context_key]['unwanted_brands']:
+                    self.session_context[context_key]['unwanted_brands'].append(brand)
+                # Remove from wanted if it was there
+                if brand in self.session_context[context_key]['wanted_brands']:
+                    self.session_context[context_key]['wanted_brands'].remove(brand)
 
         # Detect intent
         intent = self._detect_intent(message.lower())
@@ -1410,12 +1436,30 @@ Just ask me anything like:
             budget = self._extract_budget(message)
             if budget:
                 min_budget, max_budget = budget
-                phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), top_n=3)
+                # Store budget in context
+                context['last_budget'] = budget
 
-                if phones:
-                    response = f"Here are the top phones within RM{min_budget:,.0f} - RM{max_budget:,.0f}:\n\n"
+                phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), top_n=10)
+
+                # Filter by brand preferences
+                wanted_brands = context.get('wanted_brands', [])
+                unwanted_brands = context.get('unwanted_brands', [])
+
+                filtered_phones = self._filter_phones_by_brand(phones, wanted_brands, unwanted_brands)
+
+                if filtered_phones:
+                    # Limit to top 5 after filtering
+                    filtered_phones = filtered_phones[:5]
+
+                    # Build response based on brand preferences
+                    if wanted_brands:
+                        brand_names = ', '.join(wanted_brands)
+                        response = f"Here are the best {brand_names} phones within RM{min_budget} - RM{max_budget}:\n\n"
+                    else:
+                        response = f"Here are the top phones within RM{min_budget} - RM{max_budget}:\n\n"
+                                        
                     phone_list = []
-                    for item in phones:
+                    for item in filtered_phones:
                         phone = item['phone']
                         response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
                         phone_list.append({
@@ -1430,11 +1474,24 @@ Just ask me anything like:
                         'type': 'recommendation',
                         'metadata': {'phones': phone_list, 'budget': budget}
                     }
+                else:
+                    if wanted_brands:
+                        brand_names = ', '.join(wanted_brands)
+                        return {
+                            'response': f"I couldn't find {brand_names} phones in that exact range. Would you like to adjust your budget or see other brands?",
+                            'type': 'text'
+                        }
+                    else:
+                        return {
+                            'response': f"I couldn't find phones in that exact range. Would you like to adjust your budget?",
+                            'type': 'text'
+                        }
+            else:
 
-            return {
-                'response': "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
-                'type': 'text',
-                'quick_replies': ['Find a phone', 'Budget options', 'Popular brands']
+                return {
+                    'response': "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
+                    'type': 'text',
+                    'quick_replies': ['Find a phone', 'Budget options', 'Popular brands']
             }
 
     # NEW METHODS for specific phone queries
