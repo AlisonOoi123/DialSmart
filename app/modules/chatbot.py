@@ -101,26 +101,75 @@ class ChatbotEngine:
         elif intent == 'budget_query':
             # Extract budget from message
             budget = self._extract_budget(message)
+
+            # CRITICAL FIX: Check for brands in budget query (e.g., "vivo under rm 2000")
+            brand_names = self._extract_multiple_brands(message)
+
             if budget:
                 min_budget, max_budget = budget
+
+                # If brands mentioned, filter by brand
+                if brand_names:
+                    all_phones = []
+                    found_brands = []
+
+                    for brand_name in brand_names:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            query = Phone.query.filter_by(brand_id=brand.id, is_active=True)
+                            query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+                            phones = query.limit(5).all()
+
+                            if phones:
+                                found_brands.append(brand.name)
+                                all_phones.extend([(phone, brand.name) for phone in phones])
+
+                    if all_phones:
+                        brands_text = ", ".join(found_brands[:-1]) + f" and {found_brands[-1]}" if len(found_brands) > 1 else found_brands[0]
+                        response = f"Here are {brands_text} phones within RM{min_budget:,.0f} - RM{max_budget:,.0f}:\n\n"
+
+                        phone_list = []
+                        for phone, brand_name in all_phones:
+                            response += f"📱 {brand_name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                            phone_list.append({
+                                'id': phone.id,
+                                'name': phone.model_name,
+                                'brand': brand_name,
+                                'price': phone.price
+                            })
+
+                        return {
+                            'response': response,
+                            'type': 'recommendation',
+                            'metadata': {'phones': phone_list, 'brands': found_brands, 'budget': budget}
+                        }
+                    else:
+                        brands_text = ", ".join(brand_names[:-1]) + f" and {brand_names[-1]}" if len(brand_names) > 1 else brand_names[0]
+                        return {
+                            'response': f"I couldn't find {brands_text} phones within RM{min_budget:,.0f} - RM{max_budget:,.0f}. Would you like to see phones from other brands?",
+                            'type': 'text'
+                        }
+
+                # No brand mentioned, show general budget recommendations
                 phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), top_n=3)
 
                 if phones:
-                    response = f"Here are the top phones within RM{min_budget} - RM{max_budget}:\n\n"
+                    response = f"Here are the top phones within RM{min_budget:,.0f} - RM{max_budget:,.0f}:\n\n"
                     phone_list = []
                     for item in phones:
                         phone = item['phone']
-                        response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
                         phone_list.append({
                             'id': phone.id,
                             'name': phone.model_name,
+                            'brand': phone.brand.name,
                             'price': phone.price
                         })
 
                     return {
                         'response': response,
                         'type': 'recommendation',
-                        'metadata': {'phones': phone_list}
+                        'metadata': {'phones': phone_list, 'budget': budget}
                     }
                 else:
                     return {
@@ -231,8 +280,11 @@ class ChatbotEngine:
             brand_names = self._extract_multiple_brands(message)
 
             if brand_names:
-                # Check if budget or usage is mentioned
+                # CONTEXT-AWARE: Check current message first, then session context
                 budget = self._extract_budget(message)
+                if not budget and 'last_budget' in context:
+                    budget = context['last_budget']
+
                 usage = self._detect_usage_type(message)
 
                 all_phones = []
@@ -314,6 +366,32 @@ Just ask me anything like:
             }
 
         else:  # general
+            # SMART FALLBACK: Check if budget is extractable even for general queries (e.g., "phone 1000-3000")
+            budget = self._extract_budget(message)
+            if budget:
+                min_budget, max_budget = budget
+                phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), top_n=3)
+
+                if phones:
+                    response = f"Here are the top phones within RM{min_budget:,.0f} - RM{max_budget:,.0f}:\n\n"
+                    phone_list = []
+                    for item in phones:
+                        phone = item['phone']
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'budget': budget}
+                    }
+
+            # No budget extractable, return generic greeting
             return {
                 'response': "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
                 'type': 'text',
