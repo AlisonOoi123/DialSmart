@@ -2529,11 +2529,13 @@ Just ask me anything like:
             r"don't like\s+(\w+)",
             r"dont want\s+(\w+)",
             r"don't want\s+(\w+)",
+            r"don't love\s+(\w+)",
             r"dont\s+(\w+)",
             r"don't\s+(\w+)",
             r"not\s+(\w+)",
             r"no\s+(\w+)",
             r"not prefer\s+(\w+)",
+            r"not love\s+(\w+)",
             r"hate\s+(\w+)",
             r"dislike\s+(\w+)",
             r"avoid\s+(\w+)",
@@ -2555,7 +2557,6 @@ Just ask me anything like:
             r"find\s+(\w+)",
             r"find me\s+(\w+)",
             r"looking for\s+(\w+)",
-            r"love\s+(\w+)",
         ]
 
         brand_keywords_map = {
