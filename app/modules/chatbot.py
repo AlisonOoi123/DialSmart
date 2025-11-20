@@ -446,16 +446,17 @@ Just ask me anything like:
         ]
 
         # Positive patterns - brands user wants/likes
+        # Note: Must be specific to avoid matching negative contexts like "don't like"
         positive_patterns = [
             (r"i want\s+(\w+)", 1),
-            (r"want\s+(\w+)", 1),
             (r"i love\s+(\w+)", 1),
-            (r"love\s+(\w+)", 1),
             (r"i like\s+(\w+)", 1),
-            (r"like\s+(\w+)", 1),
-            (r"prefer\s+(\w+)", 1),
+            (r"i prefer\s+(\w+)", 1),
             (r"show me\s+(\w+)", 1),
             (r"give me\s+(\w+)", 1),
+            (r"find me\s+(\w+)", 1),
+            (r"looking for\s+(\w+)", 1),
+            # Removed standalone "want", "like", "love", "prefer" to prevent false matches
         ]
 
         # Extract unwanted brands
