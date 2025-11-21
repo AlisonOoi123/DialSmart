@@ -718,24 +718,49 @@ class ChatbotEngine:
 
         # Try to extract phone model if NOT asking for recommendations
         if not skip_phone_model:
-            # NEW: Check for multiple phone models (e.g., "iphone 17 pro and xiaomi 17 pro")
-            if ' and ' in message_lower and not any(word in message_lower for word in ['recommend', 'suggest', 'find', 'show', 'best', 'which', 'what']):
-                # Split by 'and' and try to extract each model
-                parts = message_lower.split(' and ')
-                all_phones = []
-                for part in parts:
-                    phones = self._extract_phone_model(part)
-                    if phones:
-                        all_phones.extend(phones if isinstance(phones, list) else [phones])
+            try:
+                # NEW: Check for multiple phone models (e.g., "iphone 17 pro and xiaomi 17 pro")
+                if ' and ' in message_lower and not any(word in message_lower for word in ['recommend', 'suggest', 'find', 'show', 'best', 'which', 'what']):
+                    # Split by 'and' and try to extract each model
+                    parts = message_lower.split(' and ')
+                    all_phones = []
+                    for part in parts:
+                        phones = self._extract_phone_model(part)
+                        if phones:
+                            all_phones.extend(phones if isinstance(phones, list) else [phones])
 
-                if len(all_phones) >= 2:
-                    # Multiple specific models found
-                    return self._handle_specific_phone_query(message, all_phones)
+                    if len(all_phones) >= 2:
+                        # Multiple specific models found
+                        return self._handle_specific_phone_query(message, all_phones)
 
-            # Standard single model extraction
-            phone_model = self._extract_phone_model(message)
-            if phone_model:
-                return self._handle_specific_phone_query(message, phone_model)
+                # Standard single model extraction
+                phone_model = self._extract_phone_model(message)
+                if phone_model:
+                    return self._handle_specific_phone_query(message, phone_model)
+                elif not skip_phone_model:
+                    # Model query but no phones found - provide helpful message
+                    # Extract brand and model name for better error message
+                    brands_in_query = self._extract_multiple_brands(message)
+                    if brands_in_query:
+                        brand_text = brands_in_query[0]
+                        # Remove brand name to get potential model
+                        model_text = message_lower
+                        for brand in brands_in_query:
+                            model_text = model_text.replace(brand.lower(), '').strip()
+                        model_text = model_text.replace('phone', '').replace('smartphone', '').strip()
+
+                        if model_text:
+                            return {
+                                'response': f"I couldn't find a specific model matching '{brand_text} {model_text}'. Would you like to:\n• See all {brand_text} phones\n• Try a different model name\n• Get recommendations based on your budget",
+                                'type': 'text',
+                                'quick_replies': [f'Show {brand_text} phones', 'Find phones under RM2000', 'Latest phones']
+                            }
+            except Exception as e:
+                # Error during model extraction - log and continue with general intent handling
+                import traceback
+                print(f"Error in phone model extraction: {e}")
+                traceback.print_exc()
+                # Don't return error - let it fall through to general intent handling
         # END NEW CODE
 
         if intent == 'greeting':
@@ -1912,9 +1937,10 @@ class ChatbotEngine:
 
     # NEW METHODS for specific phone queries
     def _extract_phone_model(self, message):
-        """Extract specific phone model name from message with brand awareness"""
+        """Extract specific phone model name from message with brand awareness and fuzzy matching"""
         message_lower = message.lower()
         from sqlalchemy import or_, func
+        from difflib import SequenceMatcher
 
         # Step 1: Detect if a specific brand is mentioned
         # All 13 known brands (matches database brands exactly)
@@ -1932,7 +1958,7 @@ class ChatbotEngine:
             'redmi': ['redmi'],
             'samsung': ['samsung', 'galaxy'],
             'vivo': ['vivo'],
-            'xiaomi': ['xiaomi']  
+            'xiaomi': ['xiaomi']
         }
 
         for brand_name, keywords in brand_keywords.items():
@@ -2186,6 +2212,44 @@ class ChatbotEngine:
         if phones:
             return phones
 
+        # Strategy 3: Fuzzy matching (ML-enhanced) - find closest matches
+        # This makes the chatbot more intelligent and flexible
+        def similarity(a, b):
+            """Calculate similarity ratio between two strings"""
+            return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+        # Get all phones from the detected brand (or all phones if no brand)
+        if detected_brand:
+            brand_obj = Brand.query.filter(Brand.name.ilike(f'%{detected_brand}%')).first()
+            if brand_obj:
+                candidate_phones = Phone.query.filter_by(brand_id=brand_obj.id, is_active=True).all()
+            else:
+                candidate_phones = Phone.query.filter_by(is_active=True).limit(100).all()
+        else:
+            # No specific brand - search all phones (limited to 200 for performance)
+            candidate_phones = Phone.query.filter_by(is_active=True).limit(200).all()
+
+        # Score each phone based on similarity to cleaned_message
+        scored_phones = []
+        for phone in candidate_phones:
+            # Try multiple similarity scores
+            model_score = similarity(cleaned_message, phone.model_name)
+            brand_model_score = similarity(cleaned_message, f"{phone.brand.name} {phone.model_name}")
+
+            # Use the best score
+            best_score = max(model_score, brand_model_score)
+
+            # Only include if similarity is above threshold (0.6 = 60% match)
+            if best_score >= 0.6:
+                scored_phones.append((phone, best_score))
+
+        # Sort by similarity score (highest first)
+        scored_phones.sort(key=lambda x: x[1], reverse=True)
+
+        # Return top 5 matches
+        if scored_phones:
+            return [phone for phone, score in scored_phones[:5]]
+
         return None
 
     def _handle_specific_phone_query(self, message, phones):
@@ -2418,6 +2482,41 @@ class ChatbotEngine:
                 return int(match.group(1))
 
         return None
+
+    def _filter_phones_by_brand(self, phones_items, wanted_brands, unwanted_brands):
+        """
+        Filter phone results by wanted/unwanted brands
+
+        Args:
+            phones_items: List of phone items (dict with 'phone' key)
+            wanted_brands: List of brand names to include
+            unwanted_brands: List of brand names to exclude
+
+        Returns:
+            Filtered list of phone items
+        """
+        if not wanted_brands and not unwanted_brands:
+            return phones_items
+
+        filtered = []
+        for item in phones_items:
+            phone = item.get('phone')
+            if not phone or not hasattr(phone, 'brand'):
+                continue
+
+            brand_name = phone.brand.name if hasattr(phone.brand, 'name') else str(phone.brand)
+
+            # Check unwanted brands first
+            if unwanted_brands and brand_name in unwanted_brands:
+                continue
+
+            # Check wanted brands
+            if wanted_brands and brand_name not in wanted_brands:
+                continue
+
+            filtered.append(item)
+
+        return filtered
 
     def _contains_malicious_intent(self, message):
         """
