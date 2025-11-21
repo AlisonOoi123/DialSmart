@@ -46,8 +46,13 @@ class ChatbotEngine:
             self.session_context[context_key] = {
                 'wanted_brands': [],
                 'unwanted_brands': [],
-                'last_budget': None
+                'last_budget': None,
+                'last_features': [],     # Track features like 'battery', 'camera'
+                'last_usage': None       # Track usage like 'Gaming', 'Photography'
             }
+
+        # Check if this is a fresh query (should clear old context)
+        is_fresh = self._is_fresh_query(message)
 
         # Extract brand preferences from current message
         wanted, unwanted = self._extract_brand_preferences(message)
@@ -59,6 +64,11 @@ class ChatbotEngine:
                                'huawei', 'honor', 'realme', 'redmi', 'poco', 'google', 'pixel',
                                'nokia', 'lenovo', 'asus']
         is_brand_only = len(message_words) <= 3 and all(word in all_brand_keywords for word in message_words)
+
+        # Clear old context if this is a fresh query with strong preferences
+        if is_fresh and (wanted or unwanted):
+            self.session_context[context_key]['wanted_brands'] = []
+            self.session_context[context_key]['unwanted_brands'] = []
 
         # Update session context with brand preferences
         if wanted:
@@ -84,6 +94,19 @@ class ChatbotEngine:
                 # Remove from wanted if it was there
                 if brand in self.session_context[context_key]['wanted_brands']:
                     self.session_context[context_key]['wanted_brands'].remove(brand)
+
+        # Extract and store features from current message
+        features = self._detect_feature_priority(message)
+        if features:
+            # Merge with existing features (don't replace, accumulate)
+            for feature in features:
+                if feature not in self.session_context[context_key]['last_features']:
+                    self.session_context[context_key]['last_features'].append(feature)
+
+        # Extract and store usage from current message
+        usage = self._detect_usage_type(message)
+        if usage:
+            self.session_context[context_key]['last_usage'] = usage
 
         # Detect intent
         intent = self._detect_intent(message.lower())
@@ -136,7 +159,15 @@ class ChatbotEngine:
                 # Store budget in context
                 context['last_budget'] = budget
 
-                phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), top_n=10)
+                # Get session features and usage
+                session_features = context.get('last_features', [])
+                session_usage = context.get('last_usage')
+
+                # If we have session usage, use usage-based query with budget
+                if session_usage:
+                    phones = self.ai_engine.get_phones_by_usage(session_usage, budget, top_n=10)
+                else:
+                    phones = self.ai_engine.get_budget_recommendations((min_budget, max_budget), top_n=10)
 
                 # Filter by brand preferences
                 wanted_brands = context.get('wanted_brands', [])
@@ -225,17 +256,38 @@ class ChatbotEngine:
                 }
 
         elif intent == 'usage_type':
-            # Detect usage type
+            # Detect usage type (already stored in session context)
             usage = self._detect_usage_type(message)
+            if not usage:
+                usage = context.get('last_usage')
+
             if usage:
+                # Get budget from message or session
                 budget = self._extract_budget(message)
-                phones = self.ai_engine.get_phones_by_usage(usage, budget, top_n=3)
+                if not budget:
+                    budget = context.get('last_budget')
 
-                if phones:
-                    response = f"Great choice! Here are the best phones for {usage}:\n\n"
+                phones = self.ai_engine.get_phones_by_usage(usage, budget, top_n=10)
+
+                # Filter by brand preferences from session
+                wanted_brands = context.get('wanted_brands', [])
+                unwanted_brands = context.get('unwanted_brands', [])
+
+                filtered_phones = self._filter_phones_by_brand(phones, wanted_brands, unwanted_brands)
+
+                if filtered_phones:
+                    # Limit to top 5 after filtering
+                    filtered_phones = filtered_phones[:5]
+
+                    # Build response with brand context
+                    if wanted_brands:
+                        brand_names = ', '.join(wanted_brands)
+                        response = f"Great choice! Here are the best {brand_names} phones for {usage}:\n\n"
+                    else:
+                        response = f"Great choice! Here are the best phones for {usage}:\n\n"
+
                     phone_list = []
-
-                    for item in phones:
+                    for item in filtered_phones:
                         phone = item['phone']
                         response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
                         phone_list.append({
@@ -256,7 +308,42 @@ class ChatbotEngine:
             }
 
         elif intent == 'brand_query':
-            # Extract brand name
+            # Get session features and usage to preserve context
+            session_features = context.get('last_features', [])
+            session_usage = context.get('last_usage')
+            wanted_brands = context.get('wanted_brands', [])
+
+            # If we have session usage, use usage-based filtering with brands
+            if session_usage and wanted_brands:
+                budget = self._extract_budget(message)
+                if not budget:
+                    budget = context.get('last_budget')
+
+                phones = self.ai_engine.get_phones_by_usage(session_usage, budget, top_n=10)
+                filtered_phones = self._filter_phones_by_brand(phones, wanted_brands, [])
+
+                if filtered_phones:
+                    filtered_phones = filtered_phones[:5]
+                    brand_names = ', '.join(wanted_brands)
+                    response = f"Great! Here are the best {brand_names} phones for {session_usage}:\n\n"
+
+                    phone_list = []
+                    for item in filtered_phones:
+                        phone = item['phone']
+                        response += f"📱 {phone.model_name} - RM{phone.price:,.2f}\n"
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'price': phone.price
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'usage': session_usage}
+                    }
+
+            # Otherwise, use traditional brand query
             brand_name = self._extract_brand(message)
             if brand_name:
                 brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
@@ -268,9 +355,19 @@ class ChatbotEngine:
                     if last_budget:
                         min_budget, max_budget = last_budget
                         query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
-                        response = f"Here are {brand.name} phones within RM{min_budget} - RM{max_budget}:\n\n"
+
+                        # Add feature context to response if available
+                        if session_features:
+                            feature_text = ', '.join(session_features)
+                            response = f"Here are {brand.name} phones within RM{min_budget} - RM{max_budget} with focus on {feature_text}:\n\n"
+                        else:
+                            response = f"Here are {brand.name} phones within RM{min_budget} - RM{max_budget}:\n\n"
                     else:
-                        response = f"Here are some popular {brand.name} phones:\n\n"
+                        if session_features:
+                            feature_text = ', '.join(session_features)
+                            response = f"Here are {brand.name} phones with focus on {feature_text}:\n\n"
+                        else:
+                            response = f"Here are some popular {brand.name} phones:\n\n"
 
                     phones = query.order_by(Phone.price.asc()).limit(5).all()
 
@@ -414,6 +511,72 @@ Just ask me anything like:
 
         return None
 
+    def _is_fresh_query(self, message):
+        """
+        Detect if message represents a fresh query (should clear context)
+        vs a refinement query (should preserve context)
+
+        Fresh query indicators:
+        - Contains strong negative brand preferences: "i not love X, i love Y"
+        - Contains budget with brand preferences: "vivo within 2000"
+        - Contains "recommend" with minimal context: "recommend a phone for me"
+
+        Returns: True if fresh query, False if refinement
+        """
+        message_lower = message.lower()
+
+        # Reset patterns - phrases that indicate starting fresh
+        reset_patterns = [
+            r'recommend.*phone for me',
+            r'recommend.*a phone',
+            r'find.*phone for me',
+            r'show.*phone for me',
+            r'suggest.*phone',
+        ]
+
+        for pattern in reset_patterns:
+            if re.search(pattern, message_lower):
+                return True
+
+        # Check for negative + positive brand combo (strong indicator of fresh query)
+        if re.search(r'(not|don\'t|dont)\s+(love|like|want|prefer)', message_lower):
+            # Has negative preference, check if also has positive
+            if re.search(r'(i love|i want|i like|i prefer)', message_lower):
+                return True
+
+        return False
+
+    def _detect_feature_priority(self, message):
+        """
+        Detect feature priorities from message
+
+        Returns: List of feature keywords like ['battery', 'camera', 'performance']
+        """
+        message_lower = message.lower()
+        features = []
+
+        # Battery-related keywords
+        if any(word in message_lower for word in ['long lasting', 'battery life', 'battery', 'long battery', 'last long']):
+            features.append('battery')
+
+        # Camera-related keywords
+        if any(word in message_lower for word in ['camera', 'photo', 'photography', 'picture', 'selfie']):
+            features.append('camera')
+
+        # Performance-related keywords
+        if any(word in message_lower for word in ['gaming', 'performance', 'fast', 'processor', 'speed']):
+            features.append('performance')
+
+        # Display-related keywords
+        if any(word in message_lower for word in ['screen', 'display', 'amoled', 'oled']):
+            features.append('display')
+
+        # Storage-related keywords
+        if any(word in message_lower for word in ['storage', 'memory', 'gb storage']):
+            features.append('storage')
+
+        return features
+
     def _extract_brand_preferences(self, message):
         """
         Extract brand preferences from message
@@ -423,6 +586,8 @@ Just ask me anything like:
         - "i want samsung" → (['Samsung'], [])
         - "i don't like oppo i want samsung" → (['Samsung'], ['Oppo'])
         - "i love samsung" → (['Samsung'], [])
+        - "i love samsung and xiaomi" → (['Samsung', 'Xiaomi'], [])
+        - "oppo and xiaomi" → (['Oppo', 'Xiaomi'], [])
         """
         message_lower = message.lower()
 
@@ -440,7 +605,8 @@ Just ask me anything like:
             'poco': 'Poco',
             'google': 'Google', 'pixel': 'Google',
             'nokia': 'Nokia',
-            'lenovo': 'Lenovo'
+            'lenovo': 'Lenovo',
+            'asus': 'Asus'
         }
 
         wanted_brands = []
@@ -471,15 +637,14 @@ Just ask me anything like:
         # Positive patterns - brands user wants/likes
         # Note: Must be specific to avoid matching negative contexts like "don't like"
         positive_patterns = [
-            (r"i want\s+(\w+)", 1),
-            (r"i love\s+(\w+)", 1),
-            (r"i like\s+(\w+)", 1),
-            (r"i prefer\s+(\w+)", 1),
-            (r"show me\s+(\w+)", 1),
-            (r"give me\s+(\w+)", 1),
-            (r"find me\s+(\w+)", 1),
-            (r"looking for\s+(\w+)", 1),
-            # Removed standalone "want", "like", "love", "prefer" to prevent false matches
+            (r"i want\s+(\w+(?:\s+and\s+\w+)*)", 1),  # Handles "i want samsung and xiaomi"
+            (r"i love\s+(\w+(?:\s+and\s+\w+)*)", 1),
+            (r"i like\s+(\w+(?:\s+and\s+\w+)*)", 1),
+            (r"i prefer\s+(\w+(?:\s+and\s+\w+)*)", 1),
+            (r"show me\s+(\w+(?:\s+and\s+\w+)*)", 1),
+            (r"give me\s+(\w+(?:\s+and\s+\w+)*)", 1),
+            (r"find me\s+(\w+(?:\s+and\s+\w+)*)", 1),
+            (r"looking for\s+(\w+(?:\s+and\s+\w+)*)", 1),
         ]
 
         # Extract unwanted brands
@@ -496,10 +661,26 @@ Just ask me anything like:
         for pattern, group in positive_patterns:
             matches = re.finditer(pattern, message_lower)
             for match in matches:
-                brand_keyword = match.group(group).lower()
-                if brand_keyword in brand_keywords_map:
-                    brand_name = brand_keywords_map[brand_keyword]
-                    if brand_name not in wanted_brands and brand_name not in unwanted_brands:
+                # Extract brand keywords, handle "and" separator
+                brand_text = match.group(group).lower()
+                # Split by "and" to get multiple brands
+                brand_parts = re.split(r'\s+and\s+', brand_text)
+
+                for brand_keyword in brand_parts:
+                    brand_keyword = brand_keyword.strip()
+                    if brand_keyword in brand_keywords_map:
+                        brand_name = brand_keywords_map[brand_keyword]
+                        if brand_name not in wanted_brands and brand_name not in unwanted_brands:
+                            wanted_brands.append(brand_name)
+
+        # Also check for standalone brand mentions (for queries like just "oppo and xiaomi")
+        # Only if no wanted brands found from patterns above
+        if not wanted_brands and not unwanted_brands:
+            words = message_lower.split()
+            for i, word in enumerate(words):
+                if word in brand_keywords_map:
+                    brand_name = brand_keywords_map[word]
+                    if brand_name not in wanted_brands:
                         wanted_brands.append(brand_name)
 
         return (wanted_brands, unwanted_brands)
