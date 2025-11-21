@@ -676,7 +676,7 @@ class ChatbotEngine:
             'performance and battery', 'display and camera',
             
             # Negative searches (what to avoid)
-            'without', 'avoid', 'not', 'except', 'excluding',
+            'without', 'avoid', 'not','hate', 'except', 'excluding',
             'dont want', "don't want", 'no need for',
             
             # Open comparison
