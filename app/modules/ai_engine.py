@@ -302,6 +302,7 @@ class AIRecommendationEngine:
             brand_names: Optional list of brand names to filter by
             top_n: Number of results to return
         """
+        from app.models import Brand
         query = Phone.query.filter_by(is_active=True)
 
         if budget_range:
@@ -342,6 +343,17 @@ class AIRecommendationEngine:
                 # High camera MP, good front camera
                 score += (specs.rear_camera_main or 0) * 2
                 score += (specs.front_camera_mp or 0)
+
+                storage_values = []
+                if specs.storage_options:
+                    storage_str = specs.storage_options.replace('GB', '').replace('TB', '000')
+                    for s in storage_str.split(','):
+                        try:
+                            storage_values.append(int(s.strip()))
+                        except:
+                            pass
+                if storage_values:
+                    score += max(storage_values) / 10
 
             elif usage_type == 'Business' or usage_type == 'Work':
                 # Good battery, decent specs
@@ -426,6 +438,7 @@ class AIRecommendationEngine:
             user_category: Optional user category (senior, student, etc.)
             top_n: Number of results to return
         """
+        from app.models import Brand
         query = Phone.query.filter_by(is_active=True)
 
         if budget_range:
@@ -616,6 +629,91 @@ class AIRecommendationEngine:
                     return balanced_results[:top_n]
 
         return results[:top_n]
+    
+    def get_phones_by_battery(self, min_battery_mah, budget_range=None, brand_names=None, top_n=5):
+        """
+        Get phones with battery capacity above a certain threshold
+
+        Args:
+            min_battery_mah: Minimum battery capacity in mAh
+            budget_range: Optional (min_price, max_price) tuple
+            brand_names: Optional list of brand names to filter
+            top_n: Number of results to return
+        """
+        from app.models import Brand
+        query = Phone.query.join(PhoneSpecification).filter(
+            Phone.is_active == True,
+            PhoneSpecification.battery_capacity >= min_battery_mah
+        )
+
+        if budget_range:
+            min_price, max_price = budget_range
+            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Filter by brands if specified
+        if brand_names:
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.order_by(PhoneSpecification.battery_capacity.desc()).limit(top_n).all()
+
+        results = []
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            results.append({
+                'phone': phone,
+                'specifications': specs
+            })
+
+        return results
+    
+    def get_phones_by_camera(self, min_camera_mp, budget_range=None, brand_names=None, top_n=5):
+        """
+        Get phones with camera MP above a certain threshold
+
+        Args:
+            min_camera_mp: Minimum rear camera megapixels
+            budget_range: Optional (min_price, max_price) tuple
+            brand_names: Optional list of brand names to filter
+            top_n: Number of results to return
+        """
+        from app.models import Brand
+        query = Phone.query.join(PhoneSpecification).filter(
+            Phone.is_active == True,
+            PhoneSpecification.rear_camera_main >= min_camera_mp
+        )
+
+        if budget_range:
+            min_price, max_price = budget_range
+            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Filter by brands if specified
+        if brand_names:
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.order_by(PhoneSpecification.rear_camera_main.desc()).limit(top_n).all()
+
+        results = []
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            results.append({
+                'phone': phone,
+                'specifications': specs
+            })
+
+        return results
+
 
     def get_similar_phones(self, phone_id, top_n=3):
         """Get phones similar to a given phone"""
