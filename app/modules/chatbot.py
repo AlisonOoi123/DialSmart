@@ -75,6 +75,10 @@ class ChatbotEngine:
             if is_brand_only:
                 # REPLACE: Clear previous brands and set new ones
                 self.session_context[context_key]['wanted_brands'] = wanted.copy()
+                # NEW FIX: Also clear features and usage when brand-only (indicates new search context)
+                # Example: After "long lasting phone", user says just "oppo" - this is a new brand search
+                self.session_context[context_key]['last_features'] = []
+                self.session_context[context_key]['last_usage'] = None
             else:
                 # ADD: Merge with previous brands (for queries like "i love samsung")
                 for brand in wanted:
@@ -408,6 +412,87 @@ class ChatbotEngine:
                         }
                     }
 
+            # NEW FIX: If we have session features (but no usage), use feature-based filtering
+            # Example: "recommend a long lasting phone" then "vivo" → Show Vivo with good battery
+            if session_features and wanted_brands and not session_usage:
+                budget = self._extract_budget(message)
+                if not budget:
+                    budget = context.get('last_budget')
+
+                # Use AI engine's feature-based filtering
+                phones_items = self.ai_engine.get_phones_by_features(
+                    features=session_features,
+                    budget_range=budget,
+                    usage_type=None,
+                    brand_names=wanted_brands,
+                    user_category=None,
+                    top_n=10
+                )
+
+                if phones_items:
+                    phones_items = phones_items[:5]
+
+                    # Build response with feature context
+                    feature_names = {
+                        'battery': 'long battery life',
+                        'camera': 'excellent camera',
+                        'display': 'great display',
+                        'performance': 'powerful performance',
+                        '5g': '5G support',
+                        'charging': 'fast charging',
+                        'design': 'premium design',
+                        'storage': 'ample storage',
+                        'ram': 'high RAM'
+                    }
+                    feature_desc = ', '.join([feature_names.get(f, f) for f in session_features])
+
+                    if len(wanted_brands) == 1:
+                        brand_text = wanted_brands[0]
+                    else:
+                        brand_text = ", ".join(wanted_brands[:-1]) + f" and {wanted_brands[-1]}"
+
+                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                    response = f"Here are {brand_text} phones with {feature_desc}{budget_text}:\n\n"
+
+                    phone_list = []
+                    for item in phones_items:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+
+                        # Show relevant specs based on features
+                        if specs:
+                            if 'battery' in session_features and specs.battery_capacity:
+                                response += f"   🔋 {specs.battery_capacity}mAh battery\n"
+                            if 'camera' in session_features and specs.rear_camera_main:
+                                response += f"   📷 {specs.rear_camera_main}MP camera\n"
+                            if 'display' in session_features and specs.screen_type:
+                                response += f"   📺 {specs.screen_size}\" {specs.screen_type}\n"
+                            if 'performance' in session_features and specs.processor:
+                                response += f"   ⚡ {specs.processor}\n"
+
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image if hasattr(phone, 'main_image') else None
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {
+                            'phones': phone_list,
+                            'features': session_features,
+                            'brands': wanted_brands,
+                            'budget': budget
+                        }
+                    }
+
             # Use wanted brands from session context for multi-brand queries
             if wanted_brands:
                 budget = self._extract_budget(message)
@@ -695,6 +780,17 @@ Just ask me anything like:
             # Has negative preference, check if also has positive
             if re.search(r'(i love|i want|i like|i prefer)', message_lower):
                 return True
+
+        # NEW FIX: Check for budget with brand preferences
+        # If message has BOTH budget AND brand, it's likely a fresh search
+        # Examples: "vivo within 2000", "samsung under 3000", "i love vivo within 2000"
+        has_budget = self._extract_budget(message) is not None
+        wanted, unwanted = self._extract_brand_preferences(message)
+        has_brand_pref = len(wanted) > 0 or len(unwanted) > 0
+
+        if has_budget and has_brand_pref:
+            # This is a fresh query like "vivo within 2000" or "i love samsung under 3000"
+            return True
 
         return False
 
