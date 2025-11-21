@@ -160,13 +160,24 @@ class AIRecommendationEngine:
 
         return results
 
-    def get_phones_by_usage(self, usage_type, budget_range=None, top_n=5):
+    def get_phones_by_usage(self, usage_type, budget_range=None, brand_names=None, top_n=5):
         """Get phones optimized for specific usage types"""
+        from app.models import Brand
         query = Phone.query.filter_by(is_active=True)
 
         if budget_range:
             min_price, max_price = budget_range
             query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Filter by brands if specified
+        if brand_names:
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
 
         phones = query.all()
         results = []
@@ -188,9 +199,20 @@ class AIRecommendationEngine:
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
 
             elif usage_type == 'Photography':
-                # High camera MP, good front camera
+                # High camera MP, good front camera, PLUS large storage
                 score += (specs.rear_camera_main or 0) * 2
                 score += (specs.front_camera_mp or 0)
+                # Add storage score for photography (photographers need storage!)
+                storage_values = []
+                if specs.storage_options:
+                    storage_str = specs.storage_options.replace('GB', '').replace('TB', '000')
+                    for s in storage_str.split(','):
+                        try:
+                            storage_values.append(int(s.strip()))
+                        except:
+                            pass
+                if storage_values:
+                    score += max(storage_values) / 10  # Storage bonus for photographers
 
             elif usage_type == 'Business' or usage_type == 'Work':
                 # Good battery, decent specs
@@ -219,6 +241,192 @@ class AIRecommendationEngine:
         results.sort(key=lambda x: x['usage_score'], reverse=True)
 
         return results[:top_n]
+
+    def get_phones_by_features(self, features, budget_range=None, usage_type=None, brand_names=None, user_category=None, top_n=5):
+        """
+        Get phones filtered by specific features (battery, camera, display, etc.)
+
+        Args:
+            features: List of feature names (e.g., ['battery', 'camera'])
+            budget_range: Optional (min_price, max_price) tuple
+            usage_type: Optional usage type for additional scoring
+            brand_names: Optional list of brand names to filter
+            user_category: Optional user category (student, senior, etc.)
+            top_n: Number of results to return
+        """
+        from app.models import Brand
+        query = Phone.query.filter_by(is_active=True)
+
+        if budget_range:
+            min_price, max_price = budget_range
+            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Filter by brands if specified
+        if brand_names:
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.all()
+        results = []
+
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            if not specs:
+                continue
+
+            score = 0
+
+            # Score based on requested features
+            for feature in features:
+                if feature == 'battery':
+                    score += specs.battery_capacity / 50 if specs.battery_capacity else 0
+                elif feature == 'camera':
+                    score += (specs.rear_camera_main or 0) * 2
+                    score += (specs.front_camera_mp or 0) * 0.5
+                elif feature == 'display':
+                    score += (specs.screen_size or 0) * 10
+                    if specs.screen_type and 'amoled' in specs.screen_type.lower():
+                        score += 20
+                elif feature == 'performance':
+                    ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                    if ram_values:
+                        score += max(ram_values) * 5
+                elif feature == '5g':
+                    score += 50 if specs.has_5g else 0
+                elif feature == 'storage':
+                    storage_values = []
+                    if specs.storage_options:
+                        storage_str = specs.storage_options.replace('GB', '').replace('TB', '000')
+                        for s in storage_str.split(','):
+                            try:
+                                storage_values.append(int(s.strip()))
+                            except:
+                                pass
+                    if storage_values:
+                        score += max(storage_values) / 10
+                elif feature == 'charging':
+                    if specs.fast_charging_wattage:
+                        score += specs.fast_charging_wattage / 2
+                elif feature == 'ram':
+                    ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                    if ram_values:
+                        score += max(ram_values) * 8
+
+            # Add user category scoring if specified
+            if user_category:
+                if user_category == 'student':
+                    # Students: balanced specs, good value
+                    score += (4000 - phone.price) / 100  # Prefer affordable
+                elif user_category == 'senior':
+                    # Seniors: easy to use, good battery
+                    if specs.screen_size and specs.screen_size >= 6.0:
+                        score += 30  # Large screen bonus
+                    score += specs.battery_capacity / 100 if specs.battery_capacity else 0
+                elif user_category == 'professional':
+                    # Professionals: reliable, good battery, premium
+                    score += specs.battery_capacity / 50 if specs.battery_capacity else 0
+                    if phone.price > 2000:
+                        score += 20  # Premium bonus
+
+            results.append({
+                'phone': phone,
+                'specifications': specs,
+                'feature_score': score
+            })
+
+        # Sort by feature score
+        results.sort(key=lambda x: x['feature_score'], reverse=True)
+
+        return results[:top_n]
+
+    def get_phones_by_battery(self, min_battery_mah, budget_range=None, brand_names=None, top_n=5):
+        """
+        Get phones with battery capacity above a certain threshold
+
+        Args:
+            min_battery_mah: Minimum battery capacity in mAh
+            budget_range: Optional (min_price, max_price) tuple
+            brand_names: Optional list of brand names to filter
+            top_n: Number of results to return
+        """
+        from app.models import Brand
+        query = Phone.query.join(PhoneSpecification).filter(
+            Phone.is_active == True,
+            PhoneSpecification.battery_capacity >= min_battery_mah
+        )
+
+        if budget_range:
+            min_price, max_price = budget_range
+            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Filter by brands if specified
+        if brand_names:
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.order_by(PhoneSpecification.battery_capacity.desc()).limit(top_n).all()
+
+        results = []
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            results.append({
+                'phone': phone,
+                'specifications': specs
+            })
+
+        return results
+
+    def get_phones_by_camera(self, min_camera_mp, budget_range=None, brand_names=None, top_n=5):
+        """
+        Get phones with camera MP above a certain threshold
+
+        Args:
+            min_camera_mp: Minimum rear camera megapixels
+            budget_range: Optional (min_price, max_price) tuple
+            brand_names: Optional list of brand names to filter
+            top_n: Number of results to return
+        """
+        from app.models import Brand
+        query = Phone.query.join(PhoneSpecification).filter(
+            Phone.is_active == True,
+            PhoneSpecification.rear_camera_main >= min_camera_mp
+        )
+
+        if budget_range:
+            min_price, max_price = budget_range
+            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Filter by brands if specified
+        if brand_names:
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.order_by(PhoneSpecification.rear_camera_main.desc()).limit(top_n).all()
+
+        results = []
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            results.append({
+                'phone': phone,
+                'specifications': specs
+            })
+
+        return results
 
     def get_similar_phones(self, phone_id, top_n=3):
         """Get phones similar to a given phone"""
