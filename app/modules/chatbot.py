@@ -706,12 +706,33 @@ class ChatbotEngine:
                     test_message = test_message.replace(brand.lower(), '')
                 # Remove common words
                 test_message = test_message.replace('phone', '').replace('phones', '').replace('smartphone', '').replace('smartphones', '').strip()
-                # If nothing meaningful left (or just articles/prepositions), it's a generic brand query
-                if len(test_message) < 3 or test_message in ['a', 'an', 'the', 'any', 'all', 'some']:
+
+                # Check if remaining text is a model identifier
+                # Model identifiers: numbers (e.g., "17", "15"), or model keywords (e.g., "pro", "ultra")
+                has_number = re.search(r'\d+', test_message)
+                has_model_keyword = any(keyword in test_message for keyword in ['pro', 'ultra', 'max', 'plus', 'lite', 'mini', 'note', 'fold', 'flip', 'edge', 'air'])
+
+                # If nothing meaningful left AND no model indicators, it's a generic brand query
+                if (len(test_message) < 2 or test_message in ['a', 'an', 'the', 'any', 'all', 'some']) and not has_number and not has_model_keyword:
                     skip_phone_model = True
 
         # Try to extract phone model if NOT asking for recommendations
         if not skip_phone_model:
+            # NEW: Check for multiple phone models (e.g., "iphone 17 pro and xiaomi 17 pro")
+            if ' and ' in message_lower and not any(word in message_lower for word in ['recommend', 'suggest', 'find', 'show', 'best', 'which', 'what']):
+                # Split by 'and' and try to extract each model
+                parts = message_lower.split(' and ')
+                all_phones = []
+                for part in parts:
+                    phones = self._extract_phone_model(part)
+                    if phones:
+                        all_phones.extend(phones if isinstance(phones, list) else [phones])
+
+                if len(all_phones) >= 2:
+                    # Multiple specific models found
+                    return self._handle_specific_phone_query(message, all_phones)
+
+            # Standard single model extraction
             phone_model = self._extract_phone_model(message)
             if phone_model:
                 return self._handle_specific_phone_query(message, phone_model)
@@ -974,6 +995,104 @@ class ChatbotEngine:
             
             # Use merged brands
             brands = all_wanted_brands if all_wanted_brands else None
+
+            # NEW: Check for battery or camera threshold queries
+            battery_threshold = self._extract_battery_threshold(message)
+            camera_threshold = self._extract_camera_threshold(message)
+
+            # PRIORITY 0: Battery threshold query (e.g., "realme phone above 5000mah battery")
+            if battery_threshold:
+                phones = self.ai_engine.get_phones_by_battery(
+                    min_battery_mah=battery_threshold,
+                    budget_range=budget,
+                    brand_names=brands,
+                    top_n=5
+                )
+
+                if phones:
+                    brand_text = ""
+                    if brands:
+                        brand_text = f"{', '.join(brands)} "
+                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                    response = f"Here are the best {brand_text}phones with battery above {battery_threshold}mAh{budget_text}:\n\n"
+                    phone_list = []
+
+                    for item in phones:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        if specs and specs.battery_capacity:
+                            response += f"   🔋 {specs.battery_capacity}mAh battery\n"
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'battery': specs.battery_capacity if specs else None
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'battery_threshold': battery_threshold, 'brands': brands, 'budget': budget}
+                    }
+                else:
+                    brand_text = f"{', '.join(brands)} " if brands else ""
+                    budget_text = f" within your budget" if budget else ""
+                    return {
+                        'response': f"I couldn't find {brand_text}phones with battery above {battery_threshold}mAh{budget_text}. Would you like to see phones with slightly lower battery capacity?",
+                        'type': 'text'
+                    }
+
+            # PRIORITY 0.5: Camera threshold query (e.g., "phone camera above 100MP")
+            if camera_threshold:
+                phones = self.ai_engine.get_phones_by_camera(
+                    min_camera_mp=camera_threshold,
+                    budget_range=budget,
+                    brand_names=brands,
+                    top_n=5
+                )
+
+                if phones:
+                    brand_text = ""
+                    if brands:
+                        brand_text = f"{', '.join(brands)} "
+                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                    response = f"Here are the best {brand_text}phones with camera above {camera_threshold}MP{budget_text}:\n\n"
+                    phone_list = []
+
+                    for item in phones:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        if specs and specs.rear_camera_main:
+                            response += f"   📷 {specs.rear_camera_main}MP main camera\n"
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'camera': specs.rear_camera_main if specs else None
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'camera_threshold': camera_threshold, 'brands': brands, 'budget': budget}
+                    }
+                else:
+                    brand_text = f"{', '.join(brands)} " if brands else ""
+                    budget_text = f" within your budget" if budget else ""
+                    return {
+                        'response': f"I couldn't find {brand_text}phones with camera above {camera_threshold}MP{budget_text}. Would you like to see phones with slightly lower megapixel cameras?",
+                        'type': 'text'
+                    }
 
             # PRIORITY 1: User category (student, senior, professional) - handle first
             if user_category:
@@ -2164,32 +2283,34 @@ class ChatbotEngine:
     def _extract_budget(self, message):
         """Extract budget range from message"""
         # Look for patterns like "RM1000", "1000", "under 2000", "within 3000", "near 3000", "between 1000 and 2000"
+        # IMPORTANT: Avoid matching specification numbers like "5000mah" or "108mp"
+
         patterns = [
            # Range patterns with RM on both sides
             (r'(?:rm|RM)\s*(\d+)\s*(?:to|-|and)\s*(?:rm|RM)\s*(\d+)', 'range'),  # RM1000 to RM2000 or rm 1000 to rm 2000
             # Near with range pattern (e.g., "near 2000-3000" or "near 2000 to 3000")
             (r'near\s*(?:rm\s*)?(\d+)\s*(?:to|-)\s*(?:rm\s*)?(\d+)', 'range'),  # near 2000-3000 or near rm2000 to rm3000
-            # Range patterns without RM
-            (r'(\d+)\s*(?:to|-|and)\s*(\d+)', 'range'),  # 1000 to 2000
+            # Range patterns without RM (but not followed by spec keywords)
+            (r'(\d+)\s*(?:to|-|and)\s*(\d+)(?!\s*(?:mah|mp|gb|hz|inch|mm))', 'range'),  # 1000 to 2000
 
             # Above patterns WITH RM (with or without space)
             (r'(?:above|over|more than)\s+(?:rm|RM)\s*(\d+)', 'min'),  # above RM3000 or above rm 3000
-            # Above patterns WITHOUT RM
-            (r'(?:above|over|more than)\s+(\d+)', 'min'),  # above 3000
+            # Above patterns WITHOUT RM (but not followed by spec keywords)
+            (r'(?:above|over|more than)\s+(\d+)(?!\s*(?:mah|mp|gb|hz|inch|mm))', 'min'),  # above 3000
 
             # Within/under/below/max/maximum patterns WITH RM (with or without space)
             (r'(?:within|under|below|max|maximum)\s+(?:rm|RM)\s*(\d+)', 'max'),  # within RM2000 or within rm 2000
-            # Within/under/below/max/maximum patterns WITHOUT RM
-            (r'(?:within|under|below|max|maximum)\s+(\d+)', 'max'),  # within 2000
+            # Within/under/below/max/maximum patterns WITHOUT RM (but not followed by spec keywords)
+            (r'(?:within|under|below|max|maximum)\s+(\d+)(?!\s*(?:mah|mp|gb|hz|inch|mm))', 'max'),  # within 2000
 
-            # Near/around single value pattern (±500 range)
-            (r'(?:near|around)\s+(?:rm\s*)?(\d+)', 'near'),  # near 2000 or near rm2000
+            # Near/around single value pattern (±500 range) - but not spec numbers
+            (r'(?:near|around)\s+(?:rm\s*)?(\d+)(?!\s*(?:mah|mp|gb|hz|inch|mm))', 'near'),  # near 2000 or near rm2000
 
             # Single RM value (with or without space)
             (r'(?:rm|RM)\s*(\d+)', 'single'),  # RM2000 or rm 2000
 
-            # Standalone number (3-5 digits)
-            (r'(?:^|\s)(\d{3,5})(?:\s|$)', 'single'),  # 1000, 2000, etc.
+            # Standalone number (3-5 digits) - but not followed by spec keywords
+            (r'(?:^|\s)(\d{3,5})(?!\s*(?:mah|mp|gb|hz|inch|mm))(?:\s|$)', 'single'),  # 1000, 2000, etc.
         ]
 
         for pattern, pattern_type in patterns:
@@ -2206,7 +2327,7 @@ class ChatbotEngine:
 
                     return (int(match.group(1)), int(match.group(2)))
 
- 
+
 
                 elif pattern_type == 'min':
 
@@ -2216,7 +2337,7 @@ class ChatbotEngine:
 
                     return (min_budget, 15000)  # Set reasonable upper limit
 
- 
+
 
                 elif pattern_type == 'max':
 
@@ -2226,7 +2347,7 @@ class ChatbotEngine:
 
                     return (500, max_budget)
 
- 
+
 
                 elif pattern_type == 'near':
 
@@ -2236,7 +2357,7 @@ class ChatbotEngine:
 
                     return (max(500, center - 500), center + 500)
 
- 
+
 
                 elif pattern_type == 'single':
 
@@ -2246,7 +2367,58 @@ class ChatbotEngine:
                     return (500, value)
 
         return None
-    
+
+    def _extract_battery_threshold(self, message):
+        """
+        Extract battery capacity threshold from message (in mAh)
+        Examples:
+        - "phone above 5000mah" → 5000
+        - "battery above 6000 mah" → 6000
+        - "5000mah battery" → 5000
+        Returns: int or None
+        """
+        message_lower = message.lower()
+
+        # Patterns for battery threshold
+        patterns = [
+            r'(?:above|over|more than|at least)\s+(\d+)\s*mah',  # above 5000mah
+            r'(?:above|over|more than|at least)\s+(\d+)\s+mah',  # above 5000 mah
+            r'(\d+)\s*mah\s+(?:or|and)\s+(?:above|more|higher)',  # 5000mah or above
+            r'battery\s+(?:above|over|at least)\s+(\d+)',  # battery above 5000
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, message_lower)
+            if match:
+                return int(match.group(1))
+
+        return None
+
+    def _extract_camera_threshold(self, message):
+        """
+        Extract camera MP threshold from message
+        Examples:
+        - "camera above 100mp" → 100
+        - "phone above 64 mp camera" → 64
+        - "108mp camera" → 108
+        Returns: int or None
+        """
+        message_lower = message.lower()
+
+        # Patterns for camera threshold
+        patterns = [
+            r'camera\s+(?:above|over|more than|at least)\s+(\d+)\s*mp',  # camera above 100mp
+            r'(?:above|over|more than|at least)\s+(\d+)\s*mp\s+camera',  # above 100mp camera
+            r'(\d+)\s*mp\s+(?:or|and)\s+(?:above|more|higher)',  # 100mp or above
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, message_lower)
+            if match:
+                return int(match.group(1))
+
+        return None
+
     def _contains_malicious_intent(self, message):
         """
         Detect malicious, attack, or inappropriate queries
