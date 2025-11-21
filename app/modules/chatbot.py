@@ -148,6 +148,24 @@ class ChatbotEngine:
         # Get session context
         context = self.session_context.get(context_key, {})
 
+        # FIX Issue 6: Better handling for specific model queries vs brand queries
+        # Check if multiple brands AND model numbers are mentioned
+        message_lower = message.lower()
+        brands_mentioned = self._extract_multiple_brands(message)
+        has_model_numbers = bool(re.search(r'\d+\s*(?:pro|max|ultra|plus|lite|mini|se)', message_lower))
+
+        skip_phone_model = False
+        if brands_mentioned and len(brands_mentioned) >= 1 and has_model_numbers:
+            # This is likely a specific model query like "iphone 17 pro and xiaomi 17"
+            # Don't skip phone model extraction
+            skip_phone_model = False
+        elif brands_mentioned and len(brands_mentioned) > 1 and ' and ' in message_lower and 'phone' in message_lower:
+            # This is a brand comparison like "apple and samsung phone"
+            skip_phone_model = True
+
+        # Note: skip_phone_model flag can be used in future phone model extraction logic
+        # Currently serves as documentation for handling different query types
+
         if intent == 'greeting':
             return {
                 'response': "Hello! I'm DialSmart AI Assistant. I'm here to help you find the perfect smartphone. How can I assist you today?",
@@ -233,11 +251,84 @@ class ChatbotEngine:
                     'type': 'text'
                 }
 
-        elif intent == 'recommendation':
-            # Check for specific criteria in message
-            criteria = self._extract_criteria(message)
+        elif intent == 'recommendation' or intent == 'specification':
+            # Extract brands and usage from CURRENT message
+            current_wanted, current_unwanted = self._extract_brand_preferences(message)
+            usage = self._detect_usage_type(message)
+            budget = self._extract_budget(message)
 
-            # Get recommendations
+            # Get session context
+            session_brands = context.get('wanted_brands', [])
+            session_unwanted = context.get('unwanted_brands', [])
+            if not budget:
+                budget = context.get('last_budget')
+
+            # PRIORITY 2: Brands mentioned - always prioritize brand filtering
+            if current_wanted or session_brands:
+                phones = []
+
+                # Brands + Usage (e.g., "apple and samsung gaming phone")
+                if usage:
+                    # IMPORTANT: Use ONLY the brands from current message + session wanted brands
+                    # But if current message has explicit brands, prioritize those
+
+                    # If current message explicitly mentions brands, use ONLY those
+                    if current_wanted:
+                        brands_to_use = current_wanted
+                    else:
+                        # Otherwise use session brands
+                        brands_to_use = session_brands
+
+                    phones = self.ai_engine.get_phones_by_usage(usage, budget, brands_to_use, top_n=5)
+
+                    if phones:
+                        budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                        brands_list = ", ".join(brands_to_use[:-1]) + f" and {brands_to_use[-1]}" if len(brands_to_use) > 1 else brands_to_use[0]
+                        response = f"Great choice! Here are the best phones for {usage} from {brands_list}{budget_text}:\n\n"
+
+                        phone_list = []
+                        for item in phones:
+                            phone = item['phone']
+                            specs = item.get('specifications')
+
+                            response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+
+                            # Add RAM and storage info if available
+                            if specs and hasattr(specs, 'ram_options') and specs.ram_options:
+                                response += f"   {specs.ram_options} RAM"
+                                if hasattr(specs, 'storage_options') and specs.storage_options:
+                                    response += f" - {specs.storage_options} Storage"
+                                response += f" - Great for {usage.lower()}\n"
+
+                            response += "\n"
+
+                            phone_list.append({
+                                'id': phone.id,
+                                'name': phone.model_name,
+                                'brand': phone.brand.name,
+                                'price': phone.price,
+                                'image': phone.main_image if hasattr(phone, 'main_image') else None
+                            })
+
+                        return {
+                            'response': response,
+                            'type': 'recommendation',
+                            'metadata': {
+                                'phones': phone_list,
+                                'usage': usage,
+                                'budget': budget,
+                                'brands': brands_to_use
+                            }
+                        }
+                    else:
+                        brands_list = ", ".join(brands_to_use[:-1]) + f" and {brands_to_use[-1]}" if len(brands_to_use) > 1 else brands_to_use[0]
+                        return {
+                            'response': f"I couldn't find {brands_list} phones for {usage} in that range. Would you like to see other brands?",
+                            'type': 'text'
+                        }
+
+            # Fallback to original criteria-based recommendation
+            criteria = self._extract_criteria(message)
             recommendations = self.ai_engine.get_recommendations(user_id, criteria=criteria, top_n=3)
 
             if recommendations:
@@ -932,6 +1023,16 @@ Just ask me anything like:
                         wanted_brands.append(brand_name)
 
         return (wanted_brands, unwanted_brands)
+
+    def _extract_multiple_brands(self, message):
+        """
+        Extract all brand mentions from message (both wanted and unwanted)
+
+        Returns:
+            List of all brand names mentioned in message
+        """
+        wanted, unwanted = self._extract_brand_preferences(message)
+        return wanted + unwanted
 
     def _filter_phones_by_brand(self, phones, wanted_brands, unwanted_brands):
         """
