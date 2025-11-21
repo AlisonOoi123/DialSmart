@@ -382,13 +382,14 @@ class ChatbotEngine:
 
         # Update session context with brand preferences
         if wanted:
-            if is_brand_only:
-                # REPLACE: Clear previous brands
+            if is_fresh or is_brand_only:
+                # REPLACE: Clear previous brands (for fresh queries or brand-only queries)
                 self.session_context[context_key]['wanted_brands'] = wanted.copy()
-                self.session_context[context_key]['last_features'] = []
-                self.session_context[context_key]['last_usage'] = None
+                if is_brand_only:
+                    self.session_context[context_key]['last_features'] = []
+                    self.session_context[context_key]['last_usage'] = None
             else:
-                # ADD: Merge with previous brands
+                # ADD: Merge with previous brands (only for refinement queries)
                 for brand in wanted:
                     if brand not in self.session_context[context_key]['wanted_brands']:
                         self.session_context[context_key]['wanted_brands'].append(brand)
@@ -399,11 +400,17 @@ class ChatbotEngine:
                     self.session_context[context_key]['unwanted_brands'].remove(brand)
 
         if unwanted:
-            # Add to unwanted brands if not already there
+            if is_fresh:
+                # REPLACE: For fresh queries, replace unwanted brands
+                self.session_context[context_key]['unwanted_brands'] = unwanted.copy()
+            else:
+                # ADD: For refinement queries, add to existing unwanted brands
+                for brand in unwanted:
+                    if brand not in self.session_context[context_key]['unwanted_brands']:
+                        self.session_context[context_key]['unwanted_brands'].append(brand)
+
+            # Remove from wanted if it was there
             for brand in unwanted:
-                if brand not in self.session_context[context_key]['unwanted_brands']:
-                    self.session_context[context_key]['unwanted_brands'].append(brand)
-                # Remove from wanted if it was there
                 if brand in self.session_context[context_key]['wanted_brands']:
                     self.session_context[context_key]['wanted_brands'].remove(brand)
 
@@ -681,10 +688,16 @@ class ChatbotEngine:
         brands_mentioned = None
 
         # Also skip if multiple brands are mentioned (e.g., "apple and samsung phone")
+        # BUT allow if it looks like specific model query (has numbers or model identifiers)
         if not skip_phone_model:
             brands_mentioned = self._extract_multiple_brands(message)
             if len(brands_mentioned) > 1 or (brands_mentioned and ' and ' in message_lower and 'phone' in message_lower):
-                skip_phone_model = True
+                # Check if this looks like a specific model query
+                # Model indicators: numbers, "pro", "ultra", "max", "plus", "lite", etc.
+                model_indicators = re.search(r'\b\d+\b|pro|ultra|max|plus|lite|mini|air|note|fold|flip|edge', message_lower)
+                if not model_indicators:
+                    # No model indicators, so it's a generic brand query
+                    skip_phone_model = True
 
         if brands_mentioned and len(brands_mentioned) == 1:
                 # Remove brand name and common words to see what's left
@@ -727,6 +740,7 @@ class ChatbotEngine:
             context = self.session_context.get(context_key, {})
             session_wanted = context.get('wanted_brands', [])
             session_unwanted = context.get('unwanted_brands', [])
+            session_usage = context.get('last_usage')
 
             # Combine current message brands with session brands
             all_wanted_brands = list(set(wanted_brands + session_wanted))
@@ -2710,6 +2724,8 @@ class ChatbotEngine:
         - Contains strong negative brand preferences: "i not love X, i love Y"
         - Contains budget with brand preferences: "vivo within 2000"
         - Contains "recommend" with minimal context: "recommend a phone for me"
+        - Contains explicit brand preferences with features/usage: "i love samsung, give me gaming phone"
+        - Contains "give me" or "show me" with specific requirements
 
         Returns: True if fresh query, False if refinement
         """
@@ -2717,11 +2733,11 @@ class ChatbotEngine:
 
         # Reset patterns - phrases that indicate starting fresh
         reset_patterns = [
-            r'recommend.*phone for me',
-            r'recommend.*a phone',
+            r'recommend.*phone',
             r'find.*phone for me',
             r'show.*phone for me',
             r'suggest.*phone',
+            r'give me.*phone',
         ]
 
         for pattern in reset_patterns:
@@ -2734,16 +2750,26 @@ class ChatbotEngine:
             if re.search(r'(i love|i want|i like|i prefer)', message_lower):
                 return True
 
-        # NEW FIX: Check for budget with brand preferences
+        # Check for budget with brand preferences
         # If message has BOTH budget AND brand, it's likely a fresh search
         # Examples: "vivo within 2000", "samsung under 3000", "i love vivo within 2000"
         has_budget = self._extract_budget(message) is not None
-        wanted, unwanted = self._extract_brand_preferences(message)
+        wanted, unwanted = self._extract_brands_with_preferences(message)
         has_brand_pref = len(wanted) > 0 or len(unwanted) > 0
 
         if has_budget and has_brand_pref:
             # This is a fresh query like "vivo within 2000" or "i love samsung under 3000"
             return True
+
+        # Check for explicit brand preferences with usage/features
+        # Examples: "i love samsung and xiaomi, give me gaming phone"
+        has_usage = self._detect_usage_type(message) is not None
+        has_features = len(self._detect_feature_priority(message)) > 0
+
+        if has_brand_pref and (has_usage or has_features or has_budget):
+            # Has explicit brand plus other requirements - likely a fresh query
+            if re.search(r'(i love|i want|i like|i prefer|give me|show me)', message_lower):
+                return True
 
         return False
 
@@ -2832,26 +2858,27 @@ class ChatbotEngine:
         """
         message_lower = message.lower()
 
-        # Negative indicators
+        # Negative indicators (ordered from most specific to least specific)
         negative_patterns = [
             r"don't like\s+(\w+)",
             r"dont like\s+(\w+)",
-            r"don't like\s+(\w+)",
-            r"dont want\s+(\w+)",
             r"don't want\s+(\w+)",
+            r"dont want\s+(\w+)",
             r"don't love\s+(\w+)",
-            r"dont\s+(\w+)",
-            r"don't\s+(\w+)",
-            r"not\s+(\w+)",
-            r"no\s+(\w+)",
-            r"not prefer\s+(\w+)",
+            r"dont love\s+(\w+)",
+            r"don't prefer\s+(\w+)",
+            r"dont prefer\s+(\w+)",
             r"not love\s+(\w+)",
+            r"not like\s+(\w+)",
+            r"not want\s+(\w+)",
+            r"not prefer\s+(\w+)",
             r"hate\s+(\w+)",
             r"dislike\s+(\w+)",
             r"avoid\s+(\w+)",
             r"except\s+(\w+)",
-            r"but\s+(\w+)",
             r"anything but\s+(\w+)",
+            # Removed overly broad patterns like r"not\s+(\w+)" and r"dont\s+(\w+)"
+            # to prevent matching "not love" and capturing "love" as a brand
         ]
 
         # Positive indicators
@@ -2907,6 +2934,22 @@ class ChatbotEngine:
                     brand_name = brand_keywords_map[brand_keyword]
                     if brand_name not in wanted_brands and brand_name not in unwanted_brands:
                         wanted_brands.append(brand_name)
+
+        # Handle "brand1 and brand2" patterns
+        # Examples: "i love samsung and xiaomi", "i want vivo and oppo"
+        and_pattern = r'(i\s+(?:love|like|want|prefer))\s+(\w+)\s+and\s+(\w+)'
+        and_matches = re.finditer(and_pattern, message_lower)
+        for match in and_matches:
+            brand1_keyword = match.group(2).lower()
+            brand2_keyword = match.group(3).lower()
+            if brand1_keyword in brand_keywords_map:
+                brand_name = brand_keywords_map[brand1_keyword]
+                if brand_name not in wanted_brands and brand_name not in unwanted_brands:
+                    wanted_brands.append(brand_name)
+            if brand2_keyword in brand_keywords_map:
+                brand_name = brand_keywords_map[brand2_keyword]
+                if brand_name not in wanted_brands and brand_name not in unwanted_brands:
+                    wanted_brands.append(brand_name)
 
         # If no explicit positive/negative context found, fall back to simple brand detection
         if not wanted_brands and not unwanted_brands:
