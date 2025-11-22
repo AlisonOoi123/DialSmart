@@ -205,14 +205,36 @@ class NLUEngine:
         return False
 
     def _extract_brand_preferences(self, message: str) -> Dict[str, List[str]]:
-        """Extract brand preferences with sentiment analysis"""
+        """Extract brand preferences with sentiment analysis - FIXED VERSION"""
         preferences = {
             'preferred': [],
             'excluded': []
         }
 
-        # Analyze each brand
+        # FIRST: Check for explicit negative patterns (not X, don't want X)
+        negative_patterns = [
+            r'\bnot\s+(apple|samsung|xiaomi|huawei|oppo|vivo|realme|google|oneplus|nokia|sony|motorola|asus|nothing|infinix|tecno|honor|iphone|galaxy|redmi|poco|pixel)',
+            r'don\'?t\s+want\s+(apple|samsung|xiaomi|huawei|oppo|vivo|realme|google|oneplus|nokia|sony|motorola|asus|nothing|infinix|tecno|honor|iphone|galaxy|redmi|poco|pixel)',
+            r'no\s+(apple|samsung|xiaomi|huawei|oppo|vivo|realme|google|oneplus|nokia|sony|motorola|asus|nothing|infinix|tecno|honor|iphone|galaxy|redmi|poco|pixel)',
+        ]
+
+        for pattern in negative_patterns:
+            matches = re.finditer(pattern, message, re.IGNORECASE)
+            for match in matches:
+                brand_keyword = match.group(1).lower()
+                # Find which brand this keyword belongs to
+                for brand, keywords in self.brand_keywords.items():
+                    if brand_keyword in [k.lower() for k in keywords]:
+                        if brand not in preferences['excluded']:
+                            preferences['excluded'].append(brand)
+                        break
+
+        # THEN: Analyze each brand with sentiment
         for brand, keywords in self.brand_keywords.items():
+            # Skip if already marked as excluded
+            if brand in preferences['excluded']:
+                continue
+
             for keyword in keywords:
                 if keyword in message:
                     # Check sentiment around the brand mention
@@ -224,7 +246,7 @@ class NLUEngine:
                     elif sentiment == 'negative':
                         if brand not in preferences['excluded']:
                             preferences['excluded'].append(brand)
-                    else:  # neutral - treat as preferred if mentioned
+                    else:  # neutral - treat as preferred if mentioned and not excluded
                         if brand not in preferences['preferred'] and brand not in preferences['excluded']:
                             preferences['preferred'].append(brand)
 
@@ -394,33 +416,35 @@ class NLUEngine:
         return specs
 
     def _extract_budget(self, message: str) -> Optional[Tuple[float, float]]:
-        """Extract budget range from message"""
-        # Look for patterns like "RM1000", "1000", "under 2000", "within 5000"
+        """Extract budget range from message - FIXED VERSION"""
+        # Look for patterns like "RM1000", "1000", "under 2000", "above 3000", "within 5000"
         patterns = [
-            r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)',  # RM1000 to RM2000
-            r'rm\s*(\d+)\s*-\s*rm\s*(\d+)',  # RM1000-RM2000
-            r'(\d+)\s*(?:to|-|and)\s*(\d+)',  # 1000 to 2000
-            r'between\s+rm?\s*(\d+)\s+and\s+rm?\s*(\d+)',  # between 1000 and 2000
-            r'under\s+rm?\s*(\d+)',  # under RM2000
-            r'below\s+rm?\s*(\d+)',  # below 2000
-            r'within\s+rm?\s*(\d+)',  # within 5000
-            r'rm\s*(\d+)',  # RM2000
+            (r'above\s+rm?\s*(\d+)', 'above'),  # above RM3000
+            (r'over\s+rm?\s*(\d+)', 'above'),   # over RM3000
+            (r'more\s+than\s+rm?\s*(\d+)', 'above'),  # more than RM3000
+            (r'rm\s*(\d+)\s*(?:to|-|and)\s*rm\s*(\d+)', 'range'),  # RM1000 to RM2000
+            (r'rm\s*(\d+)\s*-\s*rm\s*(\d+)', 'range'),  # RM1000-RM2000
+            (r'(\d+)\s*(?:to|-|and)\s*(\d+)', 'range'),  # 1000 to 2000
+            (r'between\s+rm?\s*(\d+)\s+and\s+rm?\s*(\d+)', 'range'),  # between 1000 and 2000
+            (r'under\s+rm?\s*(\d+)', 'under'),  # under RM2000
+            (r'below\s+rm?\s*(\d+)', 'under'),  # below 2000
+            (r'within\s+rm?\s*(\d+)', 'under'),  # within 5000
+            (r'rm\s*(\d+)', 'single'),  # RM2000
         ]
 
-        for pattern in patterns:
+        for pattern, pattern_type in patterns:
             match = re.search(pattern, message.lower())
             if match:
-                if 'under' in message.lower() or 'below' in message.lower():
+                if pattern_type == 'above':
+                    min_budget = int(match.group(1))
+                    return (min_budget, 15000)  # FIXED: above means minimum, not maximum
+                elif pattern_type == 'under':
                     max_budget = int(match.group(1))
                     return (100, max_budget)
-                elif 'within' in message.lower():
-                    # "within 5000" typically means up to that amount
-                    max_budget = int(match.group(1))
-                    return (100, max_budget)
-                elif len(match.groups()) == 2:
+                elif pattern_type == 'range':
                     return (int(match.group(1)), int(match.group(2)))
-                else:
-                    # Single value mentioned
+                elif pattern_type == 'single':
+                    # Single value mentioned - interpret as maximum
                     value = int(match.group(1))
                     # If value is small (< 100), might be in hundreds
                     if value < 100:
@@ -487,14 +511,42 @@ class NLUEngine:
         return False
 
     def _determine_intent(self, message: str, analysis: Dict) -> str:
-        """Determine the primary intent"""
-        # Model search
+        """Determine the primary intent - FIXED VERSION"""
+        # PRIORITY 1: Greeting (check FIRST to avoid matching phone names)
+        greeting_patterns = [
+            r'^\s*hello\s*$', r'^\s*hi\s*$', r'^\s*hey\s*$',
+            r'^\s*good\s+morning\s*$', r'^\s*good\s+afternoon\s*$',
+            r'^\s*good\s+evening\s*$', r'^\s*greetings\s*$'
+        ]
+        for pattern in greeting_patterns:
+            if re.match(pattern, message, re.IGNORECASE):
+                return 'greeting'
+
+        # PRIORITY 2: Special queries
+        # Cheapest
+        if 'cheapest' in message or 'lowest price' in message:
+            return 'cheapest'
+
+        # Best performance
+        if ('best' in message or 'good' in message) and ('performance' in message or 'performing' in message):
+            return 'performance'
+
+        # Help
+        help_keywords = ['help', 'what can you do']
+        if any(kw in message for kw in help_keywords):
+            return 'help'
+
+        # Comparison
+        if ' vs ' in message or ' versus ' in message or 'compare' in message:
+            return 'comparison'
+
+        # PRIORITY 3: Model search
         if analysis['models']:
             if analysis['is_multi_model_query']:
                 return 'multi_model_search'
             return 'model_search'
 
-        # Spec-based filtering
+        # PRIORITY 4: Spec-based filtering
         if any([
             analysis['specs']['battery_min'],
             analysis['specs']['camera_min'],
@@ -503,39 +555,25 @@ class NLUEngine:
         ]):
             return 'spec_filter'
 
-        # Usage-based
+        # PRIORITY 5: Usage-based
         if analysis['usage_type']:
             return 'usage_recommendation'
 
-        # Battery focus
+        # PRIORITY 6: Battery focus
         if analysis['requires_battery_focus']:
             return 'battery_focused'
 
-        # Camera focus
+        # PRIORITY 7: Camera focus
         if analysis['requires_camera_focus']:
             return 'camera_focused'
 
-        # Brand query
+        # PRIORITY 8: Brand query
         if analysis['brands']['preferred'] or analysis['brands']['excluded']:
             return 'brand_query'
 
-        # Budget query
+        # PRIORITY 9: Budget query
         if analysis['budget']:
             return 'budget_query'
-
-        # Greeting
-        greeting_keywords = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'greetings']
-        if any(kw in message for kw in greeting_keywords):
-            return 'greeting'
-
-        # Help
-        help_keywords = ['help', 'how', 'what can you do']
-        if any(kw in message for kw in help_keywords):
-            return 'help'
-
-        # Comparison
-        if ' vs ' in message or ' versus ' in message or 'compare' in message:
-            return 'comparison'
 
         return 'general'
 

@@ -34,43 +34,57 @@ class EnhancedChatbotEngine:
         Returns:
             Dictionary with response and metadata
         """
-        if not session_id:
-            session_id = f"session_{user_id or 'guest'}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        try:
+            if not session_id:
+                session_id = f"session_{user_id or 'guest'}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
-        # Get conversation context
-        context = self.context_manager.get_context(session_id)
-        context_dict = {
-            'last_intent': context.last_intent,
-            'last_specs': context.get_active_filters(),
-            'battery_focus': context.battery_focus,
-            'camera_focus': context.camera_focus,
-            'brand_preferences': context.get_brand_preferences()
-        }
+            # Get conversation context
+            context = self.context_manager.get_context(session_id)
+            context_dict = {
+                'last_intent': context.last_intent,
+                'last_specs': context.get_active_filters(),
+                'battery_focus': context.battery_focus,
+                'camera_focus': context.camera_focus,
+                'brand_preferences': context.get_brand_preferences()
+            }
 
-        # Analyze message with NLU
-        analysis = self.nlu_engine.analyze_message(message, context_dict)
+            # Analyze message with NLU
+            analysis = self.nlu_engine.analyze_message(message, context_dict)
 
-        # Update context
-        self.context_manager.update_context(session_id, analysis)
-        context = self.context_manager.get_context(session_id)
+            # Update context
+            self.context_manager.update_context(session_id, analysis)
+            context = self.context_manager.get_context(session_id)
 
-        # Generate response based on analysis
-        response_data = self._generate_intelligent_response(
-            user_id, message, analysis, context
-        )
-
-        # Save to chat history
-        if user_id:
-            self._save_chat_history(
-                user_id=user_id,
-                message=message,
-                response=response_data['response'],
-                intent=analysis['intent'],
-                session_id=session_id,
-                metadata=response_data.get('metadata', {})
+            # Generate response based on analysis
+            response_data = self._generate_intelligent_response(
+                user_id, message, analysis, context
             )
 
-        return response_data
+            # Save to chat history
+            if user_id:
+                self._save_chat_history(
+                    user_id=user_id,
+                    message=message,
+                    response=response_data['response'],
+                    intent=analysis['intent'],
+                    session_id=session_id,
+                    metadata=response_data.get('metadata', {})
+                )
+
+            return response_data
+
+        except Exception as e:
+            # Log the error for debugging
+            print(f"Error processing message: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+            # Return user-friendly error message
+            return {
+                'response': "I apologize, but I encountered an issue processing your request. Please try rephrasing your question or ask for help to see what I can do.",
+                'type': 'text',
+                'error': str(e)
+            }
 
     def _generate_intelligent_response(self, user_id, message, analysis: Dict, context) -> Dict:
         """Generate intelligent response based on NLU analysis and context"""
@@ -84,6 +98,14 @@ class EnhancedChatbotEngine:
         # Help
         elif intent == 'help':
             return self._handle_help()
+
+        # Cheapest phones query
+        elif intent == 'cheapest':
+            return self._handle_cheapest(analysis, context)
+
+        # Best performance query
+        elif intent == 'performance':
+            return self._handle_performance(analysis, context)
 
         # Model search (single or multiple)
         elif intent in ['model_search', 'multi_model_search']:
@@ -153,6 +175,193 @@ Just ask me anything like:
             'type': 'text'
         }
 
+    def _handle_cheapest(self, analysis: Dict, context) -> Dict:
+        """Handle cheapest phones query"""
+        # Get brand preferences
+        current_brands = analysis['brands']
+        if current_brands['preferred'] or current_brands['excluded']:
+            brands = current_brands
+        else:
+            brands = context.get_brand_preferences()
+
+        # Build query
+        query = Phone.query.filter_by(is_active=True)
+        filters = []
+
+        # Brand filter
+        if brands['preferred']:
+            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brands['preferred'])).all()]
+            if brand_ids:
+                filters.append(Phone.brand_id.in_(brand_ids))
+
+        # Exclude brands
+        if brands['excluded']:
+            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brands['excluded'])).all()]
+            if brand_ids:
+                filters.append(~Phone.brand_id.in_(brand_ids))
+
+        # Budget filter
+        budget = context.current_filters.get('budget') or analysis.get('budget')
+        if budget:
+            min_price, max_price = budget
+            filters.append(Phone.price >= min_price)
+            filters.append(Phone.price <= max_price)
+
+        if filters:
+            query = query.filter(and_(*filters))
+
+        # Sort by price ascending
+        phones = query.order_by(Phone.price.asc()).limit(5).all()
+
+        if not phones:
+            return {
+                'response': "I couldn't find phones matching your criteria. Would you like to adjust your filters?",
+                'type': 'text'
+            }
+
+        # Build response
+        brand_text = f" from {', '.join(brands['preferred'])}" if brands['preferred'] else ""
+        budget_text = ""
+        if budget:
+            budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
+
+        response = f"Here are the cheapest{brand_text} phones{budget_text}:\n\n"
+
+        phone_list = []
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+            if specs:
+                if specs.ram_options:
+                    response += f"💾 {specs.ram_options} RAM\n"
+                if specs.storage_options:
+                    response += f"💿 {specs.storage_options} Storage\n"
+            response += "\n"
+
+            phone_list.append({
+                'id': phone.id,
+                'name': f"{phone.brand.name} {phone.model_name}",
+                'price': phone.price
+            })
+
+        return {
+            'response': response,
+            'type': 'recommendation',
+            'metadata': {'phones': phone_list}
+        }
+
+    def _handle_performance(self, analysis: Dict, context) -> Dict:
+        """Handle best performance query"""
+        # Get brand preferences
+        current_brands = analysis['brands']
+        if current_brands['preferred'] or current_brands['excluded']:
+            brands = current_brands
+        else:
+            brands = context.get_brand_preferences()
+
+        # Build query
+        query = Phone.query.filter_by(is_active=True)
+        filters = []
+
+        # Brand filter
+        if brands['preferred']:
+            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brands['preferred'])).all()]
+            if brand_ids:
+                filters.append(Phone.brand_id.in_(brand_ids))
+
+        # Exclude brands
+        if brands['excluded']:
+            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brands['excluded'])).all()]
+            if brand_ids:
+                filters.append(~Phone.brand_id.in_(brand_ids))
+
+        # Budget filter
+        budget = context.current_filters.get('budget') or analysis.get('budget')
+        if budget:
+            min_price, max_price = budget
+            filters.append(Phone.price >= min_price)
+            filters.append(Phone.price <= max_price)
+
+        if filters:
+            query = query.filter(and_(*filters))
+
+        phones = query.all()
+
+        # Calculate performance score based on specs
+        phone_performance_pairs = []
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            if not specs:
+                continue
+
+            performance_score = 0
+
+            # RAM score (higher RAM = better performance)
+            ram_values = self._extract_numeric_values(specs.ram_options or '')
+            if ram_values:
+                performance_score += max(ram_values) * 10
+
+            # Storage score
+            storage_values = self._extract_numeric_values(specs.storage_options or '')
+            if storage_values:
+                performance_score += max(storage_values) / 10
+
+            # Battery score
+            if specs.battery_capacity:
+                performance_score += specs.battery_capacity / 100
+
+            # Processor indicators (flagship keywords)
+            processor = (specs.processor or '').lower()
+            if any(keyword in processor for keyword in ['snapdragon 8', 'dimensity 9', 'a17', 'a18']):
+                performance_score += 100  # Flagship bonus
+            elif any(keyword in processor for keyword in ['snapdragon 7', 'dimensity 8', 'a16']):
+                performance_score += 50  # Upper mid-range bonus
+
+            phone_performance_pairs.append((phone, specs, performance_score))
+
+        # Sort by performance score
+        phone_performance_pairs.sort(key=lambda x: x[2], reverse=True)
+
+        # Limit to top 5
+        phone_performance_pairs = phone_performance_pairs[:5]
+
+        if not phone_performance_pairs:
+            return {
+                'response': "I couldn't find phones matching your criteria. Would you like to adjust your filters?",
+                'type': 'text'
+            }
+
+        # Build response
+        brand_text = f" from {', '.join(brands['preferred'])}" if brands['preferred'] else ""
+        budget_text = ""
+        if budget:
+            budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
+
+        response = f"Here are the best{brand_text} phones with good performance{budget_text}:\n\n"
+
+        phone_list = []
+        for phone, specs, score in phone_performance_pairs:
+            response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+            if specs.processor:
+                response += f"⚡ {specs.processor}\n"
+            if specs.ram_options:
+                response += f"💾 {specs.ram_options} RAM\n"
+            if specs.storage_options:
+                response += f"💿 {specs.storage_options} Storage\n"
+            response += "\n"
+
+            phone_list.append({
+                'id': phone.id,
+                'name': f"{phone.brand.name} {phone.model_name}",
+                'price': phone.price
+            })
+
+        return {
+            'response': response,
+            'type': 'recommendation',
+            'metadata': {'phones': phone_list}
+        }
+
     def _handle_model_search(self, analysis: Dict, context) -> Dict:
         """Handle model-specific search (including multi-model queries)"""
         models = analysis['models']
@@ -166,34 +375,61 @@ Just ask me anything like:
 
     def _search_single_model(self, model_query: Any, analysis: Dict, context) -> Dict:
         """Search for a single phone model with fuzzy matching"""
-        # Extract model text
-        if isinstance(model_query, dict):
-            model_text = model_query['text']
-        else:
-            model_text = str(model_query)
+        try:
+            # Extract model text
+            if isinstance(model_query, dict):
+                model_text = model_query['text']
+            else:
+                model_text = str(model_query)
 
-        # Get all phone models from database
-        all_phones = Phone.query.filter_by(is_active=True).all()
-        model_names = [f"{p.brand.name} {p.model_name}" for p in all_phones if p.brand]
+            # Get all phone models from database
+            all_phones = Phone.query.filter_by(is_active=True).all()
+            model_names = [f"{p.brand.name} {p.model_name}" for p in all_phones if p.brand]
 
-        # Try fuzzy matching
-        matches = process.extract(model_text, model_names, scorer=fuzz.token_sort_ratio, limit=10)
+            # Try fuzzy matching
+            matches = process.extract(model_text, model_names, scorer=fuzz.token_sort_ratio, limit=10)
 
-        # Filter matches with score >= 60 (more lenient for partial names)
-        good_matches = [(name, score) for name, score in matches if score >= 60]
+            # Filter matches with score >= 60 (more lenient for partial names)
+            good_matches = [(name, score) for name, score in matches if score >= 60]
 
-        if good_matches:
-            # Get the actual phone objects
-            matched_phones = []
-            for matched_name, score in good_matches:
-                for phone in all_phones:
-                    full_name = f"{phone.brand.name} {phone.model_name}"
-                    if full_name == matched_name:
-                        matched_phones.append(phone)
-                        break
+            if good_matches:
+                # Get the actual phone objects with scores
+                matched_phones = []
+                for matched_name, score in good_matches:
+                    for phone in all_phones:
+                        full_name = f"{phone.brand.name} {phone.model_name}"
+                        if full_name == matched_name:
+                            matched_phones.append((phone, score))
+                            break
 
-            # Limit to top 5
-            matched_phones = matched_phones[:5]
+                # FIXED: Check for exact match first (score >= 90)
+                exact_matches = [(p, s) for p, s in matched_phones if s >= 90]
+
+                # If we have exact/near-exact matches, prioritize those
+                if exact_matches:
+                    # Check if user query doesn't contain "pro", "max", "plus" etc
+                    query_lower = model_text.lower()
+                    has_variant_keyword = any(kw in query_lower for kw in ['pro', 'max', 'plus', 'ultra', 'lite', 'mini'])
+
+                    if not has_variant_keyword:
+                        # User wants base model only, filter out variants
+                        base_matches = []
+                        for phone, score in exact_matches:
+                            model_lower = phone.model_name.lower()
+                            # Exclude if model name contains variant keywords not in query
+                            if not any(kw in model_lower for kw in ['pro', 'max', 'plus', 'ultra', 'lite', 'mini']):
+                                base_matches.append((phone, score))
+
+                        # If we found base models, use only those
+                        if base_matches:
+                            matched_phones = base_matches
+                        else:
+                            matched_phones = exact_matches
+                    else:
+                        matched_phones = exact_matches
+
+                # Extract just phones, limit to top 5
+                matched_phones = [p for p, s in matched_phones][:5]
 
             if len(matched_phones) == 1:
                 phone = matched_phones[0]
@@ -245,71 +481,103 @@ Just ask me anything like:
                     'type': 'recommendation',
                     'metadata': {'phones': phone_list}
                 }
-        else:
+            else:
+                return {
+                    'response': f"I couldn't find a specific model matching '{model_text}'. Would you like to:\n• See all phones from a specific brand\n• Get recommendations based on your budget\n• Browse by category",
+                    'type': 'text'
+                }
+
+        except Exception as e:
+            print(f"Error in _search_single_model: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {
-                'response': f"I couldn't find a specific model matching '{model_text}'. Would you like to:\n• See all phones from a specific brand\n• Get recommendations based on your budget\n• Browse by category",
-                'type': 'text'
+                'response': f"Sorry, I encountered an issue searching for that model. Please try rephrasing your query or ask for help.",
+                'type': 'text',
+                'error': str(e)
             }
 
     def _search_multiple_models(self, analysis: Dict) -> Dict:
         """Search for multiple phone models"""
-        # Extract all model names from the message
-        message = analysis['original_message']
+        try:
+            # Extract all model names from the message
+            message = analysis['original_message']
 
-        # Split by common separators
-        model_queries = re.split(r'\s+and\s+|\s*&\s*|\s*,\s*', message, flags=re.IGNORECASE)
+            # Split by common separators
+            model_queries = re.split(r'\s+and\s+|\s*&\s*|\s*,\s*', message, flags=re.IGNORECASE)
 
-        # Get all phones
-        all_phones = Phone.query.filter_by(is_active=True).all()
-        model_names_map = {f"{p.brand.name} {p.model_name}": p for p in all_phones if p.brand}
+            # Get all phones
+            all_phones = Phone.query.filter_by(is_active=True).all()
+            model_names_map = {f"{p.brand.name} {p.model_name}": p for p in all_phones if p.brand}
 
-        found_phones = []
+            found_phones = []
+            search_log = []  # For debugging
 
-        for query in model_queries:
-            query = query.strip()
-            if not query:
-                continue
+            for query in model_queries:
+                query = query.strip()
+                if not query or len(query) < 3:
+                    continue
 
-            # Fuzzy match each query
-            matches = process.extract(query, list(model_names_map.keys()), scorer=fuzz.token_sort_ratio, limit=1)
+                # Fuzzy match each query - get top 3 matches instead of just 1
+                matches = process.extract(query, list(model_names_map.keys()), scorer=fuzz.token_sort_ratio, limit=3)
 
-            if matches and matches[0][1] >= 60:
-                matched_name = matches[0][0]
-                phone = model_names_map[matched_name]
-                if phone not in found_phones:
-                    found_phones.append(phone)
+                search_log.append(f"Query: '{query}' -> Matches: {matches}")
 
-        if found_phones:
-            response = f"I found {len(found_phones)} phone(s) matching your query:\n\n"
-            phone_list = []
+                # Find best match (score >= 60)
+                for matched_name, score in matches:
+                    if score >= 60:
+                        phone = model_names_map[matched_name]
+                        if phone not in found_phones:
+                            found_phones.append(phone)
+                            search_log.append(f"  Added: {matched_name} (score: {score})")
+                            break  # Take only the best match for this query
 
-            for phone in found_phones:
-                response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
-                response += f"👉 View Details\n"
-                phone_list.append({
-                    'id': phone.id,
-                    'name': f"{phone.brand.name} {phone.model_name}",
-                    'price': phone.price
-                })
+            # Print debug log
+            print("Multi-model search log:")
+            for log in search_log:
+                print(log)
 
-            response += "\nClick any link above to see full details!"
+            if found_phones:
+                response = f"I found {len(found_phones)} phone(s) matching your query:\n\n"
+                phone_list = []
 
-            # Add side-by-side display data
-            for phone in found_phones:
-                brand_name = phone.brand.name if phone.brand else 'Unknown'
-                response += f"\n{brand_name} {phone.model_name}\n"
-                response += f"{brand_name} {phone.model_name}\n"
-                response += f"RM {phone.price:.2f}\n"
+                for phone in found_phones:
+                    response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                    response += f"👉 View Details\n"
+                    phone_list.append({
+                        'id': phone.id,
+                        'name': f"{phone.brand.name} {phone.model_name}",
+                        'price': phone.price
+                    })
 
+                response += "\nClick any link above to see full details!"
+
+                # Add side-by-side display data
+                for phone in found_phones:
+                    brand_name = phone.brand.name if phone.brand else 'Unknown'
+                    response += f"\n{brand_name} {phone.model_name}\n"
+                    response += f"{brand_name} {phone.model_name}\n"
+                    response += f"RM {phone.price:.2f}\n"
+
+                return {
+                    'response': response,
+                    'type': 'recommendation',
+                    'metadata': {'phones': phone_list}
+                }
+            else:
+                return {
+                    'response': "Sorry, I could not find the phone models you specified. Please check the model names and try again.",
+                    'type': 'text'
+                }
+
+        except Exception as e:
+            print(f"Error in _search_multiple_models: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {
-                'response': response,
-                'type': 'recommendation',
-                'metadata': {'phones': phone_list}
-            }
-        else:
-            return {
-                'response': "Sorry, I could not find the phone models you specified. Please check the model names and try again.",
-                'type': 'text'
+                'response': f"Sorry, I encountered an issue searching for those models. Please try rephrasing your query.",
+                'type': 'text',
+                'error': str(e)
             }
 
     def _handle_spec_filter(self, analysis: Dict, context) -> Dict:
