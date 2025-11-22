@@ -21,7 +21,11 @@
                 {% endif %}
                 <div class="card-body">
                     <h5 class="card-title">{{ rec['phone'].model_name }}</h5>
+                    {% if rec['phone'].brand.website_url %}
+                    <p class="text-muted"><a href="{{ rec['phone'].brand.website_url }}" target="_blank" rel="noopener noreferrer">{{ rec['phone'].brand.name }}</a></p>
+                    {% else %}
                     <p class="text-muted">{{ rec['phone'].brand.name }}</p>
+                    {% endif %}
                     <h4 class="text-primary">RM {{ "{:,.2f}".format(rec['phone'].price) }}</h4>
 
                     <div class="mt-3">
