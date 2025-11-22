@@ -682,6 +682,8 @@ class AIRecommendationEngine:
             brand_names: Optional list of brand names to filter
             top_n: Number of results to return
         """
+        query = Phone.query.filter_by(is_active=True)
+
         from app.models import Brand
         query = Phone.query.join(PhoneSpecification).filter(
             Phone.is_active == True,
@@ -694,6 +696,7 @@ class AIRecommendationEngine:
 
         # Filter by brands if specified
         if brand_names:
+            from app.models import Brand
             brand_ids = []
             for brand_name in brand_names:
                 brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
@@ -718,7 +721,7 @@ class AIRecommendationEngine:
                         results.append({
                             'phone': phone,
                             'specifications': specs,
-                            'camera_score': camera_mp  # Add score for sorting
+                            'camera_score': camera_mp  
                         })
                 except (ValueError, TypeError) as e:
                     # Log the issue but continue processing
