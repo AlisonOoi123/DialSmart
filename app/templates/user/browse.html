@@ -92,6 +92,13 @@
                     <!-- Phone Name -->
                     <h6 class="card-title mb-2">{{ phone.model_name }}</h6>
 
+                    <!--Website URL-->
+                    {% if phone.brand.website_url %}
+                    <p class="text-muted mb-1"><a href="{{ phone.brand.website_url }}" target="_blank" rel="noopener noreferrer">{{ phone.brand.name }}</a></p>
+                    {% else %}
+                    <p class="text-muted mb-1">{{ phone.brand.name }}</p>
+                    {% endif %}
+
                     <!-- Price -->
                     <p class="text-primary fw-bold fs-5 mb-2">RM {{ "{:,.2f}".format(phone.price) }}</p>
 

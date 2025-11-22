@@ -351,6 +351,7 @@ def add_brand():
         name = request.form.get('name')
         description = request.form.get('description')
         tagline = request.form.get('tagline')
+        website_url = request.form.get('website_url')
         is_featured = bool(request.form.get('is_featured'))
 
         if not name:
@@ -367,6 +368,7 @@ def add_brand():
             name=name,
             description=description,
             tagline=tagline,
+            website_url=website_url,
             is_featured=is_featured
         )
 
@@ -397,6 +399,7 @@ def edit_brand(brand_id):
         brand.name = request.form.get('name', brand.name)
         brand.description = request.form.get('description')
         brand.tagline = request.form.get('tagline')
+        brand.website_url = request.form.get('website_url')
         brand.is_featured = bool(request.form.get('is_featured'))
         brand.is_active = bool(request.form.get('is_active', True))
 

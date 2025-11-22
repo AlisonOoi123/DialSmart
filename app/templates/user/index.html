@@ -166,7 +166,11 @@
                     {% endif %}
                     <div class="card-body">
                         <h5 class="card-title">{{ phone.model_name }}</h5>
+                        {% if phone.brand.website_url %}
+                        <p class="text-muted"><a href="{{ phone.brand.website_url }}" target="_blank" rel="noopener noreferrer">{{ phone.brand.name }}</a></p>
+                        {% else %}
                         <p class="text-muted">{{ phone.brand.name }}</p>
+                        {% endif %}
                         <h4 class="text-primary">RM {{ "{:,.2f}".format(phone.price) }}</h4>
 
                         {% if phone.specifications %}

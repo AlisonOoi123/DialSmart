@@ -28,6 +28,11 @@
                 {% endif %}
                 <div class="card-body">
                     <h6 class="card-title">{{ phone.model_name }}</h6>
+                    {% if phone.brand.website_url %}
+                    <p class="text-muted mb-1"><a href="{{ phone.brand.website_url }}" target="_blank" rel="noopener noreferrer">{{ phone.brand.name }}</a></p>
+                    {% else %}
+                    <p class="text-muted mb-1">{{ phone.brand.name }}</p>
+                    {% endif %}
                     <p class="text-primary fw-bold">RM {{ "{:,.2f}".format(phone.price) }}</p>
                     <a href="{{ url_for('phone.details', phone_id=phone.id) }}" class="btn btn-sm btn-primary w-100">View Details</a>
                 </div>
