@@ -120,6 +120,15 @@
                             <label class="form-label">5G Networks</label>
                             <textarea name="network_5g" class="form-control" rows="2">{{ specs.network_5g if specs else '' }}</textarea>
                         </div>
+                        <div class="alert alert-info mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" name="has_5g" id="has_5g" class="form-check-input" {% if specs and specs.has_5g %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="has_5g">
+                                    📶 5G Support (Check this if the phone supports 5G network)
+                                </label>
+                                <div class="form-text">This is important for 5G phone recommendations in the chatbot</div>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">4G Networks</label>
                             <textarea name="network_4g" class="form-control" rows="2">{{ specs.network_4g if specs else '' }}</textarea>
