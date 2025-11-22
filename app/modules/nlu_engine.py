@@ -1,10 +1,10 @@
 """
-Enhanced NLU Engine with Machine Learning
+Enhanced NLU Engine with Machine Learning - FIXED VERSION
 Natural Language Understanding for DialSmart chatbot
 """
 import re
 from typing import Dict, List, Tuple, Optional, Any
-from rapidfuzz import fuzz, process
+from fuzzywuzzy import fuzz, process
 import numpy as np
 from datetime import datetime
 
@@ -43,7 +43,8 @@ class NLUEngine:
             'Asus': ['asus', 'rog'],
             'Nothing': ['nothing'],
             'Infinix': ['infinix'],
-            'Tecno': ['tecno']
+            'Tecno': ['tecno'],
+            'Honor': ['honor']
         }
 
         # Battery-related keywords
@@ -70,7 +71,7 @@ class NLUEngine:
         # Intent patterns
         self.intent_patterns = {
             'model_search': [
-                r'\b(iphone|galaxy|redmi|poco|pixel|xperia|honor)\s+\d+',
+                r'\b(iphone|galaxy|redmi|poco|pixel|xperia|honor|oppo|vivo|realme|oneplus|nothing|moto)\s+\d+',
                 r'\b([a-z]+)\s+\d+\s*(pro|max|ultra|plus|lite|se)?',
             ],
             'multi_model_search': [
@@ -120,7 +121,9 @@ class NLUEngine:
             'requires_battery_focus': False,
             'requires_camera_focus': False,
             'fuzzy_model_matches': [],
-            'context_continuation': False
+            'context_continuation': False,
+            'is_simple_brand_query': False,
+            'has_explicit_sentiment': False
         }
 
         # Check for context continuation
@@ -133,6 +136,12 @@ class NLUEngine:
         brand_analysis = self._extract_brand_preferences(message_lower)
         analysis['brands'] = brand_analysis
         analysis['is_multi_brand_query'] = len(brand_analysis['preferred']) > 1
+
+        # Check if this is a simple brand-only query (no specs, just brand name)
+        analysis['is_simple_brand_query'] = self._is_simple_brand_query(message_lower, brand_analysis)
+
+        # Check if message has explicit sentiment (love/hate)
+        analysis['has_explicit_sentiment'] = self._has_explicit_sentiment(message_lower)
 
         # Extract model names (exact and fuzzy)
         models = self._extract_model_names(message_lower)
@@ -160,6 +169,40 @@ class NLUEngine:
         analysis['intent'] = intent
 
         return analysis
+
+    def _is_simple_brand_query(self, message: str, brand_analysis: Dict) -> bool:
+        """Check if message is just a brand name without other criteria"""
+        # Check if message is just a brand keyword
+        for brand_keywords in self.brand_keywords.values():
+            for keyword in brand_keywords:
+                # Message is just the keyword or keyword + s
+                if message.strip() in [keyword, keyword + 's', keyword + ' phone', keyword + ' phones']:
+                    return True
+
+        # Check if message is only brand names without specs
+        if brand_analysis['preferred']:
+            # Remove brand keywords from message
+            clean_msg = message
+            for brand, keywords in self.brand_keywords.items():
+                for keyword in keywords:
+                    clean_msg = clean_msg.replace(keyword, '')
+
+            # If what's left is just whitespace or common words
+            remaining = clean_msg.strip()
+            common_words = ['phone', 'phones', 'and', 'the', 'a', 'an']
+            remaining_words = [w for w in remaining.split() if w not in common_words]
+
+            if not remaining_words:
+                return True
+
+        return False
+
+    def _has_explicit_sentiment(self, message: str) -> bool:
+        """Check if message contains explicit sentiment words"""
+        for sentiment in self.positive_sentiments + self.negative_sentiments:
+            if sentiment in message:
+                return True
+        return False
 
     def _extract_brand_preferences(self, message: str) -> Dict[str, List[str]]:
         """Extract brand preferences with sentiment analysis"""
@@ -239,24 +282,39 @@ class NLUEngine:
         return 'neutral'
 
     def _extract_model_names(self, message: str) -> List[Dict[str, Any]]:
-        """Extract phone model names from message"""
+        """Extract phone model names from message - FIXED VERSION"""
         models = []
 
-        # Pattern for model names: brand + number + optional suffix
+        # FIXED: Better patterns that don't split digits
         patterns = [
-            r'\b(iphone|galaxy|redmi|poco|mi|pixel|xperia|honor|oppo|vivo|realme|oneplus|nothing|moto)\s+(\d+)\s*(pro\s*max|pro|max|ultra|plus|lite|se|c|x|t|s|note|mix|fold|flip)?\b',
-            r'\b(xiaomi|samsung|apple|huawei|google|sony|nokia|motorola|asus)\s+(\w+)\s*(\d+)\s*(pro\s*max|pro|max|ultra|plus|lite|se)?\b',
+            # Pattern 1: brand + number + optional suffix (e.g., "iphone 17 pro", "redmi 14 pro")
+            r'\b(iphone|galaxy|redmi|poco|pixel|xperia|honor|oppo|vivo|iqoo|realme|oneplus|nothing|moto|mi)\s+(\d+[a-z]?)\s*(pro\s*max|pro\s*plus|pro|max|ultra|plus|lite|se|c|x|t|s|note|mix|fold|flip|air)?\b',
+
+            # Pattern 2: brand + word + number + suffix (e.g., "samsung galaxy s23", "xiaomi mix 4")
+            # FIXED: Use [a-zA-Z]+ instead of \w+ to not match digits
+            r'\b(xiaomi|samsung|apple|huawei|google|sony|nokia|motorola|asus)\s+([a-zA-Z]+)\s+(\d+[a-z]?)\s*(pro\s*max|pro\s*plus|pro|max|ultra|plus|lite|se|air)?\b',
+
+            # Pattern 3: Just brand + number for Xiaomi (e.g., "xiaomi 17")
+            r'\b(xiaomi)\s+(\d+)\s*(pro\s*max|pro\s*plus|pro|max|ultra|plus|lite|se|air)?\b',
         ]
+
+        seen_models = set()
 
         for pattern in patterns:
             matches = re.finditer(pattern, message, re.IGNORECASE)
             for match in matches:
                 groups = match.groups()
+                # Join all captured groups
                 model_text = ' '.join([g for g in groups if g]).strip()
-                models.append({
-                    'text': model_text,
-                    'match_type': 'exact'
-                })
+
+                # Avoid duplicates
+                model_key = model_text.lower()
+                if model_key not in seen_models:
+                    seen_models.add(model_key)
+                    models.append({
+                        'text': model_text,
+                        'match_type': 'exact'
+                    })
 
         return models
 
@@ -350,19 +408,19 @@ class NLUEngine:
         ]
 
         for pattern in patterns:
-            match = re.search(pattern, message)
+            match = re.search(pattern, message.lower())
             if match:
-                if 'under' in message or 'below' in message:
+                if 'under' in message.lower() or 'below' in message.lower():
                     max_budget = int(match.group(1))
                     return (100, max_budget)
-                elif 'within' in message:
+                elif 'within' in message.lower():
                     # "within 5000" typically means up to that amount
                     max_budget = int(match.group(1))
                     return (100, max_budget)
                 elif len(match.groups()) == 2:
                     return (int(match.group(1)), int(match.group(2)))
                 else:
-                    # Single value - interpret as maximum
+                    # Single value mentioned
                     value = int(match.group(1))
                     # If value is small (< 100), might be in hundreds
                     if value < 100:
