@@ -271,7 +271,12 @@ class AIRecommendationEngine:
         # Apply brand filter
         if brand_names:
             from app.models import Brand
-            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brand_names)).all()]
+            brand_ids = []
+            for brand_name in brand_names:
+                # CRITICAL FIX: Use ilike for case-insensitive brand matching
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
             if brand_ids:
                 query = query.filter(Phone.brand_id.in_(brand_ids))
 
@@ -303,7 +308,12 @@ class AIRecommendationEngine:
         # Apply brand filter
         if brand_names:
             from app.models import Brand
-            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brand_names)).all()]
+            brand_ids = []
+            for brand_name in brand_names:
+                # CRITICAL FIX: Use ilike for case-insensitive brand matching
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
             if brand_ids:
                 query = query.filter(Phone.brand_id.in_(brand_ids))
 
@@ -312,12 +322,19 @@ class AIRecommendationEngine:
 
         for phone in phones:
             specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
-            if specs and specs.rear_camera_main and specs.rear_camera_main >= min_camera_mp:
-                results.append({
-                    'phone': phone,
-                    'specifications': specs,
-                    'camera_score': specs.rear_camera_main
-                })
+            if specs and specs.rear_camera_main:
+                # CRITICAL FIX: Ensure type conversion for accurate comparison
+                try:
+                    camera_mp = int(specs.rear_camera_main)
+                    if camera_mp >= min_camera_mp:
+                        results.append({
+                            'phone': phone,
+                            'specifications': specs,
+                            'camera_score': camera_mp
+                        })
+                except (ValueError, TypeError):
+                    # Skip if camera value cannot be converted to int
+                    continue
 
         # Sort by camera MP descending
         results.sort(key=lambda x: x['camera_score'], reverse=True)
@@ -335,7 +352,12 @@ class AIRecommendationEngine:
         # Apply brand filter
         if brand_names:
             from app.models import Brand
-            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brand_names)).all()]
+            brand_ids = []
+            for brand_name in brand_names:
+                # CRITICAL FIX: Use ilike for case-insensitive brand matching
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
             if brand_ids:
                 query = query.filter(Phone.brand_id.in_(brand_ids))
 

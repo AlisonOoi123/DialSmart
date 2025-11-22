@@ -838,6 +838,9 @@ class ChatbotEngine:
                 min_budget, max_budget = budget
                  # If brands mentioned, filter by brand
                 if brand_names:
+                    # CRITICAL FIX: Import Brand to avoid UnboundLocalError
+                    from app.models import Brand
+
                     all_phones = []
                     found_brands = []
 
@@ -1058,15 +1061,26 @@ class ChatbotEngine:
             session_wanted = context.get('wanted_brands', [])
             session_unwanted = context.get('unwanted_brands', [])
 
-            # CRITICAL FIX: For spec queries (storage, RAM, etc.) with explicit brand mentions,
+            # CRITICAL FIX: Detect if this is a spec/feature query without brand mentions
+            # For these queries, don't use session brands to avoid confusion
+            spec_keywords = ['5g', '5G', 'storage', 'ram', 'memory', 'camera', 'battery',
+                            'processor', 'display', 'screen', 'mah', 'mp', 'gb']
+            is_spec_query = any(keyword in message.lower() for keyword in spec_keywords)
+
+            # CRITICAL FIX: For spec queries (storage, RAM, 5G, etc.) with explicit brand mentions,
             # use ONLY current message brands, not session brands to avoid wrong results
             # Example: "256GB storage vivo" should show ONLY Vivo, not previous session brands
+            # Example: "5G phone recommend" should show ALL 5G phones, not just Samsung from session
             if wanted_brands:
                 # User explicitly mentioned brands in current message - use ONLY those
                 all_wanted_brands = wanted_brands
                 all_unwanted_brands = unwanted_brands
+            elif is_spec_query:
+                # Spec query without brand mentions - don't use session brands
+                all_wanted_brands = []
+                all_unwanted_brands = unwanted_brands  # But keep unwanted brands
             else:
-                # No brands in current message - merge with session brands
+                # No brands in current message and not a spec query - merge with session brands
                 all_wanted_brands = list(set(wanted_brands + session_wanted))
                 all_unwanted_brands = list(set(unwanted_brands + session_unwanted))
 
@@ -2744,14 +2758,19 @@ class ChatbotEngine:
         """Handle query about specific phone model"""
         message_lower = message.lower()
 
-        # CRITICAL FIX: Variant filtering logic
-        # - If user specifies variant keyword (e.g., "pro") → show ONLY matching variants
-        # - If user does NOT specify variant → show ALL variants (base + Pro/Max/etc.)
+        # CRITICAL FIX: Improved variant and model line filtering
         if len(phones) > 1:
-            variant_keywords = ['pro', 'max', 'plus', 'ultra', 'mini', 'lite', 'edge', 'note', 'fold', 'flip', 'air']
+            # Variant keywords are modifiers that create variants of a base model (e.g., "Pro", "Max")
+            variant_keywords = ['pro', 'max', 'plus', 'ultra', 'mini', 'lite', 'edge', 'fold', 'flip', 'air']
+            # Model line keywords identify different product lines within a brand (e.g., "Note", "GT", "Hot")
+            model_line_keywords = ['note', 'hot', 'smart', 'a', 'c', 'f', 'y', 'x', 'v', 'k', 'p', 'z', 'gt', 'magic', 'nova']
 
             # Check which variant keywords are in the user's message
             mentioned_variants = [kw for kw in variant_keywords if kw in message_lower]
+
+            # CRITICAL FIX: Extract model line from query (e.g., "gt" from "gt 30")
+            # This helps filter out different model lines like "Note 30" vs "GT 30"
+            mentioned_model_lines = [kw for kw in model_line_keywords if kw in message_lower]
 
             if mentioned_variants:
                 # User specified a variant - filter to show ONLY phones matching that variant
@@ -2767,7 +2786,26 @@ class ChatbotEngine:
                 # Use filtered phones if we found any, otherwise use all
                 if filtered_phones:
                     phones = filtered_phones
-            # If no variant keyword mentioned, show ALL phones (base + all variants)
+            elif mentioned_model_lines:
+                # CRITICAL FIX: User specified a model line (e.g., "GT 30")
+                # Filter to show ONLY phones from that model line
+                # Example: "infinix gt 30" should show ONLY GT 30, NOT Note 30i or Hot 30
+                filtered_phones = []
+                for phone in phones:
+                    model_lower = phone.model_name.lower()
+                    # Check if phone matches ALL mentioned model lines
+                    if all(line in model_lower for line in mentioned_model_lines):
+                        # Also check that phone doesn't have UNMENTIONED variant keywords
+                        has_unmentioned_variant = any(
+                            variant in model_lower and variant not in mentioned_variants
+                            for variant in variant_keywords
+                        )
+                        if not has_unmentioned_variant:
+                            filtered_phones.append(phone)
+
+                if filtered_phones:
+                    phones = filtered_phones
+            # If no variant or model line keyword mentioned, show ALL phones (base + all variants)
             # Example: "iphone 17" should show iPhone 17, 17 Air, 17 Pro, 17 Pro Max
 
         # Determine what information is being requested
@@ -3451,17 +3489,37 @@ class ChatbotEngine:
             'inch', 'mm', 'cm', 'gram', 'ounce', 'hz', 'ghz'
         ]
 
-        # Check if any phone keyword is in the message
-        for keyword in phone_keywords:
-            if keyword in message_lower:
-                return True
+        # CRITICAL FIX: Check for strong phone keywords first
+        # These are keywords that clearly indicate phone-related queries
+        strong_keywords = [
+            'phone', 'smartphone', 'mobile', 'device', 'handset', 'iphone',
+            'android', 'samsung', 'galaxy', 'xiaomi', 'huawei', 'oppo', 'vivo',
+            'realme', 'pixel', 'oneplus', 'honor', 'infinix', 'poco', 'redmi',
+            'camera phone', 'gaming phone', 'budget phone', 'flagship'
+        ]
+
+        has_strong_keyword = any(keyword in message_lower for keyword in strong_keywords)
 
         # Check if any brand is mentioned (brands are phone-related)
-        if self._extract_multiple_brands(message):
-            return True
+        has_brand = bool(self._extract_multiple_brands(message))
 
         # Check if budget is mentioned (likely phone shopping)
-        if self._extract_budget(message):
+        has_budget = bool(self._extract_budget(message))
+
+        # CRITICAL FIX: Require strong evidence of phone-related intent
+        # Don't treat generic words like "buy" alone as phone-related
+        if has_strong_keyword or has_brand:
+            return True
+
+        # If has budget AND other phone keywords, likely phone-related
+        if has_budget:
+            weak_keywords = ['spec', 'display', 'battery', 'camera', 'ram', 'storage', '5g', '4g']
+            if any(keyword in message_lower for keyword in weak_keywords):
+                return True
+
+        # Check for phone keyword combinations (need at least 2 phone-related terms)
+        phone_keyword_count = sum(1 for keyword in phone_keywords if keyword in message_lower)
+        if phone_keyword_count >= 2:
             return True
 
         return False
