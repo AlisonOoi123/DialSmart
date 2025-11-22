@@ -786,7 +786,7 @@ class ChatbotEngine:
 
                     if len(all_phones) >= 2:
                         # Multiple specific models found
-                        return self._handle_specific_phone_query(message, all_phones)
+                        return self._handle_specific_phone_query(message, all_phones, is_multi_model=True)
 
                 # Standard single model extraction
                 phone_model = self._extract_phone_model(message)
@@ -2504,7 +2504,7 @@ class ChatbotEngine:
             'asus': ['asus', 'rog'],
             'google': ['google', 'pixel'],
             'honor': ['honor'],
-            'huawei': ['huawei'],
+            'huawei': ['huawei', 'mate', 'pura'],  # CRITICAL FIX: Added Huawei product line names
             'infinix': ['infinix'],
             'oppo': ['oppo'],
             'poco': ['poco'],
@@ -2837,12 +2837,20 @@ class ChatbotEngine:
 
         return None
 
-    def _handle_specific_phone_query(self, message, phones):
-        """Handle query about specific phone model"""
+    def _handle_specific_phone_query(self, message, phones, is_multi_model=False):
+        """Handle query about specific phone model
+
+        Args:
+            message: User's message
+            phones: Phone object or list of Phone objects
+            is_multi_model: True if phones come from multi-model extraction (e.g., "phone1 and phone2")
+        """
         message_lower = message.lower()
 
-        # CRITICAL FIX: Improved variant and model line filtering
-        if len(phones) > 1:
+        # CRITICAL FIX: Skip variant filtering for multi-model queries
+        # When user explicitly asks for multiple different phones (e.g., "mate 70 air and galaxy f07"),
+        # we should show ALL the phones they asked for, not filter based on keywords
+        if len(phones) > 1 and not is_multi_model:
             # Variant keywords are modifiers that create variants of a base model (e.g., "Pro", "Max")
             variant_keywords = ['pro', 'max', 'plus', 'ultra', 'mini', 'lite', 'edge', 'fold', 'flip', 'air']
             # Model line keywords identify different product lines within a brand (e.g., "Note", "GT", "Hot")
