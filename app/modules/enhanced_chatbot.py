@@ -7,7 +7,7 @@ from app.models import ChatHistory, Phone, Brand, PhoneSpecification
 from app.modules.ai_engine import AIRecommendationEngine
 from app.modules.nlu_engine import NLUEngine
 from app.modules.context_manager import ContextManager
-from fuzzywuzzy import fuzz, process
+from rapidfuzz import fuzz, process
 from sqlalchemy import and_, or_
 import re
 import json

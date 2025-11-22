@@ -4,7 +4,7 @@ Natural Language Understanding for DialSmart chatbot
 """
 import re
 from typing import Dict, List, Tuple, Optional, Any
-from fuzzywuzzy import fuzz, process
+from rapidfuzz import fuzz, process
 import numpy as np
 from datetime import datetime
 
