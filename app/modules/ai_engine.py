@@ -42,7 +42,17 @@ class AIRecommendationEngine:
             user_prefs = self._create_default_preferences(user_id)
 
         # Get all active phones with their specifications
-        phones = Phone.query.filter_by(is_active=True).all()
+        # CRITICAL FIX: Filter by budget FIRST before scoring
+        query = Phone.query.filter_by(is_active=True)
+
+        # Apply budget filter if preferences exist
+        if user_prefs and hasattr(user_prefs, 'min_budget') and hasattr(user_prefs, 'max_budget'):
+            query = query.filter(
+                Phone.price >= user_prefs.min_budget,
+                Phone.price <= user_prefs.max_budget
+            )
+
+        phones = query.all()
 
         # Calculate match scores for each phone
         recommendations = []
@@ -247,4 +257,136 @@ class AIRecommendationEngine:
                 'specifications': specs
             })
 
+        return results[:top_n]
+
+    def get_phones_by_battery(self, min_battery_mah, budget_range=None, brand_names=None, top_n=5):
+        """Get phones with battery above threshold"""
+        query = Phone.query.filter_by(is_active=True)
+
+        # Apply budget filter
+        if budget_range:
+            min_price, max_price = budget_range
+            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Apply brand filter
+        if brand_names:
+            from app.models import Brand
+            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brand_names)).all()]
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.all()
+        results = []
+
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            if specs and specs.battery_capacity and specs.battery_capacity >= min_battery_mah:
+                results.append({
+                    'phone': phone,
+                    'specifications': specs,
+                    'battery_score': specs.battery_capacity
+                })
+
+        # Sort by battery capacity descending
+        results.sort(key=lambda x: x['battery_score'], reverse=True)
+        return results[:top_n]
+
+    def get_phones_by_camera(self, min_camera_mp, budget_range=None, brand_names=None, top_n=5):
+        """Get phones with camera above threshold"""
+        query = Phone.query.filter_by(is_active=True)
+
+        # Apply budget filter
+        if budget_range:
+            min_price, max_price = budget_range
+            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Apply brand filter
+        if brand_names:
+            from app.models import Brand
+            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brand_names)).all()]
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.all()
+        results = []
+
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            if specs and specs.rear_camera_main and specs.rear_camera_main >= min_camera_mp:
+                results.append({
+                    'phone': phone,
+                    'specifications': specs,
+                    'camera_score': specs.rear_camera_main
+                })
+
+        # Sort by camera MP descending
+        results.sort(key=lambda x: x['camera_score'], reverse=True)
+        return results[:top_n]
+
+    def get_phones_by_features(self, features, budget_range=None, usage_type=None, brand_names=None, user_category=None, top_n=5):
+        """Get phones by specific features"""
+        query = Phone.query.filter_by(is_active=True)
+
+        # Apply budget filter
+        if budget_range:
+            min_price, max_price = budget_range
+            query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # Apply brand filter
+        if brand_names:
+            from app.models import Brand
+            brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brand_names)).all()]
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
+
+        phones = query.all()
+        results = []
+
+        for phone in phones:
+            specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+            if not specs:
+                continue
+
+            score = 0
+
+            # Score based on features
+            for feature in features:
+                if feature == 'battery':
+                    score += (specs.battery_capacity or 0) / 100
+                elif feature == 'camera':
+                    score += (specs.rear_camera_main or 0) * 2
+                elif feature == 'performance':
+                    ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                    if ram_values:
+                        score += max(ram_values) * 10
+                elif feature == 'display':
+                    score += (specs.screen_size or 0) * 20
+                elif feature == '5g' and specs.has_5g:
+                    score += 50
+
+            # Add usage type scoring
+            if usage_type:
+                if usage_type == 'Gaming':
+                    ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                    if ram_values:
+                        score += max(ram_values) * 10
+                elif usage_type == 'Photography':
+                    score += (specs.rear_camera_main or 0) * 2
+                elif usage_type in ['Business', 'Work']:
+                    score += (specs.battery_capacity or 0) / 100
+
+            # Add user category scoring
+            if user_category == 'senior':
+                score += (specs.battery_capacity or 0) / 50  # Prioritize battery for seniors
+            elif user_category == 'student':
+                score += phone.price / -100  # Prefer cheaper phones for students
+
+            results.append({
+                'phone': phone,
+                'specifications': specs,
+                'feature_score': score
+            })
+
+        # Sort by feature score descending
+        results.sort(key=lambda x: x['feature_score'], reverse=True)
         return results[:top_n]
