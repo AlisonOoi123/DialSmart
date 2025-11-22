@@ -773,6 +773,7 @@ class ChatbotEngine:
                     skip_phone_model = True
 
         # Try to extract phone model if NOT asking for recommendations
+        print(f"[DEBUG] skip_phone_model = {skip_phone_model}, message = '{message}'")  # DEBUG
         if not skip_phone_model:
             try:
                 # NEW: Check for multiple phone models (e.g., "iphone 17 pro and xiaomi 17 pro")
@@ -780,14 +781,25 @@ class ChatbotEngine:
                     # Split by 'and' and try to extract each model
                     parts = message_lower.split(' and ')
                     all_phones = []
-                    for part in parts:
+                    print(f"[DEBUG] Multi-model extraction for: {parts}")  # DEBUG
+                    for i, part in enumerate(parts):
                         phones = self._extract_phone_model(part)
+                        print(f"[DEBUG] Part {i+1} '{part}': found {len(phones) if isinstance(phones, list) else (1 if phones else 0)} phone(s)")  # DEBUG
                         if phones:
+                            if isinstance(phones, list):
+                                for p in phones:
+                                    print(f"[DEBUG]   - {p.brand.name} {p.model_name}")  # DEBUG
+                            else:
+                                print(f"[DEBUG]   - {phones.brand.name} {phones.model_name}")  # DEBUG
                             all_phones.extend(phones if isinstance(phones, list) else [phones])
 
+                    print(f"[DEBUG] Total phones extracted: {len(all_phones)}, threshold: >= 2")  # DEBUG
                     if len(all_phones) >= 2:
                         # Multiple specific models found
+                        print(f"[DEBUG] SUCCESS: Calling _handle_specific_phone_query with {len(all_phones)} phones")  # DEBUG
                         return self._handle_specific_phone_query(message, all_phones, is_multi_model=True)
+                    else:
+                        print(f"[DEBUG] FAILED: Only {len(all_phones)} phone(s) found, falling through to other handlers")  # DEBUG
 
                 # Standard single model extraction
                 phone_model = self._extract_phone_model(message)
