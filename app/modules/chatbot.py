@@ -733,6 +733,9 @@ class ChatbotEngine:
                     test_message = test_message.replace(word, ' ')
                 test_message = ' '.join(test_message.split())  # Remove extra spaces
 
+                # CRITICAL FIX: Import re module for regex operations
+                import re
+
                 # Check if remaining text is a model identifier
                 # Model identifiers: numbers (e.g., "17", "15"), or model keywords (e.g., "pro", "ultra")
                 has_number = re.search(r'\d+', test_message)
@@ -3544,6 +3547,7 @@ class ChatbotEngine:
         - Contains "recommend" with minimal context: "recommend a phone for me"
         - Contains explicit brand preferences with features/usage: "i love samsung, give me gaming phone"
         - Contains "give me" or "show me" with specific requirements
+        - Contains "i want/prefer/love/like" with a brand: "i want xiaomi"
 
         Returns: True if fresh query, False if refinement
         """
@@ -3560,6 +3564,14 @@ class ChatbotEngine:
 
         for pattern in reset_patterns:
             if re.search(pattern, message_lower):
+                return True
+
+        # CRITICAL FIX: Check for explicit "i want/prefer/love/like X" statements
+        # These should REPLACE previous preferences, not merge
+        if re.search(r'\b(i want|i prefer|i love|i like)\b', message_lower):
+            # Extract brands to see if user is specifying a new preference
+            wanted, unwanted = self._extract_brands_with_preferences(message)
+            if wanted:  # User explicitly wants specific brands
                 return True
 
         # Check for negative + positive brand combo (strong indicator of fresh query)
