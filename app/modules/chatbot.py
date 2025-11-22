@@ -361,7 +361,8 @@ class ChatbotEngine:
                 'unwanted_brands': [],
                 'last_budget': None,
                 'last_features': [],     # Track features like 'battery', 'camera'
-                'last_usage': None       # Track usage like 'Gaming', 'Photography'
+                'last_usage': None,      # Track usage like 'Gaming', 'Photography'
+                'last_query_type': None  # Track query type like 'cheapest', 'gaming', etc.
             }
 
         # Check if this is a fresh query (should clear old context)
@@ -711,6 +712,9 @@ class ChatbotEngine:
         # Also skip if multiple brands are mentioned (e.g., "apple and samsung phone")
         # BUT allow if it looks like specific model query (has numbers or model identifiers)
         if not skip_phone_model:
+            # CRITICAL FIX: Import re module for regex operations
+            import re
+
             brands_mentioned = self._extract_multiple_brands(message)
             if len(brands_mentioned) > 1 or (brands_mentioned and ' and ' in message_lower and 'phone' in message_lower):
                 # Check if this looks like a specific model query
@@ -728,7 +732,9 @@ class ChatbotEngine:
                 # Remove common words - CRITICAL FIX: Added 'model', 'models' and descriptive words to avoid false model detection
                 common_words = ['phone', 'phones', 'smartphone', 'smartphones', 'model', 'models',
                                'with', 'good', 'great', 'best', 'nice', 'excellent', 'amazing',
-                               'for', 'the', 'a', 'an', 'any', 'some', 'all']
+                               'for', 'the', 'a', 'an', 'any', 'some', 'all',
+                               'i like', 'i love', 'i prefer', 'i want', 'i need',
+                               'like', 'love', 'prefer', 'want', 'need', 'hate', 'dislike']
                 for word in common_words:
                     test_message = test_message.replace(word, ' ')
                 test_message = ' '.join(test_message.split())  # Remove extra spaces
@@ -1047,15 +1053,23 @@ class ChatbotEngine:
             
             # FIX 6: Merge current brands with session context brands
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
-            
+
             # Get session context brands
             session_wanted = context.get('wanted_brands', [])
             session_unwanted = context.get('unwanted_brands', [])
-            
-            # Merge: Combine current message brands with session brands
-            all_wanted_brands = list(set(wanted_brands + session_wanted))
-            all_unwanted_brands = list(set(unwanted_brands + session_unwanted))
-            
+
+            # CRITICAL FIX: For spec queries (storage, RAM, etc.) with explicit brand mentions,
+            # use ONLY current message brands, not session brands to avoid wrong results
+            # Example: "256GB storage vivo" should show ONLY Vivo, not previous session brands
+            if wanted_brands:
+                # User explicitly mentioned brands in current message - use ONLY those
+                all_wanted_brands = wanted_brands
+                all_unwanted_brands = unwanted_brands
+            else:
+                # No brands in current message - merge with session brands
+                all_wanted_brands = list(set(wanted_brands + session_wanted))
+                all_unwanted_brands = list(set(unwanted_brands + session_unwanted))
+
             # Use merged brands
             brands = all_wanted_brands if all_wanted_brands else None
 
@@ -1145,6 +1159,9 @@ class ChatbotEngine:
                                 'battery': specs.battery_capacity if specs else None
                             }
                         })
+
+                    # CRITICAL FIX: Save query_type to context for sequential queries
+                    self.session_context[context_key]['last_query_type'] = 'cheapest'
 
                     return {
                         'response': response,
@@ -2176,27 +2193,50 @@ class ChatbotEngine:
                 if not budget:
                     budget = context.get('last_budget')
 
-                # Detect usage from message (Version 2 feature)
+                # CRITICAL FIX: Detect usage from message or use previous usage from context
                 usage = self._detect_usage_type(message)
+                if not usage:
+                    usage = context.get('last_usage')
+
+                # CRITICAL FIX: Check if previous query was "cheapest" and preserve that context
+                last_query_type = context.get('last_query_type')
 
                 all_phones = []
                 found_brands = []
 
-                for brand_name in wanted_brands:
-                    brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
-                    if brand:
-                        query = Phone.query.filter_by(brand_id=brand.id, is_active=True)
+                # CRITICAL FIX: If usage is present (e.g., "gaming"), use AI engine to filter by usage
+                if usage:
+                    # Use AI engine to get phones by usage and brands
+                    phones_data = self.ai_engine.get_phones_by_usage(usage, budget, wanted_brands, top_n=5)
+                    if phones_data:
+                        for item in phones_data:
+                            phone = item['phone']
+                            all_phones.append((phone, phone.brand.name))
+                            if phone.brand.name not in found_brands:
+                                found_brands.append(phone.brand.name)
+                else:
+                    # Standard brand query without usage
+                    for brand_name in wanted_brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            query = Phone.query.filter_by(brand_id=brand.id, is_active=True)
 
-                        # Apply budget filter if specified
-                        if budget:
-                            min_b, max_b = budget
-                            query = query.filter(Phone.price >= min_b, Phone.price <= max_b)
+                            # Apply budget filter if specified
+                            if budget:
+                                min_b, max_b = budget
+                                query = query.filter(Phone.price >= min_b, Phone.price <= max_b)
 
-                        phones = query.order_by(Phone.price.asc()).limit(5).all()
+                            # CRITICAL FIX: Apply ordering based on previous query type
+                            if last_query_type == 'cheapest':
+                                # Previous query was "cheapest" - maintain price ascending order
+                                phones = query.order_by(Phone.price.asc()).limit(5).all()
+                            else:
+                                # Default ordering - newest first
+                                phones = query.order_by(Phone.release_date.desc()).limit(5).all()
 
-                        if phones:
-                            found_brands.append(brand.name)
-                            all_phones.extend([(phone, brand.name) for phone in phones])
+                            if phones:
+                                found_brands.append(brand.name)
+                                all_phones.extend([(phone, brand.name) for phone in phones])
 
                 if all_phones:
                     # Build response (Enhanced from both versions)
@@ -2704,25 +2744,31 @@ class ChatbotEngine:
         """Handle query about specific phone model"""
         message_lower = message.lower()
 
-        # CRITICAL FIX: When user asks about base model (e.g., "iphone 16" without "pro", "max", etc.)
-        # Prioritize showing only the base model, not all variants
+        # CRITICAL FIX: Variant filtering logic
+        # - If user specifies variant keyword (e.g., "pro") → show ONLY matching variants
+        # - If user does NOT specify variant → show ALL variants (base + Pro/Max/etc.)
         if len(phones) > 1:
-            variant_keywords = ['pro', 'max', 'plus', 'ultra', 'mini', 'lite', 'edge', 'note', 'fold', 'flip']
-            has_variant_keyword = any(keyword in message_lower for keyword in variant_keywords)
+            variant_keywords = ['pro', 'max', 'plus', 'ultra', 'mini', 'lite', 'edge', 'note', 'fold', 'flip', 'air']
 
-            if not has_variant_keyword:
-                # User asked for base model - filter out variant models
-                base_phones = []
+            # Check which variant keywords are in the user's message
+            mentioned_variants = [kw for kw in variant_keywords if kw in message_lower]
+
+            if mentioned_variants:
+                # User specified a variant - filter to show ONLY phones matching that variant
+                # Example: "realme 14 pro" should show ONLY Pro variants (14 Pro, 14 Pro Plus, 14 Pro Lite)
+                # but NOT base models (14, 14X)
+                filtered_phones = []
                 for phone in phones:
                     model_lower = phone.model_name.lower()
-                    # Check if this phone model contains any variant keywords
-                    is_variant = any(keyword in model_lower for keyword in variant_keywords)
-                    if not is_variant:
-                        base_phones.append(phone)
+                    # Check if this phone matches ANY of the mentioned variants
+                    if any(variant in model_lower for variant in mentioned_variants):
+                        filtered_phones.append(phone)
 
-                # If we found base model(s), use them; otherwise use all phones
-                if base_phones:
-                    phones = base_phones
+                # Use filtered phones if we found any, otherwise use all
+                if filtered_phones:
+                    phones = filtered_phones
+            # If no variant keyword mentioned, show ALL phones (base + all variants)
+            # Example: "iphone 17" should show iPhone 17, 17 Air, 17 Pro, 17 Pro Max
 
         # Determine what information is being requested
         is_price_query = any(word in message_lower for word in ['price', 'cost', 'how much', 'rm'])
