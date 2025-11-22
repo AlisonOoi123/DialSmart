@@ -730,11 +730,15 @@ class ChatbotEngine:
                 is_feature_query = any(keyword in test_message for keyword in [
                     'performance', 'battery', 'camera', 'display', 'screen', 'storage',
                     'ram', 'memory', 'processor', 'fast', 'slow', 'cheap', 'expensive',
-                    'gaming', 'photography', 'selfie', '5g', 'mah'
+                    'gaming', 'photography', 'selfie', '5g', 'mah', 'gb'
                 ])
 
+                # CRITICAL FIX: If it's a feature query, skip phone model extraction even if numbers present
+                # Numbers in feature queries are spec values (256GB, 12GB, 100MP), not model numbers (14 Pro, S23)
+                if is_feature_query:
+                    skip_phone_model = True
                 # If nothing meaningful left AND no model indicators, it's a generic brand query
-                if (len(test_message) < 2 or is_feature_query) and not has_number and not has_model_keyword:
+                elif (len(test_message) < 2) and not has_number and not has_model_keyword:
                     skip_phone_model = True
 
         # Try to extract phone model if NOT asking for recommendations
@@ -1275,13 +1279,16 @@ class ChatbotEngine:
                 for phone in phones:
                     specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
                     if specs and specs.ram_options:
-                        # Extract RAM values from options like "8GB, 12GB"
-                        ram_values = [int(r.replace('GB', '').strip()) for r in specs.ram_options.split(',') if 'GB' in r]
+                        # CRITICAL FIX: Handle multiple RAM formats: "8GB, 12GB" or "8 / 12 / 16 GB" or "8 / 12 / 16"
+                        import re
+                        ram_text = specs.ram_options.upper().replace('GB', '').replace('RAM', '').strip()
+                        # Extract all numbers from the RAM text
+                        ram_values = [int(x.strip()) for x in re.findall(r'\d+', ram_text) if x.strip().isdigit()]
                         if ram_values and max(ram_values) >= ram_requirement:
-                            matching_phones.append((phone, specs))
+                            matching_phones.append((phone, specs, max(ram_values)))
 
                 # Sort by RAM (highest first)
-                matching_phones.sort(key=lambda x: max([int(r.replace('GB', '').strip()) for r in x[1].ram_options.split(',') if 'GB' in r]), reverse=True)
+                matching_phones.sort(key=lambda x: x[2], reverse=True)
                 matching_phones = matching_phones[:5]
 
                 if matching_phones:
@@ -1297,7 +1304,7 @@ class ChatbotEngine:
                     response = f"Here are {brand_text}phones with {ram_requirement}GB or more RAM{budget_text}:\n\n"
                     phone_list = []
 
-                    for phone, specs in matching_phones:
+                    for phone, specs, _ in matching_phones:  # Unpack (phone, specs, max_ram)
                         response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
                         response += f"   💾 {specs.ram_options} RAM"
                         if specs.storage_options:
@@ -1370,13 +1377,16 @@ class ChatbotEngine:
                 for phone in phones:
                     specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
                     if specs and specs.storage_options:
-                        # Extract storage values from options like "128GB, 256GB, 512GB"
-                        storage_values = [int(s.replace('GB', '').replace('TB', '000').strip()) for s in specs.storage_options.split(',') if 'GB' in s or 'TB' in s]
+                        # CRITICAL FIX: Handle multiple storage formats: "128GB, 256GB" or "128 / 256 / 512 GB" or "128 / 256"
+                        import re
+                        storage_text = specs.storage_options.upper().replace('GB', '').replace('TB', '000').replace('STORAGE', '').strip()
+                        # Extract all numbers from the storage text
+                        storage_values = [int(x.strip()) for x in re.findall(r'\d+', storage_text) if x.strip().isdigit()]
                         if storage_values and max(storage_values) >= storage_requirement:
-                            matching_phones.append((phone, specs))
+                            matching_phones.append((phone, specs, max(storage_values)))
 
                 # Sort by storage (highest first)
-                matching_phones.sort(key=lambda x: max([int(s.replace('GB', '').replace('TB', '000').strip()) for s in x[1].storage_options.split(',') if 'GB' in s or 'TB' in s]), reverse=True)
+                matching_phones.sort(key=lambda x: x[2], reverse=True)
                 matching_phones = matching_phones[:5]
 
                 if matching_phones:
@@ -1392,7 +1402,7 @@ class ChatbotEngine:
                     response = f"Here are {brand_text}phones with {storage_requirement}GB or more storage{budget_text}:\n\n"
                     phone_list = []
 
-                    for phone, specs in matching_phones:
+                    for phone, specs, _ in matching_phones:  # Unpack (phone, specs, max_storage)
                         response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
                         response += f"   📦 {specs.storage_options} Storage"
                         if specs.ram_options:
@@ -1736,6 +1746,8 @@ class ChatbotEngine:
 
                 # Brands only (e.g., "apple and samsung phone")
                 else:
+                    from app.models import Brand  # CRITICAL FIX: Import Brand to avoid UnboundLocalError
+
                     all_phones = []
                     found_brands = []
 
@@ -2142,10 +2154,12 @@ class ChatbotEngine:
 
             # PRIORITY 3: Standard brand query with session context (Merged from both versions)
             if wanted_brands:
+                from app.models import Brand  # CRITICAL FIX: Import Brand to avoid UnboundLocalError
+
                 budget = self._extract_budget(message)
                 if not budget:
                     budget = context.get('last_budget')
-                
+
                 # Detect usage from message (Version 2 feature)
                 usage = self._detect_usage_type(message)
 
