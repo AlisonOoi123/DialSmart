@@ -75,9 +75,16 @@
                                 <input type="number" name="battery_capacity" class="form-control" value="{{ specs.battery_capacity if specs else '' }}">
                             </div>
                         </div>
-                        <div class="form-check mb-3">
-                            <input type="checkbox" name="has_5g" class="form-check-input" {% if specs and specs.has_5g %}checked{% endif %}>
-                            <label class="form-check-label">5G Support</label>
+
+                        <!-- 5G Support Checkbox - Make it prominent -->
+                        <div class="alert alert-info mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" name="has_5g" id="has_5g" class="form-check-input" {% if specs and specs.has_5g %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="has_5g">
+                                    📶 5G Support (Check this if the phone supports 5G network)
+                                </label>
+                                <div class="form-text">This is important for 5G phone recommendations in the chatbot</div>
+                            </div>
                         </div>
                     </div>
                 </div>
