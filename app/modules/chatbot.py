@@ -727,7 +727,8 @@ class ChatbotEngine:
             if len(brands_mentioned) > 1 or (brands_mentioned and ' and ' in message_lower and 'phone' in message_lower):
                 # Check if this looks like a specific model query
                 # Model indicators: numbers, "pro", "ultra", "max", "plus", "lite", etc.
-                model_indicators = re.search(r'\b\d+\b|pro|ultra|max|plus|lite|mini|air|note|fold|flip|edge', message_lower)
+                # FIXED: Added 'play' keyword and improved number matching for cases like "10A", "14X"
+                model_indicators = re.search(r'\d+[a-z]?|pro|ultra|max|plus|lite|mini|air|note|fold|flip|edge|play', message_lower)
                 if not model_indicators:
                     # No model indicators, so it's a generic brand query
                     skip_phone_model = True
@@ -836,6 +837,9 @@ class ChatbotEngine:
                     top_n=5
                 )
 
+                # Clear pending question
+                self.session_context[context_key]['pending_question'] = None
+
                 if phones:
                     brand_text = f"{', '.join(brands)} " if brands else ""
                     budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
@@ -859,13 +863,19 @@ class ChatbotEngine:
                             'camera': specs.rear_camera_main if specs else None
                         })
 
-                    # Clear pending question
-                    self.session_context[context_key]['pending_question'] = None
-
                     return {
                         'response': response,
                         'type': 'recommendation',
                         'metadata': {'phones': phone_list, 'camera_threshold': relaxed_camera, 'brands': brands, 'budget': budget}
+                    }
+                else:
+                    # FIXED: Handle case where even relaxed threshold finds no phones
+                    brand_text = f"{', '.join(brands)} " if brands else ""
+                    budget_text = f" within your budget" if budget else ""
+                    return {
+                        'response': f"I couldn't find {brand_text}phones with camera above {relaxed_camera}MP{budget_text}. Please try:\n• Different brand\n• Adjust your budget\n• Browse all phones",
+                        'type': 'text',
+                        'quick_replies': ['Show all brands', 'Phones under RM3000', 'Browse all phones']
                     }
 
         # Check if the query is phone-related (skip for greetings and help)
