@@ -23,7 +23,11 @@
 
         <div class="col-md-7">
             <h1>{{ phone.model_name }}</h1>
+            {% if phone.brand.website_url %}
+            <h4 class="text-muted"><a href="{{ phone.brand.website_url }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-muted">{{ phone.brand.name }}</a></h4>
+            {% else %}
             <h4 class="text-muted">{{ phone.brand.name }}</h4>
+            {% endif %}
             <h2 class="text-primary my-3">RM {{ "{:,.2f}".format(phone.price) }}</h2>
 
             <p class="lead">
@@ -80,7 +84,7 @@
                 <div class="tab-pane fade show active" id="overview">
                     <table class="table">
                         <tr><th>Model</th><td>{{ phone.model_name }}</td></tr>
-                        <tr><th>Brand</th><td>{{ phone.brand.name }}</td></tr>
+                        <tr><th>Brand</th><td>{% if phone.brand.website_url %}<a href="{{ phone.brand.website_url }}" target="_blank" rel="noopener noreferrer">{{ phone.brand.name }}</a>{% else %}{{ phone.brand.name }}{% endif %}</td></tr>
                         <tr><th>Price</th><td>RM {{ "{:,.2f}".format(phone.price) }}</td></tr>
                         {% if specs.operating_system %}<tr><th>OS</th><td>{{ specs.operating_system }}</td></tr>{% endif %}
                         {% if specs.weight %}<tr><th>Weight</th><td>{{ specs.weight }}g</td></tr>{% endif %}
