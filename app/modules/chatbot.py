@@ -818,6 +818,7 @@ class ChatbotEngine:
                 # Don't return error - let it fall through to general intent handling
         # END NEW CODE
 
+        # CRITICAL FIX: Handle yes/no responses to pending questions
         yes_responses = ['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'show me', 'show them']
         if message_lower.strip() in yes_responses:
             pending = context.get('pending_question')
@@ -1341,6 +1342,7 @@ class ChatbotEngine:
                 else:
                     brand_text = f"{', '.join(brands)} " if brands else ""
                     budget_text = f" within your budget" if budget else ""
+
                     # CRITICAL FIX: Save pending question to context for "yes" response handling
                     self.session_context[context_key]['pending_question'] = {
                         'type': 'camera_relaxed',
@@ -1348,6 +1350,7 @@ class ChatbotEngine:
                         'camera_threshold': camera_threshold,
                         'budget': budget
                     }
+
                     return {
                         'response': f"I couldn't find {brand_text}phones with camera above {camera_threshold}MP{budget_text}. Would you like to see phones with slightly lower megapixel cameras?",
                         'type': 'text'
@@ -2501,7 +2504,7 @@ class ChatbotEngine:
             'asus': ['asus', 'rog'],
             'google': ['google', 'pixel'],
             'honor': ['honor'],
-            'huawei': ['huawei''mate', 'pura'],
+            'huawei': ['huawei', 'mate', 'pura'],  # CRITICAL FIX: Added Huawei product line names
             'infinix': ['infinix'],
             'oppo': ['oppo'],
             'poco': ['poco'],
@@ -2742,7 +2745,7 @@ class ChatbotEngine:
 
                 if phones:
                     return phones
-                
+
                 # Strategy 3: For Samsung, also try without "Galaxy" keyword
                 # Example: "galaxy f07" → also try "f07"
                 if detected_brand == 'samsung' and 'galaxy' in cleaned_message:
@@ -2834,10 +2837,19 @@ class ChatbotEngine:
 
         return None
 
-    def _handle_specific_phone_query(self, message, phones, is_multi_model=False):        
-        """Handle query about specific phone model"""
+    def _handle_specific_phone_query(self, message, phones, is_multi_model=False):
+        """Handle query about specific phone model
+
+        Args:
+            message: User's message
+            phones: Phone object or list of Phone objects
+            is_multi_model: True if phones come from multi-model extraction (e.g., "phone1 and phone2")
+        """
         message_lower = message.lower()
-        # CRITICAL FIX: Improved variant and model line filtering
+
+        # CRITICAL FIX: Skip variant filtering for multi-model queries
+        # When user explicitly asks for multiple different phones (e.g., "mate 70 air and galaxy f07"),
+        # we should show ALL the phones they asked for, not filter based on keywords
         if len(phones) > 1 and not is_multi_model:
             # Variant keywords are modifiers that create variants of a base model (e.g., "Pro", "Max")
             variant_keywords = ['pro', 'max', 'plus', 'ultra', 'mini', 'lite', 'edge', 'fold', 'flip', 'air']
