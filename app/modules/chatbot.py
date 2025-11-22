@@ -467,6 +467,19 @@ class ChatbotEngine:
         if usage_type:
             return 'recommendation'
 
+        # CRITICAL FIX: If brands are mentioned, treat as recommendation/brand query
+        # This handles queries like "samsung", "i like samsung", "show me vivo phones"
+        brands = self._extract_multiple_brands(message_lower)
+        if brands:
+            # Check if this is a brand preference statement
+            brand_preference_keywords = ['like', 'love', 'prefer', 'want', 'hate', 'dislike', 'not', 'only']
+            has_preference = any(keyword in message_lower for keyword in brand_preference_keywords)
+            if has_preference:
+                return 'recommendation'
+            # Simple brand mention (e.g., "samsung", "show me samsung")
+            elif len(message_lower.split()) <= 5:  # Short query, likely brand-only
+                return 'recommendation'
+
         # Check each intent with word boundary matching to avoid false matches
         # (e.g., "hi" shouldn't match "within")
         # Priority order matters! More specific intents should be checked first
@@ -2635,6 +2648,10 @@ class ChatbotEngine:
             """Calculate similarity ratio between two strings"""
             return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
+        # CRITICAL FIX: Extract model numbers from query for exact matching
+        import re
+        query_numbers = re.findall(r'\d+', cleaned_message)
+
         # Get all phones from the detected brand (or all phones if no brand)
         if detected_brand:
             brand_obj = Brand.query.filter(Brand.name.ilike(f'%{detected_brand}%')).first()
@@ -2655,6 +2672,17 @@ class ChatbotEngine:
 
             # Use the best score
             best_score = max(model_score, brand_model_score)
+
+            # CRITICAL FIX: Boost score if model numbers match exactly
+            # This prevents "14 pro" from matching "15 pro", "11 pro", etc.
+            if query_numbers:
+                model_numbers = re.findall(r'\d+', phone.model_name)
+                # If all query numbers are found in model name, boost score
+                if all(num in model_numbers for num in query_numbers):
+                    best_score += 0.3  # Significant boost for exact number match
+                # If query has a number but model doesn't have that number, penalize
+                elif model_numbers and not any(num in model_numbers for num in query_numbers):
+                    best_score -= 0.4  # Penalize number mismatch
 
             # Only include if similarity is above threshold (0.6 = 60% match)
             if best_score >= 0.6:
