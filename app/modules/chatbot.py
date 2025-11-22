@@ -1009,16 +1009,21 @@ class ChatbotEngine:
                 }
 
         elif intent == 'recommendation' or intent == 'specification':
-            # Detect all parameters from message
+            # CRITICAL FIX: Detect all parameters from message, then fall back to session context
             features = self._detect_feature_priority(message)
+            if not features and 'last_features' in context and context['last_features']:
+                features = context['last_features']  # ← Use previous features!
+
             user_category = self._detect_user_category(message)
-            
-            # Check current message first, then context
+
+            # CRITICAL FIX: Check current message first, then context for budget AND usage
             budget = self._extract_budget(message)
             if not budget and 'last_budget' in context:
                 budget = context['last_budget']  # ← Use previous budget!
-            
+
             usage = self._detect_usage_type(message)
+            if not usage and 'last_usage' in context:
+                usage = context['last_usage']  # ← Use previous usage!
             
             # FIX 6: Merge current brands with session context brands
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
@@ -2653,6 +2658,26 @@ class ChatbotEngine:
     def _handle_specific_phone_query(self, message, phones):
         """Handle query about specific phone model"""
         message_lower = message.lower()
+
+        # CRITICAL FIX: When user asks about base model (e.g., "iphone 16" without "pro", "max", etc.)
+        # Prioritize showing only the base model, not all variants
+        if len(phones) > 1:
+            variant_keywords = ['pro', 'max', 'plus', 'ultra', 'mini', 'lite', 'edge', 'note', 'fold', 'flip']
+            has_variant_keyword = any(keyword in message_lower for keyword in variant_keywords)
+
+            if not has_variant_keyword:
+                # User asked for base model - filter out variant models
+                base_phones = []
+                for phone in phones:
+                    model_lower = phone.model_name.lower()
+                    # Check if this phone model contains any variant keywords
+                    is_variant = any(keyword in model_lower for keyword in variant_keywords)
+                    if not is_variant:
+                        base_phones.append(phone)
+
+                # If we found base model(s), use them; otherwise use all phones
+                if base_phones:
+                    phones = base_phones
 
         # Determine what information is being requested
         is_price_query = any(word in message_lower for word in ['price', 'cost', 'how much', 'rm'])
