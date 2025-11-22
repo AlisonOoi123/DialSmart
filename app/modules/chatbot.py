@@ -3844,7 +3844,7 @@ class ChatbotEngine:
             'Asus': ['asus', 'rog'],
             'Google': ['google', 'pixel'],
             'Honor': ['honor'],
-            'Huawei': ['huawei'],
+            'Huawei': ['huawei', 'mate', 'pura'],
             'Infinix': ['infinix'],
             'Oppo': ['oppo'],
             'Poco': ['poco'],
