@@ -818,6 +818,55 @@ class ChatbotEngine:
                 # Don't return error - let it fall through to general intent handling
         # END NEW CODE
 
+        yes_responses = ['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'show me', 'show them']
+        if message_lower.strip() in yes_responses:
+            pending = context.get('pending_question')
+            if pending and pending.get('type') == 'camera_relaxed':
+                # User said yes to seeing phones with lower camera MP
+                # Show phones with camera >= 50MP (relaxed threshold)
+                relaxed_camera = 50  # Lower threshold
+                brands = pending.get('brands')
+                budget = pending.get('budget')
+
+                phones = self.ai_engine.get_phones_by_camera(
+                    min_camera_mp=relaxed_camera,
+                    budget_range=budget,
+                    brand_names=brands,
+                    top_n=5
+                )
+
+                if phones:
+                    brand_text = f"{', '.join(brands)} " if brands else ""
+                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                    response = f"Here are {brand_text}phones with camera above {relaxed_camera}MP{budget_text}:\n\n"
+                    phone_list = []
+
+                    for item in phones:
+                        phone = item['phone']
+                        specs = item.get('specifications')
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        if specs and specs.rear_camera_main:
+                            response += f"   📷 {specs.rear_camera_main}MP main camera\n"
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'camera': specs.rear_camera_main if specs else None
+                        })
+
+                    # Clear pending question
+                    self.session_context[context_key]['pending_question'] = None
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'camera_threshold': relaxed_camera, 'brands': brands, 'budget': budget}
+                    }
+
         # Check if the query is phone-related (skip for greetings and help)
         if intent not in ['greeting', 'help'] and not self._is_phone_related(message):
             return {
@@ -1292,6 +1341,13 @@ class ChatbotEngine:
                 else:
                     brand_text = f"{', '.join(brands)} " if brands else ""
                     budget_text = f" within your budget" if budget else ""
+                    # CRITICAL FIX: Save pending question to context for "yes" response handling
+                    self.session_context[context_key]['pending_question'] = {
+                        'type': 'camera_relaxed',
+                        'brands': brands,
+                        'camera_threshold': camera_threshold,
+                        'budget': budget
+                    }
                     return {
                         'response': f"I couldn't find {brand_text}phones with camera above {camera_threshold}MP{budget_text}. Would you like to see phones with slightly lower megapixel cameras?",
                         'type': 'text'
@@ -2686,6 +2742,20 @@ class ChatbotEngine:
 
                 if phones:
                     return phones
+                
+                # Strategy 3: For Samsung, also try without "Galaxy" keyword
+                # Example: "galaxy f07" → also try "f07"
+                if detected_brand == 'samsung' and 'galaxy' in cleaned_message:
+                    cleaned_without_galaxy = cleaned_message.replace('galaxy', ' ').strip()
+                    if len(cleaned_without_galaxy) >= 2:
+                        phones = Phone.query.filter(
+                            Phone.is_active == True,
+                            Phone.brand_id == brand_obj.id,
+                            Phone.model_name.ilike(f'%{cleaned_without_galaxy}%')
+                        ).limit(5).all()
+
+                        if phones:
+                            return phones
 
         # Step 4: Fallback - search without brand filtering
         # Strategy 1: Search model_name directly (e.g., "galaxy s23 fe")
