@@ -709,6 +709,14 @@ class ChatbotEngine:
         # Initialize brands_mentioned to avoid UnboundLocalError
         brands_mentioned = None
 
+        # CRITICAL FIX: Skip phone model extraction for camera/battery threshold queries
+        # These should be handled by threshold filters, not model search
+        import re
+        if re.search(r'(?:camera|battery).*?(?:above|over|more than|at least)\s+\d+', message_lower):
+            skip_phone_model = True
+        elif re.search(r'(?:above|over|more than|at least)\s+\d+\s*(?:mp|mah)', message_lower):
+            skip_phone_model = True
+
         # Also skip if multiple brands are mentioned (e.g., "apple and samsung phone")
         # BUT allow if it looks like specific model query (has numbers or model identifiers)
         if not skip_phone_model:
@@ -2638,9 +2646,11 @@ class ChatbotEngine:
             cleaned_message = cleaned_message.replace(word, ' ')
 
         # Also remove brand keywords from cleaned message to get just the model
-        if detected_brand and detected_brand in brand_keywords:
-            for keyword in brand_keywords[detected_brand]:
-                cleaned_message = cleaned_message.replace(keyword, ' ')
+        # CRITICAL FIX: Only remove the primary brand name, not secondary keywords
+        # Example: For "samsung galaxy f07", remove "samsung" but keep "galaxy" (part of model name)
+        if detected_brand:
+            # Only remove the detected brand name itself, not all keywords
+            cleaned_message = cleaned_message.replace(detected_brand, ' ')
 
         # Clean up extra spaces
         cleaned_message = ' '.join(cleaned_message.split()).strip()
