@@ -495,6 +495,14 @@ class ChatbotEngine:
     def _generate_response(self, user_id, message, intent, context_key):
         """Generate appropriate response based on intent"""
 
+        # CRITICAL FIX: Check for greeting FIRST before any phone model extraction
+        if intent == 'greeting':
+            return {
+                'response': "Hello! I'm DialSmart AI Assistant. I'm here to help you find the perfect smartphone. How can I assist you today?",
+                'type': 'text',
+                'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
+            }
+
         # Get session context
         context = self.session_context.get(context_key, {})
 
@@ -705,16 +713,29 @@ class ChatbotEngine:
                 test_message = message_lower
                 for brand in brands_mentioned:
                     test_message = test_message.replace(brand.lower(), '')
-                # Remove common words
-                test_message = test_message.replace('phone', '').replace('phones', '').replace('smartphone', '').replace('smartphones', '').strip()
+                # Remove common words - CRITICAL FIX: Added 'model', 'models' and descriptive words to avoid false model detection
+                common_words = ['phone', 'phones', 'smartphone', 'smartphones', 'model', 'models',
+                               'with', 'good', 'great', 'best', 'nice', 'excellent', 'amazing',
+                               'for', 'the', 'a', 'an', 'any', 'some', 'all']
+                for word in common_words:
+                    test_message = test_message.replace(word, ' ')
+                test_message = ' '.join(test_message.split())  # Remove extra spaces
 
                 # Check if remaining text is a model identifier
                 # Model identifiers: numbers (e.g., "17", "15"), or model keywords (e.g., "pro", "ultra")
                 has_number = re.search(r'\d+', test_message)
                 has_model_keyword = any(keyword in test_message for keyword in ['pro', 'ultra', 'max', 'plus', 'lite', 'mini', 'note', 'fold', 'flip', 'edge', 'air'])
 
+                # CRITICAL FIX: Check if remaining text is mostly feature/spec keywords
+                # If it's a feature query (performance, battery, camera, etc.), skip model extraction
+                is_feature_query = any(keyword in test_message for keyword in [
+                    'performance', 'battery', 'camera', 'display', 'screen', 'storage',
+                    'ram', 'memory', 'processor', 'fast', 'slow', 'cheap', 'expensive',
+                    'gaming', 'photography', 'selfie', '5g', 'mah'
+                ])
+
                 # If nothing meaningful left AND no model indicators, it's a generic brand query
-                if (len(test_message) < 2 or test_message in ['a', 'an', 'the', 'any', 'all', 'some']) and not has_number and not has_model_keyword:
+                if (len(test_message) < 2 or is_feature_query) and not has_number and not has_model_keyword:
                     skip_phone_model = True
 
         # Try to extract phone model if NOT asking for recommendations
@@ -764,13 +785,6 @@ class ChatbotEngine:
                 # Don't return error - let it fall through to general intent handling
         # END NEW CODE
 
-        if intent == 'greeting':
-            return {
-                'response': "Hello! I'm DialSmart AI Assistant. I'm here to help you find the perfect smartphone. How can I assist you today?",
-                'type': 'text',
-                'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
-            }
-
         # Check if the query is phone-related (skip for greetings and help)
         if intent not in ['greeting', 'help'] and not self._is_phone_related(message):
             return {
@@ -779,8 +793,7 @@ class ChatbotEngine:
                 'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
             }
 
-
-        elif intent == 'budget_query' or intent == 'timeline':
+        if intent == 'budget_query' or intent == 'timeline':
             # Extract budget from message
             budget = self._extract_budget(message)
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
@@ -997,16 +1010,21 @@ class ChatbotEngine:
                 }
 
         elif intent == 'recommendation' or intent == 'specification':
-            # Detect all parameters from message
+            # CRITICAL FIX: Detect all parameters from message, then fall back to session context
             features = self._detect_feature_priority(message)
+            if not features and 'last_features' in context and context['last_features']:
+                features = context['last_features']  # ← Use previous features!
+
             user_category = self._detect_user_category(message)
-            
-            # Check current message first, then context
+
+            # CRITICAL FIX: Check current message first, then context for budget AND usage
             budget = self._extract_budget(message)
             if not budget and 'last_budget' in context:
                 budget = context['last_budget']  # ← Use previous budget!
-            
+
             usage = self._detect_usage_type(message)
+            if not usage and 'last_usage' in context:
+                usage = context['last_usage']  # ← Use previous usage!
             
             # FIX 6: Merge current brands with session context brands
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
@@ -1025,6 +1043,107 @@ class ChatbotEngine:
             # NEW: Check for battery or camera threshold queries
             battery_threshold = self._extract_battery_threshold(message)
             camera_threshold = self._extract_camera_threshold(message)
+
+            # CRITICAL FIX: Extract RAM, storage, and 5G requirements
+            ram_requirement = self._extract_ram_requirement(message)
+            storage_requirement = self._extract_storage_requirement(message)
+            requires_5g = self._extract_5g_requirement(message)
+
+            # CRITICAL FIX: Check for "cheapest" queries
+            # Handle queries like "recommend cheapest phones", "most affordable phones"
+            cheapest_keywords = ['cheapest', 'most affordable', 'value for money', 'vfm', 'bang for buck',
+                                'lowest price', 'budget friendly', 'most economical', 'least expensive']
+            is_cheapest_query = any(keyword in message_lower for keyword in cheapest_keywords)
+
+            # PRIORITY -1: Cheapest phones query (e.g., "recommend cheapest phones", "most affordable phones")
+            if is_cheapest_query and not battery_threshold and not camera_threshold:
+                from app.models import Brand
+                query = Phone.query.filter_by(is_active=True)
+
+                # Apply budget filter if specified
+                if budget:
+                    min_budget, max_budget = budget
+                    query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+                # Apply brand filters
+                if brands:
+                    brand_ids = []
+                    for brand_name in brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            brand_ids.append(brand.id)
+                    if brand_ids:
+                        query = query.filter(Phone.brand_id.in_(brand_ids))
+
+                # Exclude unwanted brands
+                if all_unwanted_brands:
+                    unwanted_brand_ids = []
+                    for brand_name in all_unwanted_brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            unwanted_brand_ids.append(brand.id)
+                    if unwanted_brand_ids:
+                        query = query.filter(~Phone.brand_id.in_(unwanted_brand_ids))
+
+                # Order by price ascending (cheapest first) and limit to top 5
+                phones = query.order_by(Phone.price.asc()).limit(5).all()
+
+                if phones:
+                    brand_text = ""
+                    if brands:
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        brand_text = f"{brands_list} "
+
+                    budget_text = ""
+                    if budget:
+                        budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
+
+                    response = f"Here are the most affordable {brand_text}phones{budget_text}:\n\n"
+                    phone_list = []
+
+                    for phone in phones:
+                        specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        if specs:
+                            if specs.ram_options:
+                                response += f"   💾 {specs.ram_options} RAM"
+                                if specs.storage_options:
+                                    response += f" - {specs.storage_options} Storage"
+                                response += "\n"
+                            if specs.battery_capacity:
+                                response += f"   🔋 {specs.battery_capacity}mAh battery\n"
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'specs': {
+                                'ram': specs.ram_options if specs else None,
+                                'storage': specs.storage_options if specs else None,
+                                'battery': specs.battery_capacity if specs else None
+                            }
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {
+                            'phones': phone_list,
+                            'brands': brands,
+                            'budget': budget,
+                            'query_type': 'cheapest'
+                        }
+                    }
+                else:
+                    budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
+                    brand_text = f"{brands_list} " if brands else ""
+                    return {
+                        'response': f"I couldn't find {brand_text}phones{budget_text}. Would you like to adjust your budget or brand preferences?",
+                        'type': 'text'
+                    }
 
             # PRIORITY 0: Battery threshold query (e.g., "realme phone above 5000mah battery")
             if battery_threshold:
@@ -1117,6 +1236,290 @@ class ChatbotEngine:
                     budget_text = f" within your budget" if budget else ""
                     return {
                         'response': f"I couldn't find {brand_text}phones with camera above {camera_threshold}MP{budget_text}. Would you like to see phones with slightly lower megapixel cameras?",
+                        'type': 'text'
+                    }
+
+            # CRITICAL FIX: RAM requirement query (e.g., "12GB RAM phone", "phone with 16gb ram")
+            if ram_requirement:
+                from app.models import Brand
+                query = Phone.query.filter_by(is_active=True)
+
+                # Apply budget filter
+                if budget:
+                    min_budget, max_budget = budget
+                    query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+                # Apply brand filters
+                if brands:
+                    brand_ids = []
+                    for brand_name in brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            brand_ids.append(brand.id)
+                    if brand_ids:
+                        query = query.filter(Phone.brand_id.in_(brand_ids))
+
+                # Exclude unwanted brands
+                if all_unwanted_brands:
+                    unwanted_brand_ids = []
+                    for brand_name in all_unwanted_brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            unwanted_brand_ids.append(brand.id)
+                    if unwanted_brand_ids:
+                        query = query.filter(~Phone.brand_id.in_(unwanted_brand_ids))
+
+                phones = query.all()
+
+                # Filter by RAM requirement
+                matching_phones = []
+                for phone in phones:
+                    specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+                    if specs and specs.ram_options:
+                        # Extract RAM values from options like "8GB, 12GB"
+                        ram_values = [int(r.replace('GB', '').strip()) for r in specs.ram_options.split(',') if 'GB' in r]
+                        if ram_values and max(ram_values) >= ram_requirement:
+                            matching_phones.append((phone, specs))
+
+                # Sort by RAM (highest first)
+                matching_phones.sort(key=lambda x: max([int(r.replace('GB', '').strip()) for r in x[1].ram_options.split(',') if 'GB' in r]), reverse=True)
+                matching_phones = matching_phones[:5]
+
+                if matching_phones:
+                    brand_text = ""
+                    if brands:
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        brand_text = f"{brands_list} "
+
+                    budget_text = ""
+                    if budget:
+                        budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
+
+                    response = f"Here are {brand_text}phones with {ram_requirement}GB or more RAM{budget_text}:\n\n"
+                    phone_list = []
+
+                    for phone, specs in matching_phones:
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        response += f"   💾 {specs.ram_options} RAM"
+                        if specs.storage_options:
+                            response += f" - {specs.storage_options} Storage"
+                        response += "\n"
+                        if specs.processor:
+                            response += f"   ⚡ {specs.processor}\n"
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'ram': specs.ram_options,
+                            'storage': specs.storage_options if specs else None
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'ram_requirement': ram_requirement, 'brands': brands, 'budget': budget}
+                    }
+                else:
+                    brand_text = ""
+                    if brands:
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        brand_text = f"{brands_list} "
+                    budget_text = f" within your budget" if budget else ""
+                    return {
+                        'response': f"I couldn't find {brand_text}phones with {ram_requirement}GB RAM{budget_text}. Would you like to see phones with slightly lower RAM?",
+                        'type': 'text'
+                    }
+
+            # CRITICAL FIX: Storage requirement query (e.g., "256GB storage samsung", "512gb phone")
+            if storage_requirement:
+                from app.models import Brand
+                query = Phone.query.filter_by(is_active=True)
+
+                # Apply budget filter
+                if budget:
+                    min_budget, max_budget = budget
+                    query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+                # Apply brand filters
+                if brands:
+                    brand_ids = []
+                    for brand_name in brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            brand_ids.append(brand.id)
+                    if brand_ids:
+                        query = query.filter(Phone.brand_id.in_(brand_ids))
+
+                # Exclude unwanted brands
+                if all_unwanted_brands:
+                    unwanted_brand_ids = []
+                    for brand_name in all_unwanted_brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            unwanted_brand_ids.append(brand.id)
+                    if unwanted_brand_ids:
+                        query = query.filter(~Phone.brand_id.in_(unwanted_brand_ids))
+
+                phones = query.all()
+
+                # Filter by storage requirement
+                matching_phones = []
+                for phone in phones:
+                    specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+                    if specs and specs.storage_options:
+                        # Extract storage values from options like "128GB, 256GB, 512GB"
+                        storage_values = [int(s.replace('GB', '').replace('TB', '000').strip()) for s in specs.storage_options.split(',') if 'GB' in s or 'TB' in s]
+                        if storage_values and max(storage_values) >= storage_requirement:
+                            matching_phones.append((phone, specs))
+
+                # Sort by storage (highest first)
+                matching_phones.sort(key=lambda x: max([int(s.replace('GB', '').replace('TB', '000').strip()) for s in x[1].storage_options.split(',') if 'GB' in s or 'TB' in s]), reverse=True)
+                matching_phones = matching_phones[:5]
+
+                if matching_phones:
+                    brand_text = ""
+                    if brands:
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        brand_text = f"{brands_list} "
+
+                    budget_text = ""
+                    if budget:
+                        budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
+
+                    response = f"Here are {brand_text}phones with {storage_requirement}GB or more storage{budget_text}:\n\n"
+                    phone_list = []
+
+                    for phone, specs in matching_phones:
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        response += f"   📦 {specs.storage_options} Storage"
+                        if specs.ram_options:
+                            response += f" - {specs.ram_options} RAM"
+                        response += "\n"
+                        if specs.processor:
+                            response += f"   ⚡ {specs.processor}\n"
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'storage': specs.storage_options,
+                            'ram': specs.ram_options if specs else None
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'storage_requirement': storage_requirement, 'brands': brands, 'budget': budget}
+                    }
+                else:
+                    brand_text = ""
+                    if brands:
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        brand_text = f"{brands_list} "
+                    budget_text = f" within your budget" if budget else ""
+                    return {
+                        'response': f"I couldn't find {brand_text}phones with {storage_requirement}GB storage{budget_text}. Would you like to see phones with slightly lower storage?",
+                        'type': 'text'
+                    }
+
+            # CRITICAL FIX: 5G requirement query (e.g., "5g phone recommend", "phone with 5g")
+            if requires_5g and not battery_threshold and not camera_threshold:
+                from app.models import Brand
+                query = Phone.query.filter_by(is_active=True)
+
+                # Apply budget filter
+                if budget:
+                    min_budget, max_budget = budget
+                    query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+
+                # Apply brand filters
+                if brands:
+                    brand_ids = []
+                    for brand_name in brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            brand_ids.append(brand.id)
+                    if brand_ids:
+                        query = query.filter(Phone.brand_id.in_(brand_ids))
+
+                # Exclude unwanted brands
+                if all_unwanted_brands:
+                    unwanted_brand_ids = []
+                    for brand_name in all_unwanted_brands:
+                        brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                        if brand:
+                            unwanted_brand_ids.append(brand.id)
+                    if unwanted_brand_ids:
+                        query = query.filter(~Phone.brand_id.in_(unwanted_brand_ids))
+
+                phones = query.all()
+
+                # Filter by 5G support
+                matching_phones = []
+                for phone in phones:
+                    specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+                    if specs and specs.has_5g:
+                        matching_phones.append((phone, specs))
+
+                # Sort by price descending (show premium 5G phones first)
+                matching_phones.sort(key=lambda x: x[0].price, reverse=True)
+                matching_phones = matching_phones[:5]
+
+                if matching_phones:
+                    brand_text = ""
+                    if brands:
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        brand_text = f"{brands_list} "
+
+                    budget_text = ""
+                    if budget:
+                        budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}"
+
+                    response = f"Here are {brand_text}phones with 5G support{budget_text}:\n\n"
+                    phone_list = []
+
+                    for phone, specs in matching_phones:
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        response += f"   📶 5G Support\n"
+                        if specs.ram_options:
+                            response += f"   💾 {specs.ram_options} RAM"
+                            if specs.storage_options:
+                                response += f" - {specs.storage_options} Storage"
+                            response += "\n"
+                        if specs.processor:
+                            response += f"   ⚡ {specs.processor}\n"
+                        response += "\n"
+
+                        phone_list.append({
+                            'id': phone.id,
+                            'name': phone.model_name,
+                            'brand': phone.brand.name,
+                            'price': phone.price,
+                            'image': phone.main_image,
+                            'has_5g': True,
+                            'ram': specs.ram_options if specs else None
+                        })
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list, 'requires_5g': True, 'brands': brands, 'budget': budget}
+                    }
+                else:
+                    brand_text = ""
+                    if brands:
+                        brands_list = ", ".join(brands[:-1]) + f" and {brands[-1]}" if len(brands) > 1 else brands[0]
+                        brand_text = f"{brands_list} "
+                    budget_text = f" within your budget" if budget else ""
+                    return {
+                        'response': f"I couldn't find {brand_text}5G phones{budget_text}. Most 5G phones are in the higher price range. Would you like to adjust your budget?",
                         'type': 'text'
                     }
 
@@ -2257,6 +2660,26 @@ class ChatbotEngine:
         """Handle query about specific phone model"""
         message_lower = message.lower()
 
+        # CRITICAL FIX: When user asks about base model (e.g., "iphone 16" without "pro", "max", etc.)
+        # Prioritize showing only the base model, not all variants
+        if len(phones) > 1:
+            variant_keywords = ['pro', 'max', 'plus', 'ultra', 'mini', 'lite', 'edge', 'note', 'fold', 'flip']
+            has_variant_keyword = any(keyword in message_lower for keyword in variant_keywords)
+
+            if not has_variant_keyword:
+                # User asked for base model - filter out variant models
+                base_phones = []
+                for phone in phones:
+                    model_lower = phone.model_name.lower()
+                    # Check if this phone model contains any variant keywords
+                    is_variant = any(keyword in model_lower for keyword in variant_keywords)
+                    if not is_variant:
+                        base_phones.append(phone)
+
+                # If we found base model(s), use them; otherwise use all phones
+                if base_phones:
+                    phones = base_phones
+
         # Determine what information is being requested
         is_price_query = any(word in message_lower for word in ['price', 'cost', 'how much', 'rm'])
         is_spec_query = any(word in message_lower for word in ['specs', 'specification', 'spec'])
@@ -2483,6 +2906,88 @@ class ChatbotEngine:
                 return int(match.group(1))
 
         return None
+
+    def _extract_ram_requirement(self, message):
+        """
+        Extract RAM requirement from message
+        Examples:
+        - "12GB RAM" → 12
+        - "8gb ram phone" → 8
+        - "phone with 16gb" → 16
+        Returns: int (GB) or None
+        """
+        message_lower = message.lower()
+
+        # Patterns for RAM requirement
+        patterns = [
+            r'(\d+)\s*gb\s+ram',  # 12gb ram, 8 gb ram
+            r'ram\s+(\d+)\s*gb',  # ram 12gb, ram 8 gb
+            r'(\d+)\s*gb(?:\s+of)?\s+(?:memory|ram)',  # 12gb of memory
+            r'with\s+(\d+)\s*gb(?:\s+ram)?',  # with 12gb, with 12gb ram
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, message_lower)
+            if match:
+                return int(match.group(1))
+
+        return None
+
+    def _extract_storage_requirement(self, message):
+        """
+        Extract storage requirement from message
+        Examples:
+        - "256GB storage" → 256
+        - "512gb" → 512
+        - "phone with 128gb storage" → 128
+        Returns: int (GB) or None
+        """
+        message_lower = message.lower()
+
+        # Patterns for storage requirement
+        patterns = [
+            r'(\d+)\s*gb\s+storage',  # 256gb storage, 128 gb storage
+            r'storage\s+(\d+)\s*gb',  # storage 256gb
+            r'(\d+)\s*gb(?:\s+of)?\s+(?:internal\s+)?storage',  # 256gb of storage
+            r'with\s+(\d+)\s*gb\s+storage',  # with 256gb storage
+            # Match standalone storage values (but not RAM)
+            r'(?<!ram\s)(?<!memory\s)(\d+)\s*gb(?:\s|$|,)(?!\s*ram)(?!\s*memory)',  # 256gb (but not "8gb ram")
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, message_lower)
+            if match:
+                storage_val = int(match.group(1))
+                # Storage is usually 64GB or more, RAM is usually 16GB or less
+                # This helps disambiguate "12gb" from "256gb"
+                if storage_val >= 32:  # Likely storage, not RAM
+                    return storage_val
+
+        return None
+
+    def _extract_5g_requirement(self, message):
+        """
+        Check if 5G is required from message
+        Examples:
+        - "5g phone" → True
+        - "with 5g" → True
+        - "5g support" → True
+        Returns: bool
+        """
+        message_lower = message.lower()
+
+        # Patterns for 5G requirement
+        patterns = [
+            r'\b5g\b',  # 5g (with word boundaries)
+            r'5g\s+(?:phone|support|network|connectivity|enabled)',
+            r'(?:with|has)\s+5g',
+        ]
+
+        for pattern in patterns:
+            if re.search(pattern, message_lower):
+                return True
+
+        return False
 
     def _filter_phones_by_brand(self, phones_items, wanted_brands, unwanted_brands):
         """
@@ -3149,8 +3654,9 @@ class ChatbotEngine:
             r"avoid\s+(\w+)",
             r"except\s+(\w+)",
             r"anything but\s+(\w+)",
-            # Removed overly broad patterns like r"not\s+(\w+)" and r"dont\s+(\w+)"
-            # to prevent matching "not love" and capturing "love" as a brand
+            r"no\s+(\w+)",  # "no apple", "no samsung"
+            # CRITICAL FIX: Handle "not X" pattern but only for brand keywords
+            # We'll validate against brand_keywords_map to avoid false matches
         ]
 
         # Positive indicators
@@ -3166,6 +3672,7 @@ class ChatbotEngine:
             r"find\s+(\w+)",
             r"find me\s+(\w+)",
             r"looking for\s+(\w+)",
+            r"only\s+(\w+)",  # CRITICAL FIX: Handle "only vivo", "only samsung"
         ]
 
         brand_keywords_map = {
@@ -3187,7 +3694,7 @@ class ChatbotEngine:
         wanted_brands = []
         unwanted_brands = []
 
-        # Extract brands from negative context
+        # CRITICAL FIX: Extract brands from negative context
         for pattern in negative_patterns:
             matches = re.finditer(pattern, message_lower)
             for match in matches:
@@ -3196,6 +3703,18 @@ class ChatbotEngine:
                     brand_name = brand_keywords_map[brand_keyword]
                     if brand_name not in unwanted_brands:
                         unwanted_brands.append(brand_name)
+
+        # CRITICAL FIX: Handle "not X" pattern specifically for brands
+        # This handles cases like "not apple, not samsung"
+        not_brand_pattern = r'\bnot\s+(\w+)'
+        not_matches = re.finditer(not_brand_pattern, message_lower)
+        for match in not_matches:
+            potential_brand = match.group(1).lower()
+            # Only add if it's actually a brand keyword
+            if potential_brand in brand_keywords_map:
+                brand_name = brand_keywords_map[potential_brand]
+                if brand_name not in unwanted_brands:
+                    unwanted_brands.append(brand_name)
 
         # Extract brands from positive context
         for pattern in positive_patterns:
