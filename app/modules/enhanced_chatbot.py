@@ -431,56 +431,56 @@ Just ask me anything like:
                 # Extract just phones, limit to top 5
                 matched_phones = [p for p, s in matched_phones][:5]
 
-            if len(matched_phones) == 1:
-                phone = matched_phones[0]
-                specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
+                if len(matched_phones) == 1:
+                    phone = matched_phones[0]
+                    specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
 
-                response = f"I found {phone.brand.name} {phone.model_name}:\n\n"
-                response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
-                if specs:
-                    if specs.battery_capacity:
-                        response += f"🔋 {specs.battery_capacity}mAh battery\n"
-                    if specs.rear_camera_main:
-                        response += f"📸 {specs.rear_camera_main}MP camera\n"
-                    if specs.ram_options:
-                        response += f"💾 {specs.ram_options} RAM\n"
-                    if specs.storage_options:
-                        response += f"💿 {specs.storage_options} Storage\n"
+                    response = f"I found {phone.brand.name} {phone.model_name}:\n\n"
+                    response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                    if specs:
+                        if specs.battery_capacity:
+                            response += f"🔋 {specs.battery_capacity}mAh battery\n"
+                        if specs.rear_camera_main:
+                            response += f"📸 {specs.rear_camera_main}MP camera\n"
+                        if specs.ram_options:
+                            response += f"💾 {specs.ram_options} RAM\n"
+                        if specs.storage_options:
+                            response += f"💿 {specs.storage_options} Storage\n"
 
-                response += f"\n👉 View Details"
+                    response += f"\n👉 View Details"
 
-                return {
-                    'response': response,
-                    'type': 'recommendation',
-                    'metadata': {
-                        'phones': [{
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {
+                            'phones': [{
+                                'id': phone.id,
+                                'name': f"{phone.brand.name} {phone.model_name}",
+                                'price': phone.price
+                            }]
+                        }
+                    }
+                else:
+                    # Multiple matches found
+                    response = f"I found {len(matched_phones)} phone(s) matching your query:\n\n"
+                    phone_list = []
+
+                    for phone in matched_phones:
+                        response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
+                        response += f"👉 View Details\n"
+                        phone_list.append({
                             'id': phone.id,
                             'name': f"{phone.brand.name} {phone.model_name}",
                             'price': phone.price
-                        }]
+                        })
+
+                    response += "\nClick any link above to see full details!"
+
+                    return {
+                        'response': response,
+                        'type': 'recommendation',
+                        'metadata': {'phones': phone_list}
                     }
-                }
-            else:
-                # Multiple matches found
-                response = f"I found {len(matched_phones)} phone(s) matching your query:\n\n"
-                phone_list = []
-
-                for phone in matched_phones:
-                    response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
-                    response += f"👉 View Details\n"
-                    phone_list.append({
-                        'id': phone.id,
-                        'name': f"{phone.brand.name} {phone.model_name}",
-                        'price': phone.price
-                    })
-
-                response += "\nClick any link above to see full details!"
-
-                return {
-                    'response': response,
-                    'type': 'recommendation',
-                    'metadata': {'phones': phone_list}
-                }
             else:
                 return {
                     'response': f"I couldn't find a specific model matching '{model_text}'. Would you like to:\n• See all phones from a specific brand\n• Get recommendations based on your budget\n• Browse by category",
