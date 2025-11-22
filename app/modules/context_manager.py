@@ -55,18 +55,36 @@ class ConversationContext:
             'analysis': analysis
         })
 
-        # Update brand preferences (accumulate, don't replace)
-        if analysis['brands']['preferred']:
-            for brand in analysis['brands']['preferred']:
-                self.brand_preferences['preferred'].add(brand)
-                # Remove from excluded if previously excluded
-                self.brand_preferences['excluded'].discard(brand)
+        # Update brand preferences
+        # FIXED: Only accumulate if explicit sentiment, otherwise it's a context switch
+        if analysis.get('has_explicit_sentiment'):
+            # Explicit hate/love - accumulate preferences
+            if analysis['brands']['preferred']:
+                for brand in analysis['brands']['preferred']:
+                    self.brand_preferences['preferred'].add(brand)
+                    # Remove from excluded if previously excluded
+                    self.brand_preferences['excluded'].discard(brand)
 
-        if analysis['brands']['excluded']:
-            for brand in analysis['brands']['excluded']:
-                self.brand_preferences['excluded'].add(brand)
-                # Remove from preferred if previously preferred
-                self.brand_preferences['preferred'].discard(brand)
+            if analysis['brands']['excluded']:
+                for brand in analysis['brands']['excluded']:
+                    self.brand_preferences['excluded'].add(brand)
+                    # Remove from preferred if previously preferred
+                    self.brand_preferences['preferred'].discard(brand)
+        elif analysis.get('is_simple_brand_query') and not analysis.get('context_continuation'):
+            # Simple brand query without sentiment - this is a new search, don't accumulate
+            # Keep excluded brands, but preferred brands are for this query only
+            pass
+        else:
+            # Other cases - accumulate as before
+            if analysis['brands']['preferred']:
+                for brand in analysis['brands']['preferred']:
+                    self.brand_preferences['preferred'].add(brand)
+                    self.brand_preferences['excluded'].discard(brand)
+
+            if analysis['brands']['excluded']:
+                for brand in analysis['brands']['excluded']:
+                    self.brand_preferences['excluded'].add(brand)
+                    self.brand_preferences['preferred'].discard(brand)
 
         # Update filters (new values override old)
         if analysis.get('budget'):

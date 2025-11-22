@@ -315,7 +315,15 @@ Just ask me anything like:
     def _handle_spec_filter(self, analysis: Dict, context) -> Dict:
         """Handle specification-based filtering"""
         specs = analysis['specs']
-        brands = context.get_brand_preferences()
+
+        # FIXED: Prioritize brands from current message over context
+        current_brands = analysis['brands']
+        if current_brands['preferred'] or current_brands['excluded']:
+            # Use brands mentioned in current message
+            brands = current_brands
+        else:
+            # Fall back to context brands
+            brands = context.get_brand_preferences()
 
         # Build query
         query = Phone.query.filter_by(is_active=True)
@@ -323,7 +331,7 @@ Just ask me anything like:
         filters = []
         response_filters = []
 
-        # Brand filter (apply context preferences)
+        # Brand filter (apply brand preferences)
         if brands['preferred']:
             brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brands['preferred'])).all()]
             if brand_ids:
@@ -447,14 +455,21 @@ Just ask me anything like:
 
     def _handle_battery_recommendation(self, analysis: Dict, context) -> Dict:
         """Handle requests for long-lasting phones / good battery"""
-        brands = context.get_brand_preferences()
+        # FIXED: Prioritize brands from current message over context
+        current_brands = analysis['brands']
+        if current_brands['preferred'] or current_brands['excluded']:
+            # Use brands mentioned in current message
+            brands = current_brands
+        else:
+            # Fall back to context brands
+            brands = context.get_brand_preferences()
 
         # Build query
         query = Phone.query.filter_by(is_active=True)
 
         filters = []
 
-        # Brand preference from context
+        # Brand preference
         if brands['preferred']:
             brand_ids = [b.id for b in Brand.query.filter(Brand.name.in_(brands['preferred'])).all()]
             if brand_ids:
@@ -531,7 +546,14 @@ Just ask me anything like:
 
     def _handle_photography_recommendation(self, analysis: Dict, context) -> Dict:
         """Handle photography/camera focused recommendations"""
-        brands = context.get_brand_preferences()
+        # FIXED: Prioritize brands from current message over context
+        current_brands = analysis['brands']
+        if current_brands['preferred'] or current_brands['excluded']:
+            # Use brands mentioned in current message
+            brands = current_brands
+        else:
+            # Fall back to context brands
+            brands = context.get_brand_preferences()
 
         # Build query
         query = Phone.query.filter_by(is_active=True)
