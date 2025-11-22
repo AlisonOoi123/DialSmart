@@ -24,9 +24,12 @@ pytz>=2024.1
 python-dotenv==1.0.0
 requests>=2.31.0
 
-# Machine Learning
+# Machine Learning & NLP
 scikit-learn>=1.5.0
 numpy>=1.26.0
+nltk==3.8.1
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.23.0
 
 # Task Scheduling
 schedule>=1.2.0
