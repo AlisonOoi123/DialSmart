@@ -815,7 +815,7 @@ class ChatbotEngine:
             return {
                 'response': "I'm DialSmart AI Assistant, and I specialize in helping you find the perfect smartphone! 📱\n\nI can assist you with:\n• Phone recommendations based on your needs\n• Budget-friendly options\n• Brand comparisons\n• Phone specifications\n• Phones for gaming, photography, business, etc.\n\nWhat kind of phone are you looking for today?",
                 'type': 'text',
-                'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
+                'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones']
             }
 
         if intent == 'budget_query' or intent == 'timeline':
