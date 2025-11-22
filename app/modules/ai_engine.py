@@ -707,12 +707,29 @@ class AIRecommendationEngine:
         results = []
         for phone in phones:
             specs = PhoneSpecification.query.filter_by(phone_id=phone.id).first()
-            results.append({
-                'phone': phone,
-                'specifications': specs
-            })
-
-        return results
+            if specs and specs.rear_camera_main:
+                # Robust camera value handling with type conversion
+                try:
+                    # Handle different formats (e.g., "48", "48MP", "48.0")
+                    camera_value = str(specs.rear_camera_main).replace('MP', '').strip()
+                    camera_mp = float(camera_value)
+                    
+                    if camera_mp >= min_camera_mp:
+                        results.append({
+                            'phone': phone,
+                            'specifications': specs,
+                            'camera_score': camera_mp  # Add score for sorting
+                        })
+                except (ValueError, TypeError) as e:
+                    # Log the issue but continue processing
+                    print(f"Warning: Could not parse camera value for {phone.name}: {specs.rear_camera_main}")
+                    continue
+        
+        # Sort by camera MP descending for best cameras first
+        results.sort(key=lambda x: x['camera_score'], reverse=True)
+        
+        # Return top N results
+        return results[:top_n]
 
 
     def get_similar_phones(self, phone_id, top_n=3):
