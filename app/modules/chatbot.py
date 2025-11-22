@@ -724,14 +724,19 @@ class ChatbotEngine:
             import re
 
             brands_mentioned = self._extract_multiple_brands(message)
+            print(f"DEBUG: brands_mentioned = {brands_mentioned}")  # ADD THIS
             if len(brands_mentioned) > 1 or (brands_mentioned and ' and ' in message_lower and 'phone' in message_lower):
                 # Check if this looks like a specific model query
                 # Model indicators: numbers, "pro", "ultra", "max", "plus", "lite", etc.
                 # FIXED: Added 'play' keyword and improved number matching for cases like "10A", "14X"
                 model_indicators = re.search(r'\d+[a-z]?|pro|ultra|max|plus|lite|mini|air|note|fold|flip|edge|play', message_lower)
+                print(f"DEBUG: model_indicators = {model_indicators}")  # ADD THIS
+                print(f"DEBUG: skip_phone_model before = {skip_phone_model}")  # ADD THIS
+                
                 if not model_indicators:
                     # No model indicators, so it's a generic brand query
                     skip_phone_model = True
+                print(f"DEBUG: skip_phone_model after = {skip_phone_model}")  # ADD THIS
 
         if brands_mentioned and len(brands_mentioned) == 1:
                 # Remove brand name and common words to see what's left
