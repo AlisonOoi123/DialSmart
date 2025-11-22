@@ -15,10 +15,19 @@
                     <h5>{{ rec['match_score'] }}% Match</h5>
                 </div>
                 {% if rec['phone'].main_image and rec['phone'].main_image != 'None' and rec['phone'].main_image != '' %}
-                <img src="{{ rec['phone'].main_image }}" class="card-img-top" alt="{{ rec['phone'].model_name }}" style="height: 250px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/400x250/e0e0e0/666666?text={{ rec['phone'].model_name | urlencode }}'">
+
+                    <img src="{{ rec['phone'].main_image }}" 
+                        class="card-img-top" 
+                        alt="{{ rec['phone'].model_name }}" 
+                        style="height: 250px; object-fit: cover;"
+                        data-fallback-text="{{ rec['phone'].model_name }}"
+                        onerror="this.src='https://via.placeholder.com/400x250/e0e0e0/666666?text=' + encodeURIComponent(this.dataset.fallbackText)">
                 {% else %}
-                <img src="https://via.placeholder.com/400x250/e0e0e0/666666?text={{ rec['phone'].model_name | urlencode }}" class="card-img-top" alt="{{ rec['phone'].model_name }}" style="height: 250px; object-fit: cover;">
-                {% endif %}
+                    <img src="https://via.placeholder.com/400x250/e0e0e0/666666?text={{ rec['phone'].model_name | urlencode }}" 
+                        class="card-img-top" 
+                        alt="{{ rec['phone'].model_name }}" 
+                        style="height: 250px; object-fit: cover;">
+                {% endif %}                
                 <div class="card-body">
                     <h5 class="card-title">{{ rec['phone'].model_name }}</h5>
                     {% if rec['phone'].brand.website_url %}
