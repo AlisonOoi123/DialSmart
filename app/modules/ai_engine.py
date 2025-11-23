@@ -202,7 +202,10 @@ class AIRecommendationEngine:
             # Score based on usage type
             if usage_type == 'Gaming':
                 # High RAM, good processor, high refresh rate
-                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                # CRITICAL FIX: Handle RAM format "8 / 12 / 16 GB" or "8GB, 12GB"
+                import re
+                ram_text = (specs.ram_options or '').upper().replace('GB', '').replace('RAM', '').strip()
+                ram_values = [int(x.strip()) for x in re.findall(r'\d+', ram_text) if x.strip().isdigit()]
                 if ram_values:
                     score += max(ram_values) * 10
                 score += (specs.refresh_rate or 60) / 10
@@ -215,12 +218,19 @@ class AIRecommendationEngine:
                 score += (specs.front_camera_mp or 0) * 2   # Front camera also important for vloggers
 
                 # RAM is important for photo/video editing
-                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                # CRITICAL FIX: Handle RAM format "8 / 12 / 16 GB" or "8GB, 12GB"
+                import re
+                ram_text = (specs.ram_options or '').upper().replace('GB', '').replace('RAM', '').strip()
+                ram_values = [int(x.strip()) for x in re.findall(r'\d+', ram_text) if x.strip().isdigit()]
                 if ram_values:
                     score += max(ram_values) * 3
 
                 # Storage for saving photos/videos
-                storage_values = [int(s.replace('GB', '').replace('TB', '000')) for s in (specs.storage_options or '').split(',') if 'GB' in s or 'TB' in s]
+                # CRITICAL FIX: Handle storage format "256GB / 512GB / 1TB" or "256 / 512 / 1024 GB"
+                storage_text = (specs.storage_options or '').upper()
+                # Convert TB to GB for consistent scoring
+                storage_text = storage_text.replace('TB', '000GB').replace('GB', ' ').replace('/', ' ')
+                storage_values = [int(x.strip()) for x in re.findall(r'\d+', storage_text) if x.strip().isdigit()]
                 if storage_values:
                     score += max(storage_values) / 50  # Normalize storage score
 
@@ -237,7 +247,10 @@ class AIRecommendationEngine:
             elif usage_type == 'Business' or usage_type == 'Work':
                 # Good battery, decent specs
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
-                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                # CRITICAL FIX: Handle RAM format "8 / 12 / 16 GB" or "8GB, 12GB"
+                import re
+                ram_text = (specs.ram_options or '').upper().replace('GB', '').replace('RAM', '').strip()
+                ram_values = [int(x.strip()) for x in re.findall(r'\d+', ram_text) if x.strip().isdigit()]
                 if ram_values:
                     score += max(ram_values) * 5
 
@@ -417,7 +430,10 @@ class AIRecommendationEngine:
                 elif feature == 'camera':
                     score += (specs.rear_camera_main or 0) * 2
                 elif feature == 'performance':
-                    ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                    # CRITICAL FIX: Handle RAM format "8 / 12 / 16 GB" or "8GB, 12GB"
+                    import re
+                    ram_text = (specs.ram_options or '').upper().replace('GB', '').replace('RAM', '').strip()
+                    ram_values = [int(x.strip()) for x in re.findall(r'\d+', ram_text) if x.strip().isdigit()]
                     if ram_values:
                         score += max(ram_values) * 10
                 elif feature == 'display':
@@ -435,7 +451,10 @@ class AIRecommendationEngine:
             # Add usage type scoring
             if usage_type:
                 if usage_type == 'Gaming':
-                    ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                    # CRITICAL FIX: Handle RAM format "8 / 12 / 16 GB" or "8GB, 12GB"
+                    import re
+                    ram_text = (specs.ram_options or '').upper().replace('GB', '').replace('RAM', '').strip()
+                    ram_values = [int(x.strip()) for x in re.findall(r'\d+', ram_text) if x.strip().isdigit()]
                     if ram_values:
                         score += max(ram_values) * 10
                 elif usage_type == 'Photography':
