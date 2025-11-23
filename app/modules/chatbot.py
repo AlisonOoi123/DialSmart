@@ -2524,21 +2524,22 @@ class ChatbotEngine:
 
         # Step 1: Detect if a specific brand is mentioned
         # All 13 known brands (matches database brands exactly)
+        # Keywords extracted from actual fyp_phoneDataset.csv data
         detected_brand = None
         brand_keywords = {
             'apple': ['apple', 'iphone'],
-            'asus': ['asus', 'rog', 'zenfone'],  # FIXED: Added 'zenfone' for Asus Zenfone series
+            'asus': ['asus', 'rog', 'zenfone'],
             'google': ['google', 'pixel'],
-            'honor': ['honor', 'magic'],  # Added 'magic' for Honor Magic series
-            'huawei': ['huawei', 'mate', 'pura', 'nova'],  # Added 'nova' for Nova series
-            'infinix': ['infinix', 'hot'],  # Added 'hot' for Hot series
-            'oppo': ['oppo', 'reno', 'find'],  # Added 'reno' and 'find' for product lines
+            'honor': ['honor', 'magic', 'play', 'gt'],  # GT, Magic, Play series
+            'huawei': ['huawei', 'mate', 'pura', 'nova', 'enjoy'],  # Mate, Pura, Nova, Enjoy series
+            'infinix': ['infinix', 'hot', 'note', 'smart'],  # Hot, Note, Smart series
+            'oppo': ['oppo', 'reno', 'find', 'a', 'f'],  # Reno, Find, A, F series
             'poco': ['poco'],
-            'realme': ['realme', 'narzo'],  # Added 'narzo' for Narzo sub-brand
-            'redmi': ['redmi'],
-            'samsung': ['samsung', 'galaxy'],
-            'vivo': ['vivo'],
-            'xiaomi': ['xiaomi']
+            'realme': ['realme', 'narzo', 'gt', 'neo'],  # Narzo sub-brand, GT, Neo series
+            'redmi': ['redmi', 'note'],  # Note series
+            'samsung': ['samsung', 'galaxy', 'fold', 'flip'],  # Galaxy, Fold, Flip series
+            'vivo': ['vivo', 'iqoo', 'y', 'v', 'x', 's'],  # iQOO sub-brand, Y/V/X/S series
+            'xiaomi': ['xiaomi', 'mi', 'mix', 'civi', 'redmi', 'poco']  # Mi, Mix, Civi, includes Redmi/Poco
         }
 
         for brand_name, keywords in brand_keywords.items():
@@ -3881,20 +3882,21 @@ class ChatbotEngine:
     def _extract_multiple_brands(self, message):
         """Extract all brand names mentioned in message"""
         # All 13 known brands (matches database brands exactly)
+        # Keywords extracted from actual fyp_phoneDataset.csv data
         brand_keywords = {
             'Apple': ['apple', 'iphone'],
-            'Asus': ['asus', 'rog', 'zenfone'],  # FIXED: Added 'zenfone' for Asus Zenfone series
+            'Asus': ['asus', 'rog', 'zenfone'],
             'Google': ['google', 'pixel'],
-            'Honor': ['honor', 'magic'],  # Added 'magic' for Honor Magic series
-            'Huawei': ['huawei', 'mate', 'pura', 'nova'],  # Added 'nova' for Nova series
-            'Infinix': ['infinix', 'hot'],  # Added 'hot' for Hot series
-            'Oppo': ['oppo', 'reno', 'find'],  # Added 'reno' and 'find' for product lines
+            'Honor': ['honor', 'magic', 'play', 'gt'],  # GT, Magic, Play series
+            'Huawei': ['huawei', 'mate', 'pura', 'nova', 'enjoy'],  # Mate, Pura, Nova, Enjoy series
+            'Infinix': ['infinix', 'hot', 'note', 'smart'],  # Hot, Note, Smart series
+            'Oppo': ['oppo', 'reno', 'find', 'a', 'f'],  # Reno, Find, A, F series
             'Poco': ['poco'],
-            'Realme': ['realme', 'narzo'],  # Added 'narzo' for Narzo sub-brand
-            'Redmi': ['redmi'],
-            'Samsung': ['samsung', 'galaxy'],
-            'Vivo': ['vivo'],
-            'Xiaomi': ['xiaomi']  # Removed 'mi', 'redmi', 'poco' to avoid conflicts
+            'Realme': ['realme', 'narzo', 'gt', 'neo'],  # Narzo sub-brand, GT, Neo series
+            'Redmi': ['redmi', 'note'],  # Note series
+            'Samsung': ['samsung', 'galaxy', 'fold', 'flip'],  # Galaxy, Fold, Flip series
+            'Vivo': ['vivo', 'iqoo', 'y', 'v', 'x', 's'],  # iQOO sub-brand, Y/V/X/S series
+            'Xiaomi': ['xiaomi', 'mi', 'mix', 'civi', 'redmi', 'poco']  # Mi, Mix, Civi, includes Redmi/Poco
         }
 
         message_lower = message.lower()
