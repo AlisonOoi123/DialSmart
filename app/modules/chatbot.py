@@ -1886,7 +1886,8 @@ class ChatbotEngine:
                                 min_b, max_b = budget
                                 query = query.filter(Phone.price >= min_b, Phone.price <= max_b)
 
-                            phones_found = query.limit(3).all()  # Limit per brand
+                            # CRITICAL FIX: Sort by RELEASE_DATE (newest first) to show latest phones
+                            phones_found = query.order_by(Phone.release_date.desc()).limit(3).all()
                             if phones_found:
                                 found_brands.append(brand.name)
                                 all_phones.extend([(p, brand.name) for p in phones_found])
