@@ -303,7 +303,6 @@ class ChatbotEngine:
                 'cheapest new', 'latest budget', 'newest flagship',
                 'latest phones', 'newest phones', 'recent phones'
             ]
-            
         }
 
         # EXPANDED USER CATEGORIES
@@ -512,13 +511,36 @@ class ChatbotEngine:
         brands = self._extract_multiple_brands(message_lower)
         if brands:
             # Check if this is a brand preference statement
+            # CRITICAL FIX: Use word boundaries to avoid false matches
+            # Example: "note" shouldn't match preference keyword "not"
+            import re
             brand_preference_keywords = ['like', 'love', 'prefer', 'want', 'hate', 'dislike', 'not', 'only']
-            has_preference = any(keyword in message_lower for keyword in brand_preference_keywords)
+            has_preference = any(
+                re.search(r'\b' + re.escape(keyword) + r'\b', message_lower)
+                for keyword in brand_preference_keywords
+            )
             if has_preference:
                 return 'recommendation'
             # Simple brand mention (e.g., "samsung", "show me samsung")
             elif len(message_lower.split()) <= 5:  # Short query, likely brand-only
-                return 'recommendation'
+                # CRITICAL FIX: Check for model indicators before classifying as generic brand query
+                # Model indicators: numbers (e.g., "14", "12"), or model keywords (e.g., "note", "pro", "ultra")
+                # Examples:
+                #   - "redmi note 14" → HAS model indicators → NOT generic brand query
+                #   - "samsung" → NO model indicators → generic brand query
+                #   - "vivo phone" → NO model indicators → generic brand query
+                import re
+                has_number = bool(re.search(r'\d+', message_lower))
+                model_keywords = ['note', 'pro', 'ultra', 'max', 'plus', 'lite', 'mini', 'air',
+                                 'fold', 'flip', 'edge', 'play', 'magic', 'nova', 'enjoy',
+                                 'reno', 'find', 'narzo', 'neo', 'hot', 'rog', 'zenfone',
+                                 'galaxy', 'pixel', 'iphone', 'mate', 'pura', 'mix', 'civi']
+                has_model_keyword = any(keyword in message_lower for keyword in model_keywords)
+
+                # Only classify as generic recommendation if NO model indicators
+                if not has_number and not has_model_keyword:
+                    return 'recommendation'
+                # Has model indicators → let it fall through to phone model extraction
 
         # Check each intent with word boundary matching to avoid false matches
         # (e.g., "hi" shouldn't match "within")
@@ -737,8 +759,10 @@ class ChatbotEngine:
             'performance and battery', 'display and camera',
             
             # Negative searches (what to avoid)
-            'without', 'avoid', 'not','hate', 'except', 'excluding',
-            'dont want', "don't want", 'no need for',
+            # CRITICAL FIX: Removed 'not' - too generic, matches "note" in "redmi note 14"
+            # Use specific phrases instead
+            'without', 'avoid', 'hate', 'except', 'excluding',
+            'dont want', "don't want", 'no need for', 'i do not want',
             
             # Open comparison
             'difference between brands', 'brand comparison',
