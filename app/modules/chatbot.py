@@ -3960,6 +3960,8 @@ class ChatbotEngine:
             return 'Gaming'
         elif 'photographer' in message_lower or 'photo' in message_lower or 'picture' in message_lower:
             return 'Photography'
+        elif 'vlog' in message_lower or 'content creator' in message_lower or 'youtuber' in message_lower:
+            return 'Photography'
         elif 'camera' in message_lower and not any(word in message_lower for word in ['gaming', 'game']):
             return 'Photography'
         elif 'business' in message_lower or 'work' in message_lower or 'office' in message_lower:
