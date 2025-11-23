@@ -456,6 +456,13 @@ class AIRecommendationEngine:
             if brand_ids:
                 query = query.filter(Phone.brand_id.in_(brand_ids))
 
+        # FIXED: Apply timeline filter for "latest" queries (last 12 months)
+        is_timeline_query = 'timeline' in features if features else False
+        if is_timeline_query:
+            from datetime import datetime, timedelta
+            one_year_ago = datetime.now().date() - timedelta(days=365)
+            query = query.filter(Phone.release_date >= one_year_ago)
+
         phones = query.all()
         results = []
 
@@ -496,6 +503,13 @@ class AIRecommendationEngine:
                     # 5G support
                     if specs.has_5g:
                         score += 200
+                elif feature == 'timeline' and phone.release_date:
+                    # FIXED: Score based on how recent the phone is
+                    # More recent = higher score
+                    from datetime import datetime
+                    days_old = (datetime.now().date() - phone.release_date).days
+                    # Max score for brand new (0 days), decreases with age
+                    score += max(0, 1000 - days_old)
 
             # Additional scoring based on usage type
             if usage_type == 'Photography':
