@@ -2873,8 +2873,13 @@ class ChatbotEngine:
             if best_score >= 0.5:
                 scored_phones.append((phone, best_score))
 
-        # Sort by similarity score (highest first)
-        scored_phones.sort(key=lambda x: x[1], reverse=True)
+        # CRITICAL FIX: Sort by RELEASE_DATE first (newest first), then by similarity score
+        # This ensures "Zenfone 12 and Redmi Note 14" shows NEWEST models, not oldest
+        from datetime import datetime
+        scored_phones.sort(key=lambda x: (
+            x[0].release_date if x[0].release_date else datetime(1900, 1, 1).date(),  # Newest first
+            x[1]  # Then by similarity score
+        ), reverse=True)
 
         # Return top 5 matches
         if scored_phones:
