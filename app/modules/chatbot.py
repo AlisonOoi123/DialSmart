@@ -2530,16 +2530,16 @@ class ChatbotEngine:
             'apple': ['apple', 'iphone'],
             'asus': ['asus', 'rog', 'zenfone'],
             'google': ['google', 'pixel'],
-            'honor': ['honor', 'magic', 'play', 'gt'],  # GT, Magic, Play series
+            'honor': ['honor', 'magic', 'play'],  # Magic, Play series (removed 'gt' - conflicts)
             'huawei': ['huawei', 'mate', 'pura', 'nova', 'enjoy'],  # Mate, Pura, Nova, Enjoy series
-            'infinix': ['infinix', 'hot', 'note', 'smart'],  # Hot, Note, Smart series
-            'oppo': ['oppo', 'reno', 'find', 'a', 'f'],  # Reno, Find, A, F series
+            'infinix': ['infinix', 'hot'],  # Hot series (removed 'note' - conflicts with Redmi Note)
+            'oppo': ['oppo', 'reno', 'find'],  # Reno, Find series (removed 'a', 'f' - too generic)
             'poco': ['poco'],
-            'realme': ['realme', 'narzo', 'gt', 'neo'],  # Narzo sub-brand, GT, Neo series
+            'realme': ['realme', 'narzo', 'neo'],  # Narzo, Neo series (removed 'gt' - conflicts)
             'redmi': ['redmi', 'note'],  # Note series
             'samsung': ['samsung', 'galaxy', 'fold', 'flip'],  # Galaxy, Fold, Flip series
-            'vivo': ['vivo', 'iqoo', 'y', 'v', 'x', 's'],  # iQOO sub-brand, Y/V/X/S series
-            'xiaomi': ['xiaomi', 'mi', 'mix', 'civi', 'redmi', 'poco']  # Mi, Mix, Civi, includes Redmi/Poco
+            'vivo': ['vivo', 'iqoo'],  # iQOO sub-brand (removed single letters - too generic)
+            'xiaomi': ['xiaomi', 'mi', 'mix', 'civi']  # Mi, Mix, Civi (removed 'redmi', 'poco' - separate brands)
         }
 
         for brand_name, keywords in brand_keywords.items():
@@ -2860,11 +2860,13 @@ class ChatbotEngine:
                 # If all query numbers are found in model name, boost score
                 if all(num in model_numbers for num in query_numbers):
                     best_score += 0.3  # Significant boost for exact number match
-                # If query has a number but model doesn't have that number, apply smaller penalty
-                # FIXED: Reduced penalty from -0.4 to -0.15 to allow better fuzzy matching
-                # when exact models don't exist (e.g., "play 10A" can match "Play 7T")
-                elif model_numbers and not any(num in model_numbers for num in query_numbers):
-                    best_score -= 0.15  # Small penalty for number mismatch
+                # If ANY query number matches, small boost (allows partial matches)
+                elif any(num in model_numbers for num in query_numbers):
+                    best_score += 0.1  # Small boost for partial number match
+                # If query has number but NO numbers match at all, heavy penalty
+                # FIXED: Increased penalty to prevent "A78" matching "A98", "A38"
+                elif model_numbers:
+                    best_score -= 0.5  # Heavy penalty when NO numbers match
 
             # Only include if similarity is above threshold
             # FIXED: Lowered from 0.6 to 0.5 for better fuzzy matching when exact models don't exist
@@ -3887,16 +3889,16 @@ class ChatbotEngine:
             'Apple': ['apple', 'iphone'],
             'Asus': ['asus', 'rog', 'zenfone'],
             'Google': ['google', 'pixel'],
-            'Honor': ['honor', 'magic', 'play', 'gt'],  # GT, Magic, Play series
+            'Honor': ['honor', 'magic', 'play'],  # Magic, Play series (removed 'gt' - conflicts)
             'Huawei': ['huawei', 'mate', 'pura', 'nova', 'enjoy'],  # Mate, Pura, Nova, Enjoy series
-            'Infinix': ['infinix', 'hot', 'note', 'smart'],  # Hot, Note, Smart series
-            'Oppo': ['oppo', 'reno', 'find', 'a', 'f'],  # Reno, Find, A, F series
+            'Infinix': ['infinix', 'hot'],  # Hot series (removed 'note' - conflicts with Redmi Note)
+            'Oppo': ['oppo', 'reno', 'find'],  # Reno, Find series (removed 'a', 'f' - too generic)
             'Poco': ['poco'],
-            'Realme': ['realme', 'narzo', 'gt', 'neo'],  # Narzo sub-brand, GT, Neo series
+            'Realme': ['realme', 'narzo', 'neo'],  # Narzo, Neo series (removed 'gt' - conflicts)
             'Redmi': ['redmi', 'note'],  # Note series
             'Samsung': ['samsung', 'galaxy', 'fold', 'flip'],  # Galaxy, Fold, Flip series
-            'Vivo': ['vivo', 'iqoo', 'y', 'v', 'x', 's'],  # iQOO sub-brand, Y/V/X/S series
-            'Xiaomi': ['xiaomi', 'mi', 'mix', 'civi', 'redmi', 'poco']  # Mi, Mix, Civi, includes Redmi/Poco
+            'Vivo': ['vivo', 'iqoo'],  # iQOO sub-brand (removed single letters - too generic)
+            'Xiaomi': ['xiaomi', 'mi', 'mix', 'civi']  # Mi, Mix, Civi (removed 'redmi', 'poco' - separate brands)
         }
 
         message_lower = message.lower()
