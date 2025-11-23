@@ -793,13 +793,15 @@ class ChatbotEngine:
                                 print(f"[DEBUG]   - {phones.brand.name} {phones.model_name}")  # DEBUG
                             all_phones.extend(phones if isinstance(phones, list) else [phones])
 
-                    print(f"[DEBUG] Total phones extracted: {len(all_phones)}, threshold: >= 2")  # DEBUG
-                    if len(all_phones) >= 2:
-                        # Multiple specific models found
+                    print(f"[DEBUG] Total phones extracted: {len(all_phones)}, threshold: >= 1 (changed from >= 2)")  # DEBUG
+                    if len(all_phones) >= 1:
+                        # At least one specific model found - show it
+                        # FIXED: Changed threshold from >= 2 to >= 1 to show partial results
+                        # This handles cases where one model exists but the other doesn't
                         print(f"[DEBUG] SUCCESS: Calling _handle_specific_phone_query with {len(all_phones)} phones")  # DEBUG
                         return self._handle_specific_phone_query(message, all_phones, is_multi_model=True)
                     else:
-                        print(f"[DEBUG] FAILED: Only {len(all_phones)} phone(s) found, falling through to other handlers")  # DEBUG
+                        print(f"[DEBUG] FAILED: No phones found, falling through to other handlers")  # DEBUG
 
                 # Standard single model extraction
                 phone_model = self._extract_phone_model(message)
@@ -2842,12 +2844,15 @@ class ChatbotEngine:
                 # If all query numbers are found in model name, boost score
                 if all(num in model_numbers for num in query_numbers):
                     best_score += 0.3  # Significant boost for exact number match
-                # If query has a number but model doesn't have that number, penalize
+                # If query has a number but model doesn't have that number, apply smaller penalty
+                # FIXED: Reduced penalty from -0.4 to -0.15 to allow better fuzzy matching
+                # when exact models don't exist (e.g., "play 10A" can match "Play 7T")
                 elif model_numbers and not any(num in model_numbers for num in query_numbers):
-                    best_score -= 0.4  # Penalize number mismatch
+                    best_score -= 0.15  # Small penalty for number mismatch
 
-            # Only include if similarity is above threshold (0.6 = 60% match)
-            if best_score >= 0.6:
+            # Only include if similarity is above threshold
+            # FIXED: Lowered from 0.6 to 0.5 for better fuzzy matching when exact models don't exist
+            if best_score >= 0.5:
                 scored_phones.append((phone, best_score))
 
         # Sort by similarity score (highest first)
