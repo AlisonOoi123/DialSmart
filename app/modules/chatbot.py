@@ -437,6 +437,30 @@ class ChatbotEngine:
                 if brand in self.session_context[context_key]['wanted_brands']:
                     self.session_context[context_key]['wanted_brands'].remove(brand)
 
+        # CRITICAL FIX: Reject pure negative statements without actual phone request
+        # Examples: "i hate samsung", "i don't like apple", "not xiaomi"
+        # These should prompt user to specify what they DO want, not show random phones
+        if unwanted and not wanted:
+            # Check if this is ONLY a negative statement (no budget, no features, no usage)
+            has_budget = self._extract_budget(message) is not None
+            has_features = len(self._detect_feature_priority(message)) > 0
+            has_usage = self._detect_usage_type(message) is not None
+
+            # If it's a pure negative statement with NO other phone request
+            if not has_budget and not has_features and not has_usage:
+                # Check if message has any phone request keywords
+                request_keywords = ['recommend', 'suggest', 'find', 'show', 'want', 'need',
+                                   'looking for', 'phone', 'best', 'good', 'budget']
+                has_request = any(keyword in message.lower() for keyword in request_keywords)
+
+                # Pure negative statement without request - reject it
+                if not has_request or message.lower().strip() in ['i hate ' + b.lower() for b in unwanted]:
+                    return {
+                        'response': "I'm DialSmart AI Assistant, and I specialize in helping you find the perfect smartphone! 📱\n\nI can assist you with:\n• Phone recommendations based on your needs\n• Budget-friendly options\n• Brand comparisons\n• Phone specifications\n• Phones for gaming, photography, business, etc.\n\nWhat kind of phone are you looking for today?",
+                        'type': 'text',
+                        'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
+                    }
+
         # Extract and store features from current message
         features = self._detect_feature_priority(message)
 
@@ -575,6 +599,15 @@ class ChatbotEngine:
                 'response': "Hello! I'm DialSmart AI Assistant. I'm here to help you find the perfect smartphone. How can I assist you today?",
                 'type': 'text',
                 'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
+            }
+
+        # CRITICAL FIX: Reject malicious/inappropriate queries immediately
+        # This catches typos like "hake" (hack), "stel" (steal), etc.
+        if self._contains_malicious_intent(message):
+            return {
+                'response': "I'm DialSmart AI Assistant, and I specialize in helping you find the perfect smartphone! 📱\n\nI can assist you with:\n• Phone recommendations based on your needs\n• Budget-friendly options\n• Brand comparisons\n• Phone specifications\n• Phones for gaming, photography, business, etc.\n\nWhat kind of phone are you looking for today?",
+                'type': 'text',
+                'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
             }
 
         # Get session context
@@ -3507,6 +3540,30 @@ class ChatbotEngine:
             pattern = r'\b' + re.escape(keyword) + r'\b'
             if re.search(pattern, message_lower):
                 return True
+
+        # CRITICAL FIX: Fuzzy matching for typos (e.g., "hake" → "hack", "h@ck" → "hack")
+        # Common typos and obfuscations of dangerous keywords
+        from difflib import SequenceMatcher
+
+        # Common typo variants (manually added for high-confidence detection)
+        typo_variants = ['hake', 'hak', 'hakc', 'hac', 'haack',  # hack typos
+                        'stel', 'stea', 'steall',  # steal typos
+                        'crk', 'crak', 'crakc',  # crack typos
+                        'expl0it', 'exployt']  # exploit typos
+
+        words = message_lower.split()
+        for word in words:
+            # Check typo variants first
+            if word in typo_variants:
+                return True
+
+            # Then check similarity with critical keywords
+            critical_keywords = ['hack', 'steal', 'crack', 'exploit', 'breach', 'jailbreak', 'root']
+            for critical in critical_keywords:
+                # Check similarity ratio (>= 0.75 catches more typos)
+                similarity = SequenceMatcher(None, word, critical).ratio()
+                if similarity >= 0.75 and len(word) >= 3:
+                    return True  # Likely malicious intent with typo
 
         return False
     
