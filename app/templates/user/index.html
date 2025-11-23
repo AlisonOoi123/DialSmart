@@ -62,8 +62,9 @@
 
 {% block content %}
 <!-- Hero Section -->
-<section class="hero-section bg-gradient-primary text-white py-5">
-    <div class="container">
+<section class="hero-section hero-section-bg text-white py-5">
+    <div class="hero-overlay"></div>
+    <div class="container position-relative" style="z-index: 2;">
         <div class="row align-items-center">
             <div class="col-lg-6">
                 <h1 class="display-4 fw-bold">Find Your Perfect Smartphone with AI-Powered Recommendations</h1>
@@ -296,6 +297,26 @@
 </section>
 
 <style>
+.hero-section-bg {
+    background-image: url("{{ url_for('static', filename='img/homeWallpaper.jpg') }}"); 
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    position: relative;
+    min-height: 500px;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
 .bg-gradient-primary {
     background: linear-gradient(135deg, #0B5ED7 0%, #6C757D 100%);
 }
