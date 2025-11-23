@@ -724,19 +724,14 @@ class ChatbotEngine:
             import re
 
             brands_mentioned = self._extract_multiple_brands(message)
-            print(f"DEBUG: brands_mentioned = {brands_mentioned}")  # ADD THIS
             if len(brands_mentioned) > 1 or (brands_mentioned and ' and ' in message_lower and 'phone' in message_lower):
                 # Check if this looks like a specific model query
                 # Model indicators: numbers, "pro", "ultra", "max", "plus", "lite", etc.
                 # FIXED: Added 'play' keyword and improved number matching for cases like "10A", "14X"
                 model_indicators = re.search(r'\d+[a-z]?|pro|ultra|max|plus|lite|mini|air|note|fold|flip|edge|play', message_lower)
-                print(f"DEBUG: model_indicators = {model_indicators}")  # ADD THIS
-                print(f"DEBUG: skip_phone_model before = {skip_phone_model}")  # ADD THIS
-                
                 if not model_indicators:
                     # No model indicators, so it's a generic brand query
                     skip_phone_model = True
-                print(f"DEBUG: skip_phone_model after = {skip_phone_model}")  # ADD THIS
 
         if brands_mentioned and len(brands_mentioned) == 1:
                 # Remove brand name and common words to see what's left
@@ -785,13 +780,15 @@ class ChatbotEngine:
                     # Split by 'and' and try to extract each model
                     parts = message_lower.split(' and ')
                     all_phones = []
-                    for part in parts:
+                    for i, part in enumerate(parts):
                         phones = self._extract_phone_model(part)
                         if phones:
                             all_phones.extend(phones if isinstance(phones, list) else [phones])
 
-                    if len(all_phones) >= 2:
-                        # Multiple specific models found
+                    if len(all_phones) >= 1:
+                        # At least one specific model found - show it
+                        # FIXED: Changed threshold from >= 2 to >= 1 to show partial results
+                        # This handles cases where one model exists but the other doesn't
                         return self._handle_specific_phone_query(message, all_phones, is_multi_model=True)
 
                 # Standard single model extraction
@@ -2835,12 +2832,15 @@ class ChatbotEngine:
                 # If all query numbers are found in model name, boost score
                 if all(num in model_numbers for num in query_numbers):
                     best_score += 0.3  # Significant boost for exact number match
-                # If query has a number but model doesn't have that number, penalize
+                # If query has a number but model doesn't have that number, apply smaller penalty
+                # FIXED: Reduced penalty from -0.4 to -0.15 to allow better fuzzy matching
+                # when exact models don't exist (e.g., "play 10A" can match "Play 7T")
                 elif model_numbers and not any(num in model_numbers for num in query_numbers):
-                    best_score -= 0.4  # Penalize number mismatch
+                    best_score -= 0.15  # Small penalty for number mismatch
 
-            # Only include if similarity is above threshold (0.6 = 60% match)
-            if best_score >= 0.6:
+            # Only include if similarity is above threshold
+            # FIXED: Lowered from 0.6 to 0.5 for better fuzzy matching when exact models don't exist
+            if best_score >= 0.5:
                 scored_phones.append((phone, best_score))
 
         # Sort by similarity score (highest first)
