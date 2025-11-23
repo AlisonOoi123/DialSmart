@@ -233,6 +233,9 @@
 <style>
 /* Hero Section Background Image */
 .hero-section-bg {
+    /* Fallback gradient if image doesn't load */
+    background: linear-gradient(135deg, #0B5ED7 0%, #6C757D 100%);
+    /* Background image overlay on top of gradient */
     background-image: url("{{ url_for('static', filename='images/homeWallpaper.jpg') }}");
     background-size: cover;
     background-position: center;
@@ -248,7 +251,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.3);
     z-index: 1;
 }
 

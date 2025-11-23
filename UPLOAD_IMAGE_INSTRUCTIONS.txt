@@ -1,0 +1,26 @@
+HOW TO UPLOAD homeWallpaper.jpg
+================================
+
+The hero section is currently using a blue gradient fallback because 
+homeWallpaper.jpg is not found on the server.
+
+To display your custom wallpaper image:
+
+1. Copy your image file from Windows:
+   C:\Users\User\OneDrive\Documents\GitHub\DialSmart\img\homeWallpaper.jpg
+
+2. Upload it to the Linux server at:
+   /home/user/DialSmart/app/static/images/homeWallpaper.jpg
+
+3. You can use one of these methods:
+   - SCP: scp homeWallpaper.jpg user@server:/home/user/DialSmart/app/static/images/
+   - FTP/SFTP client
+   - Git: Commit the image to the repository
+   - Direct copy if you have server access
+
+4. After uploading, refresh the page - the image should appear!
+
+Current Status:
+- Blue gradient shows as fallback when image is missing ✓
+- Code is ready to use the image when uploaded ✓
+- Overlay darkness: 30% (adjustable in CSS)
