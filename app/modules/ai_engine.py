@@ -170,13 +170,24 @@ class AIRecommendationEngine:
 
         return results
 
-    def get_phones_by_usage(self, usage_type, budget_range=None, top_n=5):
+    def get_phones_by_usage(self, usage_type, budget_range=None, brand_names=None, top_n=5):
         """Get phones optimized for specific usage types"""
         query = Phone.query.filter_by(is_active=True)
 
         if budget_range:
             min_price, max_price = budget_range
             query = query.filter(Phone.price >= min_price, Phone.price <= max_price)
+
+        # CRITICAL FIX: Add brand filtering support
+        if brand_names:
+            from app.models import Brand
+            brand_ids = []
+            for brand_name in brand_names:
+                brand = Brand.query.filter(Brand.name.ilike(f"%{brand_name}%")).first()
+                if brand:
+                    brand_ids.append(brand.id)
+            if brand_ids:
+                query = query.filter(Phone.brand_id.in_(brand_ids))
 
         phones = query.all()
         results = []
@@ -198,9 +209,30 @@ class AIRecommendationEngine:
                 score += specs.battery_capacity / 100 if specs.battery_capacity else 0
 
             elif usage_type == 'Photography':
-                # High camera MP, good front camera
-                score += (specs.rear_camera_main or 0) * 2
-                score += (specs.front_camera_mp or 0)
+                # CRITICAL FIX: Score based on camera MP (primary), processor, RAM, and storage
+                # Rear camera is most important for photography
+                score += (specs.rear_camera_main or 0) * 5  # Increased weight for camera
+                score += (specs.front_camera_mp or 0) * 2   # Front camera also important for vloggers
+
+                # RAM is important for photo/video editing
+                ram_values = [int(r.replace('GB', '')) for r in (specs.ram_options or '').split(',') if 'GB' in r]
+                if ram_values:
+                    score += max(ram_values) * 3
+
+                # Storage for saving photos/videos
+                storage_values = [int(s.replace('GB', '').replace('TB', '000')) for s in (specs.storage_options or '').split(',') if 'GB' in s or 'TB' in s]
+                if storage_values:
+                    score += max(storage_values) / 50  # Normalize storage score
+
+                # Processor quality (rough estimation based on common processor names)
+                if specs.processor:
+                    processor_lower = specs.processor.lower()
+                    if 'snapdragon 8' in processor_lower or 'dimensity 9' in processor_lower or 'bionic' in processor_lower:
+                        score += 50  # Flagship processor
+                    elif 'snapdragon 7' in processor_lower or 'dimensity 7' in processor_lower or 'dimensity 8' in processor_lower:
+                        score += 30  # Upper mid-range
+                    elif 'snapdragon' in processor_lower or 'dimensity' in processor_lower:
+                        score += 15  # Mid-range
 
             elif usage_type == 'Business' or usage_type == 'Work':
                 # Good battery, decent specs
