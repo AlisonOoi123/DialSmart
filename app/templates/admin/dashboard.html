@@ -23,7 +23,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-warning text-white">
+            <div class="card admin-brands-card text-dark">
                 <div class="card-body">
                     <h3>{{ total_brands }}</h3>
                     <p>Active Brands</p>
@@ -122,4 +122,17 @@
         </div>
     </div>
 </div>
+
+<style>
+.admin-brands-card {
+    background-color: #E8D9A8;
+}
+
+.admin-brands-card:hover {
+    background-color: #dcc794;
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(232, 217, 168, 0.3);
+    transition: all 0.3s ease;
+}
+</style>
 {% endblock %}
