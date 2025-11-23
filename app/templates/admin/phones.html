@@ -4,7 +4,7 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Manage Phones</h2>
-        <a href="{{ url_for('admin.add_phone') }}" class="btn btn-primary">
+        <a href="{{ url_for('admin.add_phone') }}" class="btn btn-add-new">
             <i class="bi bi-plus-circle"></i> Add New Phone
         </a>
     </div>
@@ -77,7 +77,7 @@
                     <td>RM {{ "{:,.0f}".format(phone.price) }}</td>
                     <td><span class="badge {% if phone.is_active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Active' if phone.is_active else 'Inactive' }}</span></td>
                     <td>
-                        <a href="{{ url_for('admin.edit_phone', phone_id=phone.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        <a href="{{ url_for('admin.edit_phone', phone_id=phone.id) }}" class="btn btn-sm btn-edit">Edit</a>
                         <form method="POST" action="{{ url_for('admin.delete_phone', phone_id=phone.id) }}" class="d-inline">
                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this phone?')">Delete</button>
                         </form>
@@ -103,4 +103,38 @@
     </nav>
     {% endif %}
 </div>
+
+<style>
+/* Custom Admin Button Colors */
+.btn-add-new {
+    background-color: #B7C9B0;
+    border-color: #B7C9B0;
+    color: #000;
+    transition: all 0.3s ease;
+}
+
+.btn-add-new:hover {
+    background-color: #a3b89c;
+    border-color: #a3b89c;
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(183, 201, 176, 0.3);
+}
+
+.btn-edit {
+    background-color: #E8D9A8;
+    border-color: #E8D9A8;
+    color: #000;
+    transition: all 0.3s ease;
+}
+
+.btn-edit:hover {
+    background-color: #dcc794;
+    border-color: #dcc794;
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(232, 217, 168, 0.3);
+}
+</style>
+
 {% endblock %}

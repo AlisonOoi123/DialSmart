@@ -4,7 +4,7 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Manage Brands</h2>
-        <a href="{{ url_for('admin.add_brand') }}" class="btn btn-primary">
+        <a href="{{ url_for('admin.add_brand') }}" class="btn btn-add-new">
             <i class="bi bi-plus-circle"></i> Add New Brand
         </a>
     </div>
@@ -30,8 +30,13 @@
                     <td>{% if brand.is_featured %}<span class="badge bg-warning">Featured</span>{% endif %}</td>
                     <td><span class="badge {% if brand.is_active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Active' if brand.is_active else 'Inactive' }}</span></td>
                     <td>
-                        <a href="{{ url_for('admin.edit_brand', brand_id=brand.id) }}" class="btn btn-sm btn-primary">Edit</a>
-                        <button class="btn btn-sm btn-danger" onclick="deleteBrand({{ brand.id }}, '{{ brand.name }}')">Delete</button>
+                        <a href="{{ url_for('admin.edit_brand', brand_id=brand.id) }}" class="btn btn-sm btn-edit">Edit</a>
+                        <button class="btn btn-sm btn-danger" 
+                                data-brand-id="{{ brand.id }}" 
+                                data-brand-name="{{ brand.name }}"
+                                onclick="deleteBrand(this.dataset.brandId, this.dataset.brandName)">
+                                Delete
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -52,4 +57,37 @@ function deleteBrand(brandId, brandName) {
     }
 }
 </script>
+
+<style>
+/* Custom Admin Button Colors */
+.btn-add-new {
+    background-color: #B7C9B0;
+    border-color: #B7C9B0;
+    color: #000;
+    transition: all 0.3s ease;
+}
+
+.btn-add-new:hover {
+    background-color: #a3b89c;
+    border-color: #a3b89c;
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(183, 201, 176, 0.3);
+}
+
+.btn-edit {
+    background-color: #E8D9A8;
+    border-color: #E8D9A8;
+    color: #000;
+    transition: all 0.3s ease;
+}
+
+.btn-edit:hover {
+    background-color: #dcc794;
+    border-color: #dcc794;
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(232, 217, 168, 0.3);
+}
+</style>
 {% endblock %}
