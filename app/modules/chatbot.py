@@ -1924,11 +1924,20 @@ class ChatbotEngine:
                             phone = item['phone']
                             specs = item.get('specifications')
                             response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
-                            if specs and specs.ram_options:
-                                response += f"   {specs.ram_options} RAM"
-                                if specs.storage_options:
-                                    response += f" - {specs.storage_options} Storage"
-                                response += f"\n"
+                            if specs:
+                                if usage == 'Photography' and specs.rear_camera_main:
+                                    response += f"   📷 {specs.rear_camera_main}MP camera\n"
+                                if usage == 'Gaming' and specs.processor:
+                                    response += f"   ⚡ {specs.processor}\n"
+                                if usage in ['Business', 'Work'] and specs.battery_capacity:
+                                    response += f"   🔋 {specs.battery_capacity}mAh battery\n"
+
+                                # Always show RAM and storage
+                                if specs.ram_options:
+                                    response += f"   💾 {specs.ram_options} RAM"
+                                    if specs.storage_options:
+                                        response += f" - {specs.storage_options} Storage"
+                                    response += "\n"
                             response += "\n"
 
                             phone_list.append({
@@ -1938,7 +1947,9 @@ class ChatbotEngine:
                                 'price': phone.price,
                                 'image': phone.main_image,
                                 'ram': specs.ram_options if specs else None,
-                                'storage': specs.storage_options if specs else None
+                                'storage': specs.storage_options if specs else None,
+                                'camera': specs.rear_camera_main if specs else None,
+                                'battery': specs.battery_capacity if specs else None
                             })
 
                         return {
