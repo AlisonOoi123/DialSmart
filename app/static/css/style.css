@@ -1,12 +1,14 @@
-/* DialSmart Custom Styles */
+/* DialSmart Custom Styles 
+#8FF9FA;
+*/
 
 :root {
-    --primary-color: #0B5ED7;
-    --secondary-color: #6C757D;
-    --success-color: #28A745;
-    --warning-color: #FFC107;
-    --danger-color: #DC3545;
-    --light-bg: #F8F9FA;
+    --primary-color: #9e7a68;
+    --secondary-color: #bed0d6;
+    --success-color: #9e7a68;
+    --warning-color: #e1dfde;
+    --danger-color: #9e7a68;
+    --light-bg: #e1dfde;
 }
 
 body {
@@ -22,7 +24,7 @@ body {
 
 /* Hero Section */
 .bg-gradient-primary {
-    background: linear-gradient(135deg, #0B5ED7 0%, #6C757D 100%);
+    background: linear-gradient(135deg, #9e7a68 0%, #bed0d6 100%);
 }
 
 /* Cards */
