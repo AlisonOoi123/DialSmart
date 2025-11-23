@@ -1211,27 +1211,38 @@ class ChatbotEngine:
 
             user_category = self._detect_user_category(message)
 
-            # CRITICAL FIX: Check current message first, then context for budget AND usage
-            budget = self._extract_budget(message)
-            if not budget and 'last_budget' in context:
-                budget = context['last_budget']  # ← Use previous budget!
+            # CRITICAL FIX: Detect if this is a spec/feature query
+            # For spec queries, DON'T use session budget/usage to avoid incorrect filtering
+            spec_keywords = ['5g', '5G', 'storage', 'ram', 'memory', 'camera', 'battery',
+                            'processor', 'display', 'screen', 'mah', 'mp', 'gb', 'performance',
+                            'long lasting', 'good battery']
+            is_spec_query = any(keyword in message.lower() for keyword in spec_keywords)
 
+            # Extract budget from current message
+            budget = self._extract_budget(message)
+
+            # CRITICAL FIX: Only use session budget for NON-SPEC queries
+            # Examples:
+            # - "5g phone" should NOT use session budget (spec query)
+            # - "recommend phone" SHOULD use session budget (general query)
+            # - "realme with good performance" should NOT use session budget (spec query)
+            if not budget and not is_spec_query and 'last_budget' in context:
+                budget = context['last_budget']  # ← Use previous budget for general queries only!
+
+            # Detect usage type from current message
             usage = self._detect_usage_type(message)
-            if not usage and 'last_usage' in context:
-                usage = context['last_usage']  # ← Use previous usage!
-            
+
+            # CRITICAL FIX: Only use session usage for NON-SPEC queries
+            # "long lasting phone" should NOT be detected as Photography from session
+            if not usage and not is_spec_query and 'last_usage' in context:
+                usage = context['last_usage']  # ← Use previous usage for general queries only!
+
             # FIX 6: Merge current brands with session context brands
             wanted_brands, unwanted_brands = self._extract_brands_with_preferences(message)
 
             # Get session context brands
             session_wanted = context.get('wanted_brands', [])
             session_unwanted = context.get('unwanted_brands', [])
-
-            # CRITICAL FIX: Detect if this is a spec/feature query without brand mentions
-            # For these queries, don't use session brands to avoid confusion
-            spec_keywords = ['5g', '5G', 'storage', 'ram', 'memory', 'camera', 'battery',
-                            'processor', 'display', 'screen', 'mah', 'mp', 'gb']
-            is_spec_query = any(keyword in message.lower() for keyword in spec_keywords)
 
             # CRITICAL FIX: For spec queries (storage, RAM, 5G, etc.) with explicit brand mentions,
             # use ONLY current message brands, not session brands to avoid wrong results
@@ -1271,12 +1282,19 @@ class ChatbotEngine:
             # PRIORITY -1: Cheapest phones query (e.g., "recommend cheapest phones", "most affordable phones")
             if is_cheapest_query and not battery_threshold and not camera_threshold:
                 from app.models import Brand
+                from sqlalchemy import func
+
+                # CRITICAL FIX: Get cheapest phone FROM EACH BRAND (not overall cheapest)
+                # Step 1: Build base query
                 query = Phone.query.filter_by(is_active=True)
 
-                # Apply budget filter if specified
+                # Apply budget filter if specified (but for cheapest queries, use very low default)
                 if budget:
                     min_budget, max_budget = budget
                     query = query.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+                else:
+                    # CRITICAL FIX: For cheapest queries without budget, use low range (RM10-3000)
+                    query = query.filter(Phone.price >= 10, Phone.price <= 3000)
 
                 # Apply brand filters
                 if brands:
@@ -1298,8 +1316,33 @@ class ChatbotEngine:
                     if unwanted_brand_ids:
                         query = query.filter(~Phone.brand_id.in_(unwanted_brand_ids))
 
-                # Order by price ascending (cheapest first) and limit to top 5
-                phones = query.order_by(Phone.price.asc()).limit(5).all()
+                # Step 2: Get cheapest phone from each brand using subquery
+                # Get minimum price for each brand
+                subquery = db.session.query(
+                    Phone.brand_id,
+                    func.min(Phone.price).label('min_price')
+                ).filter_by(is_active=True)
+
+                if budget:
+                    subquery = subquery.filter(Phone.price >= min_budget, Phone.price <= max_budget)
+                else:
+                    subquery = subquery.filter(Phone.price >= 10, Phone.price <= 3000)
+
+                if brands and brand_ids:
+                    subquery = subquery.filter(Phone.brand_id.in_(brand_ids))
+                if all_unwanted_brands and unwanted_brand_ids:
+                    subquery = subquery.filter(~Phone.brand_id.in_(unwanted_brand_ids))
+
+                subquery = subquery.group_by(Phone.brand_id).subquery()
+
+                # Join with subquery to get actual phones with minimum price per brand
+                phones_query = db.session.query(Phone).join(
+                    subquery,
+                    (Phone.brand_id == subquery.c.brand_id) & (Phone.price == subquery.c.min_price)
+                ).filter(Phone.is_active == True)
+
+                # Order by price ascending and limit to 5 brands
+                phones = phones_query.order_by(Phone.price.asc()).limit(5).all()
 
                 if phones:
                     brand_text = ""
@@ -1935,8 +1978,12 @@ class ChatbotEngine:
                                     response += f"   📷 {specs.rear_camera_main}MP camera\n"
                                 if 'display' in features and specs.screen_type:
                                     response += f"   📺 {specs.screen_size}\" {specs.screen_type}\n"
-                                if 'performance' in features and specs.processor:
-                                    response += f"   ⚡ {specs.processor}\n"
+                                if 'performance' in features:
+                                    # CRITICAL FIX: Show RAM and processor for performance queries
+                                    if specs.ram_options:
+                                        response += f"   💾 {specs.ram_options} RAM\n"
+                                    if specs.processor:
+                                        response += f"   ⚡ {specs.processor}\n"
                             response += "\n"
 
                             phone_list.append({
@@ -2031,11 +2078,23 @@ class ChatbotEngine:
                         phone = item['phone']
                         specs = item.get('specifications')
                         response += f"📱 {phone.brand.name} {phone.model_name} - RM{phone.price:,.2f}\n"
-                        if specs and specs.ram_options:
-                            response += f"   {specs.ram_options} RAM"
-                            if specs.storage_options:
-                                response += f" - {specs.storage_options} Storage"
-                            response += f"\n"
+
+                        # CRITICAL FIX: Show relevant specs based on usage type
+                        if specs:
+                            # Show usage-specific highlights
+                            if usage == 'Photography' and specs.rear_camera_main:
+                                response += f"   📷 {specs.rear_camera_main}MP camera\n"
+                            if usage == 'Gaming' and specs.processor:
+                                response += f"   ⚡ {specs.processor}\n"
+                            if usage in ['Business', 'Work'] and specs.battery_capacity:
+                                response += f"   🔋 {specs.battery_capacity}mAh battery\n"
+
+                            # Always show RAM and storage
+                            if specs.ram_options:
+                                response += f"   💾 {specs.ram_options} RAM"
+                                if specs.storage_options:
+                                    response += f" - {specs.storage_options} Storage"
+                                response += "\n"
                         response += "\n"
 
                         phone_list.append({
@@ -2045,7 +2104,9 @@ class ChatbotEngine:
                             'price': phone.price,
                             'image': phone.main_image,
                             'ram': specs.ram_options if specs else None,
-                            'storage': specs.storage_options if specs else None
+                            'storage': specs.storage_options if specs else None,
+                            'camera': specs.rear_camera_main if specs else None,
+                            'battery': specs.battery_capacity if specs else None
                         })
 
                     return {
@@ -2090,6 +2151,14 @@ class ChatbotEngine:
                                 response += f"   📷 {specs.rear_camera_main}MP camera\n"
                             if 'display' in features and specs.screen_type:
                                 response += f"   📺 {specs.screen_size}\" {specs.screen_type}\n"
+                            if 'performance' in features:
+                                # CRITICAL FIX: Show RAM and processor for performance queries
+                                if specs.ram_options:
+                                    response += f"   💾 {specs.ram_options} RAM\n"
+                                if specs.processor:
+                                    response += f"   ⚡ {specs.processor}\n"
+                            if 'ram' in features and specs.ram_options:
+                                response += f"   💾 {specs.ram_options} RAM\n"
                         response += "\n"
 
                         phone_list.append({
