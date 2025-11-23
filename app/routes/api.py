@@ -133,7 +133,7 @@ def chat():
             'response': response['response'],
             'type': response.get('type', 'text'),
             'metadata': response.get('metadata', {}),
-            'quick_replies': response.get('quick_replies', []),
+            # 'quick_replies': response.get('quick_replies', []),
             'session_id': session_id
         })
     except Exception as e:

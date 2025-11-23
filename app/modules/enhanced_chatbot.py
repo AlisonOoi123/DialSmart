@@ -148,7 +148,7 @@ class EnhancedChatbotEngine:
         return {
             'response': "Hello! I'm DialSmart AI Assistant. I'm here to help you find the perfect smartphone. How can I assist you today?",
             'type': 'text',
-            'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
+            # 'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
         }
 
     def _handle_help(self) -> Dict:
@@ -1105,7 +1105,7 @@ Just ask me anything like:
         return {
             'response': "I'm here to help you find the perfect smartphone! You can ask me about:\n\n• Phone recommendations\n• Specific models (e.g., 'iPhone 15', 'Xiaomi 14 Pro')\n• Budget options\n• Brand preferences\n• Phones with specific features (battery, camera, etc.)\n\nWhat would you like to know?",
             'type': 'text',
-            'quick_replies': ['Find a phone', 'Budget options', 'Popular brands']
+            # 'quick_replies': ['Find a phone', 'Budget options', 'Popular brands']
         }
 
     def _extract_numeric_values(self, text: str) -> List[int]:

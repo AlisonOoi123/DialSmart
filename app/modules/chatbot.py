@@ -458,7 +458,7 @@ class ChatbotEngine:
                     return {
                         'response': "I'm DialSmart AI Assistant, and I specialize in helping you find the perfect smartphone! 📱\n\nI can assist you with:\n• Phone recommendations based on your needs\n• Budget-friendly options\n• Brand comparisons\n• Phone specifications\n• Phones for gaming, photography, business, etc.\n\nWhat kind of phone are you looking for today?",
                         'type': 'text',
-                        'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
+                        # 'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
                     }
 
         # Extract and store features from current message
@@ -598,7 +598,7 @@ class ChatbotEngine:
             return {
                 'response': "Hello! I'm DialSmart AI Assistant. I'm here to help you find the perfect smartphone. How can I assist you today?",
                 'type': 'text',
-                'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
+                # 'quick_replies': ['Find a phone', 'Compare phones', 'Show me budget options']
             }
 
         # CRITICAL FIX: Reject malicious/inappropriate queries immediately
@@ -607,7 +607,7 @@ class ChatbotEngine:
             return {
                 'response': "I'm DialSmart AI Assistant, and I specialize in helping you find the perfect smartphone! 📱\n\nI can assist you with:\n• Phone recommendations based on your needs\n• Budget-friendly options\n• Brand comparisons\n• Phone specifications\n• Phones for gaming, photography, business, etc.\n\nWhat kind of phone are you looking for today?",
                 'type': 'text',
-                'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
+                # 'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
             }
 
         # Get session context
@@ -907,7 +907,7 @@ class ChatbotEngine:
                             return {
                                 'response': f"I couldn't find a specific model matching '{brand_text} {model_text}'. Would you like to:\n• See all {brand_text} phones\n• Try a different model name\n• Get recommendations based on your budget",
                                 'type': 'text',
-                                'quick_replies': [f'Show {brand_text} phones', 'Find phones under RM2000', 'Latest phones']
+                                # 'quick_replies': [f'Show {brand_text} phones', 'Find phones under RM2000', 'Latest phones']
                             }
             except Exception as e:
                 # Error during model extraction - log and continue with general intent handling
@@ -973,7 +973,7 @@ class ChatbotEngine:
                     return {
                         'response': f"I couldn't find {brand_text}phones with camera above {relaxed_camera}MP{budget_text}. Please try:\n• Different brand\n• Adjust your budget\n• Browse all phones",
                         'type': 'text',
-                        'quick_replies': ['Show all brands', 'Phones under RM3000', 'Browse all phones']
+                        # 'quick_replies': ['Show all brands', 'Phones under RM3000', 'Browse all phones']
                     }
 
         # Check if the query is phone-related (skip for greetings and help)
@@ -981,7 +981,7 @@ class ChatbotEngine:
             return {
                 'response': "I'm DialSmart AI Assistant, and I specialize in helping you find the perfect smartphone! 📱\n\nI can assist you with:\n• Phone recommendations based on your needs\n• Budget-friendly options\n• Brand comparisons\n• Phone specifications\n• Phones for gaming, photography, business, etc.\n\nWhat kind of phone are you looking for today?",
                 'type': 'text',
-                'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
+                # 'quick_replies': ['Find a phone under RM2000', 'Gaming phones', 'Best camera phones', 'Show popular brands']
             }
 
         if intent == 'budget_query' or intent == 'timeline':
@@ -1903,7 +1903,7 @@ class ChatbotEngine:
                     return {
                         'response': f"I couldn't find phones specifically for {category_name} within {budget_text}. Let me show you our available phones. What's your preferred budget range?",
                         'type': 'text',
-                        'quick_replies': ['Under RM1000', 'RM1000-RM2000', 'RM2000-RM3000', 'Above RM3000']
+                        # 'quick_replies': ['Under RM1000', 'RM1000-RM2000', 'RM2000-RM3000', 'Above RM3000']
                     }
 
             # PRIORITY 2: Brands mentioned - always prioritize brand filtering
@@ -1963,7 +1963,7 @@ class ChatbotEngine:
                         return {
                             'response': f"I couldn't find {brands_list} phones for {usage.lower()}. Would you like to see {usage.lower()} phones from other brands, or choose different brands?",
                             'type': 'text',
-                            'quick_replies': [f'Show all {usage} phones', 'Try different brands']
+                            # 'quick_replies': [f'Show all {usage} phones', 'Try different brands']
                         }
 
                 # Brands + Features (e.g., "apple and samsung with good camera")
@@ -2021,7 +2021,7 @@ class ChatbotEngine:
                         return {
                             'response': f"I couldn't find {brands_list} phones with {feature_desc}. Would you like to see similar phones from other brands?",
                             'type': 'text',
-                            'quick_replies': ['Show all brands', 'Try different features']
+                            # 'quick_replies': ['Show all brands', 'Try different features']
                         }
 
                 # Brands only (e.g., "apple and samsung phone")
@@ -2073,7 +2073,7 @@ class ChatbotEngine:
                         return {
                             'response': f"I couldn't find {brands_list} phones{budget_text}. Would you like to see phones from other brands?",
                             'type': 'text',
-                            'quick_replies': ['Show all brands', 'Adjust budget']
+                            # 'quick_replies': ['Show all brands', 'Adjust budget']
                         }
 
             # PRIORITY 3: Usage type without brands (e.g., "gaming phone")
@@ -2226,7 +2226,7 @@ class ChatbotEngine:
             return {
                 'response': "Let me help you find the perfect phone. What's your budget and what will you primarily use it for?",
                 'type': 'text',
-                'quick_replies': ['Under RM2000', 'Gaming', 'Photography', 'Show popular phones']
+                # 'quick_replies': ['Under RM2000', 'Gaming', 'Photography', 'Show popular phones']
             }
 
         elif intent == 'usage_type':
@@ -2689,7 +2689,7 @@ class ChatbotEngine:
             return {
                 'response': "I'm here to help you find the perfect smartphone! You can ask me about phone recommendations, budget options, brands, or specifications. What would you like to know?",
                 'type': 'text',
-                'quick_replies': ['Find a phone', 'Budget options', 'Popular brands']
+                # 'quick_replies': ['Find a phone', 'Budget options', 'Popular brands']
             }
 
     # NEW METHODS for specific phone queries
