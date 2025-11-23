@@ -65,6 +65,89 @@
     </div>
 </section>
 
+<!-- Partner Advertisement Section -->
+<section class="py-5 bg-white">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Our Trusted Partners</h2>
+            <p class="text-muted">Explore more smartphone accessories and deals from our partners</p>
+        </div>
+        <div class="row g-4 justify-content-center">
+            <!-- Partner 1: Moss2U -->
+            <div class="col-md-6 col-lg-5">
+                <a href="https://www.moss2u.com.my/mobile-gadget-accessories-1" target="_blank" class="text-decoration-none">
+                    <div class="card h-100 partner-card shadow-hover border-0">
+                        <div class="card-body text-center p-4">
+                            <div class="partner-logo-container mb-4 p-4 bg-light rounded-3">
+                                <img src="{{ url_for('static', filename='images/partners/moss2u-logo.png') }}"
+                                     alt="Moss2U"
+                                     class="img-fluid partner-logo"
+                                     style="max-height: 80px; object-fit: contain;"
+                                     onerror="this.parentElement.innerHTML='<div class=\'text-primary display-4 fw-bold\'>MOSS2U</div>'">
+                            </div>
+                            <h5 class="card-title fw-bold text-dark mb-3">
+                                <i class="bi bi-bag-check-fill text-primary me-2"></i>
+                                Moss2U Malaysia
+                            </h5>
+                            <p class="card-text text-muted mb-3">
+                                Premium mobile gadgets and accessories marketplace. Your trusted source for quality smartphone accessories.
+                            </p>
+                            <div class="partner-badge">
+                                <span class="badge bg-primary bg-gradient">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>
+                                    Visit Store
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 text-center pb-3">
+                            <small class="text-muted">
+                                <i class="bi bi-shield-check text-success me-1"></i>
+                                Authorized Partner
+                            </small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Partner 2: SatuGadget -->
+            <div class="col-md-6 col-lg-5">
+                <a href="https://satugadget.com.my/brands/" target="_blank" class="text-decoration-none">
+                    <div class="card h-100 partner-card shadow-hover border-0">
+                        <div class="card-body text-center p-4">
+                            <div class="partner-logo-container mb-4 p-4 bg-light rounded-3">
+                                <img src="{{ url_for('static', filename='images/partners/satugadget-logo.png') }}"
+                                     alt="SatuGadget"
+                                     class="img-fluid partner-logo"
+                                     style="max-height: 80px; object-fit: contain;"
+                                     onerror="this.parentElement.innerHTML='<div class=\'text-success display-4 fw-bold\'>SatuGadget</div>'">
+                            </div>
+                            <h5 class="card-title fw-bold text-dark mb-3">
+                                <i class="bi bi-phone-fill text-success me-2"></i>
+                                SatuGadget Malaysia
+                            </h5>
+                            <p class="card-text text-muted mb-3">
+                                Leading smartphone retailer offering wide range of brands. Find the latest phones from top manufacturers.
+                            </p>
+                            <div class="partner-badge">
+                                <span class="badge bg-success bg-gradient">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>
+                                    Visit Store
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 text-center pb-3">
+                            <small class="text-muted">
+                                <i class="bi bi-shield-check text-success me-1"></i>
+                                Authorized Partner
+                            </small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Brand Showcase Section -->
 <section class="bg-light py-5">
     <div class="container">
@@ -157,6 +240,109 @@
 
 .hover-lift:hover {
     transform: translateY(-5px);
+}
+
+/* Partner Cards Styling */
+.partner-card {
+    border: 2px solid transparent;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.partner-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(13, 110, 253, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.partner-card:hover::before {
+    left: 100%;
+}
+
+.partner-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    border-color: #0d6efd;
+    box-shadow: 0 20px 40px rgba(13, 110, 253, 0.2),
+                0 0 0 1px rgba(13, 110, 253, 0.1);
+}
+
+.partner-logo-container {
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #e9ecef;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.partner-card:hover .partner-logo-container {
+    border-color: #0d6efd;
+    background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    transform: scale(1.05);
+}
+
+.partner-logo {
+    transition: transform 0.3s ease;
+    filter: grayscale(20%);
+}
+
+.partner-card:hover .partner-logo {
+    transform: scale(1.1);
+    filter: grayscale(0%);
+}
+
+.partner-badge {
+    transition: transform 0.3s ease;
+}
+
+.partner-card:hover .partner-badge {
+    transform: scale(1.1);
+}
+
+.shadow-hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+.partner-card .card-title {
+    font-size: 1.25rem;
+    letter-spacing: -0.5px;
+}
+
+.partner-card .card-text {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* Animated gradient background for badges */
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.partner-card:hover .badge {
+    background: linear-gradient(90deg, #0d6efd, #0a58ca, #0d6efd) !important;
+    background-size: 200% 200% !important;
+    animation: gradientShift 3s ease infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .partner-card {
+        margin-bottom: 1rem;
+    }
+
+    .partner-logo-container {
+        min-height: 100px;
+    }
 }
 </style>
 {% endblock %}
