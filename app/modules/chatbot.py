@@ -2049,7 +2049,6 @@ class ChatbotEngine:
             return {
                 'response': "Let me help you find the perfect phone. What's your budget and what will you primarily use it for?",
                 'type': 'text',
-                'quick_replies': ['Under RM2000', 'Gaming', 'Photography', 'Show popular phones']
             }
 
         elif intent == 'usage_type':
