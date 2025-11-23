@@ -280,6 +280,28 @@ class ChatbotEngine:
                 'waterproof', 'ip67', 'ip68', 'ip rating',
                 'dust proof', 'splash proof', 'rugged',
                 'drop test', 'gorilla glass', 'protection'
+            ],
+
+            'timeline': [
+                # Latest/Newest keywords
+                'latest', 'newest', 'new', 'recent', 'recently released',
+                'just launched', 'just released', 'brand new',
+                'most recent', 'recently launched', 'new release',
+                'new model', 'latest model', 'newest model',
+                # Specific years
+                'released', 'from 2024', 'from 2023', 'from 2025',
+                'year 2024', 'year 2023', 'year 2025',
+                '2024 phone', '2023 phone', '2025 phone',
+                # Relative time
+                'last year', 'last month', 'this year', 'this month',
+                'past year', 'past month', 'recent months',
+                'last 6 months', 'last 12 months', 'past 6 months',
+                # Upcoming
+                'upcoming', 'coming soon', 'future', 'next month',
+                'next year', 'to be released', 'pre-order',
+                # Combined timeline + other features
+                'cheapest new', 'latest budget', 'newest flagship',
+                'latest phones', 'newest phones', 'recent phones'
             ]
         }
 
