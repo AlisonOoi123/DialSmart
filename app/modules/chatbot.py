@@ -1962,9 +1962,23 @@ class ChatbotEngine:
                 phones = self.ai_engine.get_phones_by_features(features, budget, usage, None, user_category, top_n=5)
 
                 if phones:
-                    feature_desc = " and ".join([f.replace('_', ' ') for f in features])
+                    # FIXED: Special handling for timeline (latest/newest) queries
+                    is_timeline_query = 'timeline' in features
+                    display_features = [f for f in features if f != 'timeline']  # Remove timeline from display
+
                     budget_text = f" within RM{budget[0]:,.0f} - RM{budget[1]:,.0f}" if budget else ""
-                    response = f"Here are the best phones with {feature_desc}{budget_text}:\n\n"
+
+                    if is_timeline_query and not display_features:
+                        # Pure timeline query: "recommend latest phone"
+                        response = f"Here are the latest phones{budget_text}:\n\n"
+                    elif is_timeline_query and display_features:
+                        # Timeline + other features: "latest phone with good camera"
+                        feature_desc = " and ".join([f.replace('_', ' ') for f in display_features])
+                        response = f"Here are the latest phones with {feature_desc}{budget_text}:\n\n"
+                    else:
+                        # Regular features: "phone with good camera"
+                        feature_desc = " and ".join([f.replace('_', ' ') for f in features])
+                        response = f"Here are the best phones with {feature_desc}{budget_text}:\n\n"
 
                     phone_list = []
                     for item in phones:
@@ -2513,14 +2527,14 @@ class ChatbotEngine:
         detected_brand = None
         brand_keywords = {
             'apple': ['apple', 'iphone'],
-            'asus': ['asus', 'rog'],
+            'asus': ['asus', 'rog', 'zenfone'],  # FIXED: Added 'zenfone' for Asus Zenfone series
             'google': ['google', 'pixel'],
-            'honor': ['honor'],
-            'huawei': ['huawei', 'mate', 'pura'],  # CRITICAL FIX: Added Huawei product line names
-            'infinix': ['infinix'],
-            'oppo': ['oppo'],
+            'honor': ['honor', 'magic'],  # Added 'magic' for Honor Magic series
+            'huawei': ['huawei', 'mate', 'pura', 'nova'],  # Added 'nova' for Nova series
+            'infinix': ['infinix', 'hot'],  # Added 'hot' for Hot series
+            'oppo': ['oppo', 'reno', 'find'],  # Added 'reno' and 'find' for product lines
             'poco': ['poco'],
-            'realme': ['realme'],
+            'realme': ['realme', 'narzo'],  # Added 'narzo' for Narzo sub-brand
             'redmi': ['redmi'],
             'samsung': ['samsung', 'galaxy'],
             'vivo': ['vivo'],
@@ -2531,6 +2545,19 @@ class ChatbotEngine:
             if any(keyword in message_lower for keyword in keywords):
                 detected_brand = brand_name
                 break
+
+        # FIXED: If no exact brand keyword match, try fuzzy matching for typos (e.g., "opop" → "oppo")
+        if not detected_brand:
+            import difflib
+            # Extract potential brand words (single words that might be brand names)
+            words = message_lower.split()
+            for word in words:
+                # Check if word is similar to any brand name
+                all_brand_names = list(brand_keywords.keys())
+                matches = difflib.get_close_matches(word, all_brand_names, n=1, cutoff=0.75)
+                if matches:
+                    detected_brand = matches[0]
+                    break
 
         # Step 2: Remove common query words to extract model name
         query_words = [
@@ -3856,14 +3883,14 @@ class ChatbotEngine:
         # All 13 known brands (matches database brands exactly)
         brand_keywords = {
             'Apple': ['apple', 'iphone'],
-            'Asus': ['asus', 'rog'],
+            'Asus': ['asus', 'rog', 'zenfone'],  # FIXED: Added 'zenfone' for Asus Zenfone series
             'Google': ['google', 'pixel'],
-            'Honor': ['honor'],
-            'Huawei': ['huawei', 'mate', 'pura'],
-            'Infinix': ['infinix'],
-            'Oppo': ['oppo'],
+            'Honor': ['honor', 'magic'],  # Added 'magic' for Honor Magic series
+            'Huawei': ['huawei', 'mate', 'pura', 'nova'],  # Added 'nova' for Nova series
+            'Infinix': ['infinix', 'hot'],  # Added 'hot' for Hot series
+            'Oppo': ['oppo', 'reno', 'find'],  # Added 'reno' and 'find' for product lines
             'Poco': ['poco'],
-            'Realme': ['realme'],
+            'Realme': ['realme', 'narzo'],  # Added 'narzo' for Narzo sub-brand
             'Redmi': ['redmi'],
             'Samsung': ['samsung', 'galaxy'],
             'Vivo': ['vivo'],
