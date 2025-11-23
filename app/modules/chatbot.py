@@ -417,11 +417,27 @@ class ChatbotEngine:
 
         # Extract and store features from current message
         features = self._detect_feature_priority(message)
+
+        # CRITICAL FIX: Check if this is a fresh recommendation query
+        # Fresh queries like "recommend latest phone" should REPLACE old features/brands, not accumulate
+        is_recommendation_query = any(word in message.lower() for word in ['recommend', 'suggest', 'find', 'show', 'latest', 'newest', 'best'])
+
+        # Check if brands are explicitly mentioned in current message
+        current_brands = self._extract_multiple_brands(message)
+
         if features:
-            # Merge with existing features (don't replace, accumulate)
-            for feature in features:
-                if feature not in self.session_context[context_key]['last_features']:
-                    self.session_context[context_key]['last_features'].append(feature)
+            if is_recommendation_query:
+                # REPLACE: For fresh recommendation queries, clear old features
+                self.session_context[context_key]['last_features'] = features
+                # ALSO clear brands if not explicitly mentioned (e.g., "recommend latest phone" shouldn't use old brands)
+                if not current_brands:
+                    self.session_context[context_key]['wanted_brands'] = []
+                    self.session_context[context_key]['unwanted_brands'] = []
+            else:
+                # ACCUMULATE: For refinement queries, merge with existing features
+                for feature in features:
+                    if feature not in self.session_context[context_key]['last_features']:
+                        self.session_context[context_key]['last_features'].append(feature)
 
         # Extract and store usage from current message
         usage = self._detect_usage_type(message)
