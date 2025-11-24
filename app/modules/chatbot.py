@@ -1280,6 +1280,14 @@ class ChatbotEngine:
             storage_requirement = self._extract_storage_requirement(message)
             requires_5g = self._extract_5g_requirement(message)
 
+            is_pure_spec_query = (battery_threshold or camera_threshold or ram_requirement or 
+                     storage_requirement or requires_5g) and not wanted_brands
+
+            if is_pure_spec_query:
+                # Clear session brands for pure spec queries
+                all_wanted_brands = []
+                brands = None
+
             # CRITICAL FIX: Check for "cheapest" queries
             # Handle queries like "recommend cheapest phones", "most affordable phones"
             cheapest_keywords = ['cheapest', 'most affordable', 'value for money', 'vfm', 'bang for buck',
