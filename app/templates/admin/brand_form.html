@@ -21,6 +21,14 @@
         </div>
 
         <div class="mb-3">
+            <label class="form-label">Official Website URL</label>
+            <input type="url" name="official_website" class="form-control"
+                   value="{{ brand.official_website if brand else '' }}"
+                   placeholder="https://example.com">
+            <small class="text-muted">Enter the brand's official website URL</small>
+        </div>
+
+        <div class="mb-3">
             <label class="form-label">Logo</label>
             <input type="file" name="logo" class="form-control" accept="image/*">
             {% if brand and brand.logo_url %}

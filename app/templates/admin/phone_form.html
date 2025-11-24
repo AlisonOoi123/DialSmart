@@ -27,7 +27,20 @@
                             <input type="number" name="price" step="0.01" class="form-control" value="{{ phone.price if phone else '' }}" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Main Image</label>
+                            <label class="form-label">Release Date</label>
+                            <input type="date" name="release_date" class="form-control"
+                                   value="{{ phone.release_date.strftime('%Y-%m-%d') if phone and phone.release_date else '' }}">
+                            <small class="text-muted">Select the phone's release date</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Main Image URL</label>
+                            <input type="url" name="main_image_url" class="form-control"
+                                   value="{{ phone.main_image if phone else '' }}"
+                                   placeholder="https://example.com/image.jpg">
+                            <small class="text-muted">Or upload an image file below</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Upload Image File</label>
                             <input type="file" name="main_image" class="form-control" accept="image/*">
                             {% if phone and phone.main_image %}
                             <small class="text-muted">Current: {{ phone.main_image }}</small>

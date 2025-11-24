@@ -16,6 +16,7 @@ class Brand(db.Model):
 
     # Media
     logo_url = db.Column(db.String(255))
+    official_website = db.Column(db.String(255))
 
     # Status
     is_active = db.Column(db.Boolean, default=True)
