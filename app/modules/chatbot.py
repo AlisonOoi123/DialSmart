@@ -1251,6 +1251,43 @@ class ChatbotEngine:
             session_wanted = context.get('wanted_brands', [])
             session_unwanted = context.get('unwanted_brands', [])
 
+            # NEW: Check for battery or camera threshold queries FIRST
+            battery_threshold = self._extract_battery_threshold(message)
+            camera_threshold = self._extract_camera_threshold(message)
+
+            # CRITICAL FIX: Extract RAM, storage, and 5G requirements
+            ram_requirement = self._extract_ram_requirement(message)
+            storage_requirement = self._extract_storage_requirement(message)
+            requires_5g = self._extract_5g_requirement(message)
+
+            # CRITICAL FIX: Detect pure spec queries BEFORE setting brands
+            # This prevents session brands from being used for queries like "phone camera above 30MP"
+            is_pure_spec_query = (battery_threshold or camera_threshold or ram_requirement or 
+                        storage_requirement or requires_5g) and not wanted_brands
+
+            # CRITICAL FIX: For spec queries (storage, RAM, 5G, etc.) with explicit brand mentions,
+            # use ONLY current message brands, not session brands to avoid wrong results
+            if is_pure_spec_query:
+                # Pure spec query without brand - show ALL brands
+                all_wanted_brands = []
+                all_unwanted_brands = []
+            elif wanted_brands:
+                # User explicitly mentioned brands in current message - use ONLY those
+                all_wanted_brands = wanted_brands
+                all_unwanted_brands = unwanted_brands
+            elif is_spec_query:
+                # Spec query without brand mentions - don't use session brands
+                all_wanted_brands = []
+                all_unwanted_brands = unwanted_brands  # But keep unwanted brands
+            else:
+                # No brands in current message and not a spec query - merge with session brands
+                all_wanted_brands = list(set(wanted_brands + session_wanted))
+                all_unwanted_brands = list(set(unwanted_brands + session_unwanted))
+
+            # Use merged brands
+            brands = all_wanted_brands if all_wanted_brands else None
+
+            """
             # CRITICAL FIX: For spec queries (storage, RAM, 5G, etc.) with explicit brand mentions,
             # use ONLY current message brands, not session brands to avoid wrong results
             # Example: "256GB storage vivo" should show ONLY Vivo, not previous session brands
@@ -1287,6 +1324,8 @@ class ChatbotEngine:
                 # Clear session brands for pure spec queries
                 all_wanted_brands = []
                 brands = None
+
+            """
 
             # CRITICAL FIX: Check for "cheapest" queries
             # Handle queries like "recommend cheapest phones", "most affordable phones"
