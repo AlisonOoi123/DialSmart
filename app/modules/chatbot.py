@@ -817,6 +817,9 @@ class ChatbotEngine:
             skip_phone_model = True
         elif re.search(r'\d+\s*mp\s+camera', message_lower):
             skip_phone_model = True
+        # NEW: Also skip for brand + feature queries like "vivo phone with good battery"
+        elif self._is_brand_feature_query(message_lower):
+            skip_phone_model = True
 
         # Also skip if multiple brands are mentioned (e.g., "apple and samsung phone")
         # BUT allow if it looks like specific model query (has numbers or model identifiers)
@@ -4136,7 +4139,32 @@ class ChatbotEngine:
                     break
 
         return found_brands
-    
+
+    def _is_brand_feature_query(self, message_lower):
+        """
+        Check if message is a brand + feature query (e.g., "vivo phone with good battery")
+        Returns True if query mentions a brand AND a feature but NO model indicators
+        """
+        # Check if brand is mentioned
+        brands = self._extract_multiple_brands(message_lower)
+        if not brands or len(brands) != 1:
+            return False
+
+        # Check if features are mentioned
+        features = self._detect_feature_priority(message_lower)
+        if not features:
+            return False
+
+        # Check for model indicators (numbers, "pro", "ultra", etc.)
+        # If model indicators exist, it's a specific model query, not a feature query
+        import re
+        model_indicators = re.search(r'\d+[a-z]?|pro|ultra|max|plus|lite|mini|air|fold|flip|edge', message_lower)
+        if model_indicators:
+            return False
+
+        # It's a brand + feature query (e.g., "vivo phone with good battery")
+        return True
+
     def _extract_brands_with_preferences(self, message):
         """
         Extract brand preferences from message, handling both positive and negative preferences
