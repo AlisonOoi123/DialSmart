@@ -181,7 +181,7 @@ class ChatbotEngine:
         self.feature_keywords = {
             'battery': [
                 'battery', 'long lasting', 'battery life', 'long battery',
-                'all day battery', 'mah', 'battery capacity',
+                'all day battery', 'mah', 'battery capacity','good battery',
                 'power', 'endurance', 'standby time', 'screen on time',
                 'battery drain', 'battery backup', 'battery performance',
                 '5000mah', '6000mah', 'big battery', 'huge battery'
@@ -811,6 +811,10 @@ class ChatbotEngine:
         if re.search(r'(?:camera|battery).*?(?:above|over|more than|at least)\s+\d+', message_lower):
             skip_phone_model = True
         elif re.search(r'(?:above|over|more than|at least)\s+\d+\s*(?:mp|mah)', message_lower):
+            skip_phone_model = True
+        elif re.search(r'camera\s+\d+\s*mp', message_lower):
+            skip_phone_model = True
+        elif re.search(r'\d+\s*mp\s+camera', message_lower):
             skip_phone_model = True
 
         # Also skip if multiple brands are mentioned (e.g., "apple and samsung phone")
@@ -3344,6 +3348,9 @@ class ChatbotEngine:
             r'camera\s+(?:above|over|more than|at least)\s+(\d+)\s*mp',  # camera above 100mp
             r'(?:above|over|more than|at least)\s+(\d+)\s*mp\s+camera',  # above 100mp camera
             r'(\d+)\s*mp\s+(?:or|and)\s+(?:above|more|higher)',  # 100mp or above
+            # Direct camera MP patterns (without comparison words)
+            r'camera\s+(\d+)\s*mp',  # camera 50mp, phone camera 30mp
+            r'(\d+)\s*mp\s+camera',  # 50mp camera
         ]
 
         for pattern in patterns:
