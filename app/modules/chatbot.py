@@ -933,11 +933,12 @@ class ChatbotEngine:
                 relaxed_camera = 50  # Lower threshold
                 brands = pending.get('brands')
                 budget = pending.get('budget')
+                camera_brands = brands if brands else None
 
                 phones = self.ai_engine.get_phones_by_camera(
                     min_camera_mp=relaxed_camera,
                     budget_range=budget,
-                    brand_names=brands,
+                    brand_names=camera_brands,
                     top_n=5
                 )
 
