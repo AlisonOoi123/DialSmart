@@ -3240,7 +3240,8 @@ class ChatbotEngine:
             # Above patterns WITH RM (with or without space)
             (r'(?:above|over|more than)\s+(?:rm|RM)\s*(\d+)', 'min'),  # above RM3000 or above rm 3000
             # Above patterns WITHOUT RM (but not followed by spec keywords)
-            (r'(?:above|over|more than)\s+(\d+)(?!\s*(?:mah|mp|gb|hz|inch|mm))', 'min'),  # above 3000
+            # FIXED: Use word boundary \b to prevent matching partial numbers like "3" from "30mp"
+            (r'(?:above|over|more than)\s+(\d+)\b(?!\s*(?:mah|mp|gb|hz|inch|mm))', 'min'),  # above 3000
 
             # Within/under/below/max/maximum patterns WITH RM (with or without space)
             (r'(?:within|under|below|max|maximum)\s+(?:rm|RM)\s*(\d+)', 'max'),  # within RM2000 or within rm 2000
