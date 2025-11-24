@@ -163,6 +163,15 @@ def add_phone():
         model_number = request.form.get('model_number')
         availability_status = request.form.get('availability_status', 'Available')
 
+        # Release date
+        release_date_str = request.form.get('release_date')
+        release_date = None
+        if release_date_str:
+            try:
+                release_date = datetime.strptime(release_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('Invalid release date format.', 'warning')
+
         # Validation
         if not all([model_name, brand_id, price]):
             flash('Model name, brand, and price are required.', 'danger')
@@ -174,11 +183,16 @@ def add_phone():
             brand_id=brand_id,
             price=price,
             model_number=model_number,
-            availability_status=availability_status
+            availability_status=availability_status,
+            release_date=release_date
         )
 
         # Handle image upload
         if 'main_image' in request.files:
+            main_image_url = request.form.get('main_image_url')
+        if main_image_url:
+            phone.main_image = main_image_url
+        elif 'main_image' in request.files:
             file = request.files['main_image']
             if file.filename:
                 filename = save_uploaded_file(file, 'phones')
@@ -250,6 +264,19 @@ def edit_phone(phone_id):
 
         # Handle image upload
         if 'main_image' in request.files:
+            # Release date
+            release_date_str = request.form.get('release_date')
+        if release_date_str:
+            try:
+                phone.release_date = datetime.strptime(release_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('Invalid release date format.', 'warning')
+
+        # Handle image - prioritize URL over file upload
+        main_image_url = request.form.get('main_image_url')
+        if main_image_url:
+            phone.main_image = main_image_url
+        elif 'main_image' in request.files:
             file = request.files['main_image']
             if file.filename:
                 filename = save_uploaded_file(file, 'phones')
@@ -336,6 +363,7 @@ def add_brand():
         name = request.form.get('name')
         description = request.form.get('description')
         tagline = request.form.get('tagline')
+        website_url = request.form.get('official_website')
         is_featured = bool(request.form.get('is_featured'))
 
         if not name:
@@ -352,6 +380,7 @@ def add_brand():
             name=name,
             description=description,
             tagline=tagline,
+            website_url=website_url,
             is_featured=is_featured
         )
 
@@ -382,6 +411,7 @@ def edit_brand(brand_id):
         brand.name = request.form.get('name', brand.name)
         brand.description = request.form.get('description')
         brand.tagline = request.form.get('tagline')
+        brand.website_url = request.form.get('website_url')
         brand.is_featured = bool(request.form.get('is_featured'))
         brand.is_active = bool(request.form.get('is_active', True))
 
