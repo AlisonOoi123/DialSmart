@@ -100,13 +100,14 @@ class PhoneComparison:
                 'phone2': specs2.screen_type or 'N/A',
                 'winner': None
             }
-
+            """
             comparison['refresh_rate'] = {
                 'label': 'Refresh Rate',
                 'phone1': f"{specs1.refresh_rate}Hz" if specs1.refresh_rate else 'N/A',
                 'phone2': f"{specs2.refresh_rate}Hz" if specs2.refresh_rate else 'N/A',
                 'winner': 1 if (specs1.refresh_rate or 0) > (specs2.refresh_rate or 0) else 2
             }
+            """
 
             # Performance comparisons
             comparison['processor'] = {
@@ -196,13 +197,14 @@ class PhoneComparison:
                 'phone2': '✓ Yes' if specs2.fingerprint_sensor else '✗ No',
                 'winner': None
             }
-
+            """
             comparison['water_resistance'] = {
                 'label': 'Water Resistance',
                 'phone1': specs1.water_resistance or 'N/A',
                 'phone2': specs2.water_resistance or 'N/A',
                 'winner': None
             }
+            """
 
             # Convert weight to numeric for comparison (handle string/int types)
             try:

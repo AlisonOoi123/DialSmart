@@ -290,7 +290,7 @@ Start by telling me what you're looking for!
                 template = random.choice(ResponseTemplates.TEMPLATES['feature_query']['found'])
                 return template.format(feature=feature, phone_list=phone_list)
         else:
-            return "What feature are you looking for? (5G, wireless charging, water resistance, etc.)"
+            return "What feature are you looking for? (5G, wireless charging, etc.)"
 
     @staticmethod
     def get_camera_response(camera_spec=None, phone_list=None):

@@ -32,9 +32,17 @@ def brand_page(brand_id):
     # Get filter parameters
     sort_by = request.args.get('sort_by', 'created_at')
     page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '', type=str)
 
     # Build query
     query = Phone.query.filter_by(brand_id=brand_id, is_active=True)
+
+    # Apply search filter if provided
+    if search:
+        # Split search terms and search for each word
+        search_terms = search.strip().split()
+        for term in search_terms:
+            query = query.filter(Phone.model_name.ilike(f'%{term}%'))
 
     # Apply sorting
     if sort_by == 'price_asc':
@@ -156,3 +164,5 @@ def search():
     return render_template('phone/search_results.html',
                          phones=phones,
                          query=query)
+
+

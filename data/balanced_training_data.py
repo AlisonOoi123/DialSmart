@@ -214,7 +214,6 @@ BALANCED_TRAINING_DATA = {
         "has wireless charging",
         "has fast charging",
         "has waterproof",
-        "has water resistance",
         "has dual sim",
         "has expandable storage",
         "has headphone jack",

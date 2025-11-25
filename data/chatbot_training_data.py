@@ -333,7 +333,6 @@ TRAINING_DATA = {
         "does it support fast charging",
         "what's the screen type",
         "refresh rate",
-        "water resistance rating",
         # Additional specification patterns
         "technical specifications",
         "detailed specs",
