@@ -3401,6 +3401,7 @@ class ChatbotEngine:
             r'(\d+)\s*mp\s+(?:or|and)\s+(?:above|more|higher)',  # 100mp or above
             # Direct camera MP patterns (without comparison words)
             r'camera\s+(\d+)\s*mp',  # camera 50mp, phone camera 30mp
+            r'phone\s+(\d+)\s*mp',  # phone 50mp
             r'(\d+)\s*mp\s+camera',  # 50mp camera
         ]
 
