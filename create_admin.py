@@ -101,14 +101,14 @@ def create_default_admins():
 
         admins_data = [
             {
-                'email': 'admin@dialsmart.my',
-                'password': 'abcD1234#',
+                'email': 'alison99690326@gmail.com',
+                'password': 'Abcd1234#',
                 'full_name': 'System Administrator',
                 'is_super_admin': False  # Regular admin
             },
             {
-                'email': 'superadmin@dialsmart.my',
-                'password': 'super123#',
+                'email': 'admin@dialsmart.com',
+                'password': 'abcD1234#',
                 'full_name': 'Super Administrator',
                 'is_super_admin': True  # Super admin
             }
