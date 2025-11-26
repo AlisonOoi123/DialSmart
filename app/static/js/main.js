@@ -185,7 +185,7 @@ $(document).ready(function() {
     });
 
     // Back to top button
-    var backToTop = $('<button id="back-to-top" class="btn btn-primary position-fixed bottom-0 end-0 m-4" style="display: none; z-index: 999;"><i class="bi bi-arrow-up"></i></button>');
+    var backToTop = $('<button id="back-to-top" class="btn btn-primary position-fixed bottom-0 start-0 m-4" style="display: none; z-index: 999;"><i class="bi bi-arrow-up"></i></button>');
     $('body').append(backToTop);
 
     $(window).on('scroll', function() {

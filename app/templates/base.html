@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}DialSmart - Malaysia's Intelligent Mobile Advisor{% endblock %}</title>
 
+    {% if current_user.is_authenticated %}
+    <!-- Prevent caching for authenticated users - critical for logout security -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    {% endif %}
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -17,6 +24,64 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+
+    {% if current_user.is_authenticated %}
+    <!-- JavaScript to prevent back/forward button access after logout -->
+    <script>
+        (function() {
+            'use strict';
+
+            // Mark that this page was loaded while authenticated
+            sessionStorage.setItem('auth_page_loaded', 'true');
+            sessionStorage.setItem('last_access_time', Date.now());
+
+            // CRITICAL: Disable browser history for this page
+            // This prevents forward button from working after logout
+            window.history.pushState(null, null, window.location.href);
+            window.onpopstate = function() {
+                // User pressed back/forward - redirect to current page
+                window.history.pushState(null, null, window.location.href);
+            };
+
+            // Prevent browser back/forward cache (bfcache)
+            window.addEventListener('pageshow', function(event) {
+                if (event.persisted) {
+                    // Page was restored from bfcache - reload to check auth status
+                    window.location.reload();
+                }
+            });
+
+            // Check auth status on page load (handles forward button after logout)
+            window.addEventListener('load', function() {
+                // Verify session is still valid by making a protected API call
+                // This endpoint returns 401 if user is not authenticated
+                fetch('{{ url_for("api.check_auth") }}', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (response.status === 401 || response.status === 403) {
+                        // Session expired or user logged out - redirect to login immediately
+                        console.log('Session invalid (status ' + response.status + ') - redirecting to login');
+                        sessionStorage.clear();
+                        localStorage.clear();
+                        // Use replace to avoid adding to history
+                        window.location.replace('{{ url_for("auth.login") }}');
+                    }
+                    // If status is 200, user is authenticated - do nothing, page loads normally
+                })
+                .catch(error => {
+                    // Network error - redirect to login to be safe
+                    console.log('Auth check network error:', error);
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    window.location.replace('{{ url_for("auth.login") }}');
+                });
+            });
+        })();
+    </script>
+    {% endif %}
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
@@ -118,8 +183,7 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Chatbot Widget -->
-    {% if current_user.is_authenticated %}
+    <!-- Chatbot Widget - Available to all users -->
     <div id="chatbot-widget">
         <button id="chatbot-toggle" class="btn btn-primary rounded-circle">
             <i class="bi bi-chat-dots-fill"></i>
@@ -150,15 +214,15 @@
                         <i class="bi bi-send-fill"></i>
                     </button>
                 </div>
+                <!--
                 <div class="mt-2">
                     <button class="btn btn-sm btn-outline-primary quick-reply-btn">Find a phone</button>
                     <button class="btn btn-sm btn-outline-primary quick-reply-btn">Budget options</button>
                     <button class="btn btn-sm btn-outline-primary quick-reply-btn">Popular brands</button>
-                </div>
+                </div> -->
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Footer -->
     <footer class="bg-dark text-white mt-5 py-4">

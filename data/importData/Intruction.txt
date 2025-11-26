@@ -1,0 +1,18 @@
+1. Download/update the project (get the latest files I just pushed)
+
+2. Open FRESH_DATABASE_SETUP.md and follow the steps
+
+OR for quick setup:
+
+3. Run SQL*Plus commands:
+
+sqlplus ds_user/dsuser123@localhost:1521/orclpdb
+@sql/01_drop_all_tables.sql
+@sql/02_create_all_tables.sql
+@migrations/001_add_admin_management_columns.sql
+@migrations/002_create_audit_logs_table.sql
+@migrations/004_allow_guest_chatbot_users.sql
+EXIT;
+4. Run automated script:
+
+FRESH_SETUP_AFTER_SQL.bat

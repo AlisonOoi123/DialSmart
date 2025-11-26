@@ -2,6 +2,57 @@
 
 {% block title %}Login - DialSmart{% endblock %}
 
+{% block extra_js %}
+<!-- Prevent navigation to previous authenticated session -->
+<script>
+    (function() {
+        'use strict';
+
+        // Clear any leftover session data from previous login
+        sessionStorage.clear();
+
+        {% if current_user.is_authenticated %}
+        // CRITICAL: User is already logged in but navigated to login page
+        // This happens when user presses Alt+Left from dashboard
+        // We MUST logout the user to prevent Alt+Right from accessing dashboard without re-authentication
+        console.log('User already authenticated on login page - logging out for security');
+
+        // Clear all browser storage
+        sessionStorage.clear();
+        localStorage.clear();
+
+        // Redirect to logout endpoint which will clear session and return here
+        // Use replace() to prevent this page from appearing in history
+        window.location.replace('{{ url_for("auth.logout") }}');
+
+        {% else %}
+        // User is not authenticated - this is normal login page access
+
+        // CRITICAL: Clear forward history to prevent accessing previous authenticated session
+        // Replace current entry to break any forward chain
+        window.history.replaceState(null, document.title, window.location.href);
+
+        // Push a new state to ensure we control the history
+        window.history.pushState(null, document.title, window.location.href);
+
+        // Prevent ALL back/forward navigation from login page
+        window.addEventListener('popstate', function(event) {
+            // Stay on login page
+            window.history.pushState(null, document.title, window.location.href);
+
+            console.log('Navigation blocked on login page - please login to continue');
+        });
+
+        // Additional protection: On successful login, use location.replace() to break history
+        document.querySelector('form').addEventListener('submit', function() {
+            // Mark that we're intentionally submitting the form
+            sessionStorage.setItem('login_submit', 'true');
+        });
+        {% endif %}
+    })();
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">

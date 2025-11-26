@@ -14,16 +14,20 @@
 
     <div class="row">
         <div class="col-md-5">
-            {% if phone.main_image %}
-            <img src="{{ phone.main_image }}" class="img-fluid rounded shadow" alt="{{ phone.model_name }}" onerror="this.src='https://via.placeholder.com/500x600?text={{ phone.model_name }}'">
+            {% if phone.main_image and phone.main_image != 'None' and phone.main_image != '' %}
+            <img src="{{ phone.main_image }}" class="img-fluid rounded shadow" alt="{{ phone.model_name }}" onerror="this.src='https://via.placeholder.com/500x600/e0e0e0/666666?text={{ phone.model_name | urlencode }}'">
             {% else %}
-            <img src="https://via.placeholder.com/500x600?text={{ phone.model_name }}" class="img-fluid rounded shadow" alt="{{ phone.model_name }}">
+            <img src="https://via.placeholder.com/500x600/e0e0e0/666666?text={{ phone.model_name | urlencode }}" class="img-fluid rounded shadow" alt="{{ phone.model_name }}">
             {% endif %}
         </div>
 
         <div class="col-md-7">
             <h1>{{ phone.model_name }}</h1>
+            {% if phone.brand.website_url %}
+            <h4 class="text-muted"><a href="{{ phone.brand.website_url }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-muted">{{ phone.brand.name }}</a></h4>
+            {% else %}
             <h4 class="text-muted">{{ phone.brand.name }}</h4>
+            {% endif %}
             <h2 class="text-primary my-3">RM {{ "{:,.2f}".format(phone.price) }}</h2>
 
             <p class="lead">
@@ -80,7 +84,7 @@
                 <div class="tab-pane fade show active" id="overview">
                     <table class="table">
                         <tr><th>Model</th><td>{{ phone.model_name }}</td></tr>
-                        <tr><th>Brand</th><td>{{ phone.brand.name }}</td></tr>
+                        <tr><th>Brand</th><td>{% if phone.brand.website_url %}<a href="{{ phone.brand.website_url }}" target="_blank" rel="noopener noreferrer">{{ phone.brand.name }}</a>{% else %}{{ phone.brand.name }}{% endif %}</td></tr>
                         <tr><th>Price</th><td>RM {{ "{:,.2f}".format(phone.price) }}</td></tr>
                         {% if specs.operating_system %}<tr><th>OS</th><td>{{ specs.operating_system }}</td></tr>{% endif %}
                         {% if specs.weight %}<tr><th>Weight</th><td>{{ specs.weight }}g</td></tr>{% endif %}
@@ -136,6 +140,7 @@
                 <div class="card">
                     <div class="card-body">
                         <h5>{{ sim_phone.model_name }}</h5>
+                        <h6>{{ phone.brand.name }}</h6>
                         <p class="text-primary">RM {{ "{:,.2f}".format(sim_phone.price) }}</p>
                         <a href="{{ url_for('phone.details', phone_id=sim_phone.id) }}" class="btn btn-sm btn-primary">View</a>
                     </div>

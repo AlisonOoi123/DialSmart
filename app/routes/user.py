@@ -5,10 +5,11 @@ Main user-facing pages and functionality
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from app import db
-from app.models import Brand, Phone, PhoneSpecification, UserPreference, Recommendation, Comparison
+from app.models import Brand, Phone, PhoneSpecification, UserPreference, Recommendation, Comparison, ContactMessage
 from app.modules import AIRecommendationEngine
-from app.utils.helpers import parse_json_field
+from app.utils.helpers import parse_json_field, validate_password
 import json
+from datetime import datetime
 
 bp = Blueprint('user', __name__)
 
@@ -66,6 +67,12 @@ def profile():
         if new_password:
             current_password = request.form.get('current_password')
             if current_user.check_password(current_password):
+                # Validate new password strength
+                is_valid, error_message = validate_password(new_password)
+                if not is_valid:
+                    flash(error_message, 'danger')
+                    return render_template('user/profile.html')
+
                 current_user.set_password(new_password)
                 flash('Password updated successfully.', 'success')
             else:
@@ -147,6 +154,11 @@ def recommendation_history():
 @bp.route('/recommendation/wizard', methods=['GET', 'POST'])
 def recommendation_wizard():
     """Multi-step recommendation wizard"""
+    # Load user preferences for defaults (if logged in)
+    user_prefs = None
+    if current_user.is_authenticated:
+        user_prefs = UserPreference.query.filter_by(user_id=current_user.id).first()
+
     if request.method == 'POST':
         # Process wizard form
         criteria = {
@@ -155,8 +167,14 @@ def recommendation_wizard():
             'primary_usage': request.form.getlist('primary_usage'),
             'important_features': request.form.getlist('important_features'),
             'preferred_brands': request.form.getlist('preferred_brands'),
-            'min_ram': int(request.form.get('min_ram', 4)),
-            'requires_5g': bool(request.form.get('requires_5g'))
+            # Use user preferences or reasonable defaults for specs not collected by wizard
+            'min_ram': user_prefs.min_ram if user_prefs else 4,
+            'min_storage': user_prefs.min_storage if user_prefs else 64,
+            'min_camera': user_prefs.min_camera if user_prefs else 12,
+            'min_battery': user_prefs.min_battery if user_prefs else 3000,
+            'requires_5g': '5G' in request.form.getlist('important_features'),  # Check if 5G was selected
+            'min_screen_size': user_prefs.min_screen_size if user_prefs else 5.5,
+            'max_screen_size': user_prefs.max_screen_size if user_prefs else 7.0
         }
 
         # Get AI recommendations
@@ -164,8 +182,21 @@ def recommendation_wizard():
         recommendations = ai_engine.get_recommendations(
             current_user.id if current_user.is_authenticated else None,
             criteria=criteria,
-            top_n=3
+            top_n=5  # Get top 5 instead of 3 for better results
         )
+
+        # Save recommendations to history for authenticated users
+        if current_user.is_authenticated and recommendations:
+            for rec in recommendations:
+                recommendation = Recommendation(
+                    user_id=current_user.id,
+                    phone_id=rec['phone'].id,
+                    match_percentage=rec['match_score'],
+                    reasoning=rec['reasoning'],
+                    user_criteria=json.dumps(criteria)
+                )
+                db.session.add(recommendation)
+            db.session.commit()
 
         return render_template('user/wizard_results.html',
                              recommendations=recommendations,
@@ -174,7 +205,7 @@ def recommendation_wizard():
     # Get brands for wizard
     brands = Brand.query.filter_by(is_active=True).all()
 
-    return render_template('user/wizard.html', brands=brands)
+    return render_template('user/wizard.html', brands=brands, preferences=user_prefs)
 
 @bp.route('/browse')
 def browse():
@@ -206,15 +237,15 @@ def browse():
         query = query.order_by(Phone.price.desc())
     elif sort_by == 'name':
         query = query.order_by(Phone.model_name.asc())
-    else:  # created_at
-        query = query.order_by(Phone.created_at.desc())
+    else:  # newest - sort by launch date (release_date)
+        query = query.order_by(Phone.release_date.desc().nullslast(), Phone.created_at.desc())
 
     # Paginate
     per_page = 12
     phones = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    # Get all brands for filter
-    brands = Brand.query.filter_by(is_active=True).all()
+    # Get all brands for filter (sorted alphabetically)
+    brands = Brand.query.filter_by(is_active=True).order_by(Brand.name.asc()).all()
 
     return render_template('user/browse.html',
                          phones=phones,
@@ -239,10 +270,33 @@ def contact():
         # Process contact form
         name = request.form.get('name')
         email = request.form.get('email')
+        subject = request.form.get('subject', 'General Inquiry')
         message = request.form.get('message')
 
-        # In production, send email or store in database
-        flash('Thank you for contacting us. We will get back to you soon.', 'success')
+        # Validate required fields
+        if not all([name, email, message]):
+            flash('Please fill in all required fields.', 'danger')
+            return render_template('user/contact.html')
+
+        # Create and save contact message
+        contact_msg = ContactMessage(
+            name=name,
+            email=email,
+            subject=subject,
+            message=message,
+            is_read=0,  # Oracle uses 0/1 instead of False/True
+            is_replied=0,
+            created_at=datetime.utcnow()
+        )
+
+        try:
+            db.session.add(contact_msg)
+            db.session.commit()
+            flash('Thank you for contacting us. We will get back to you soon.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred. Please try again later.', 'danger')
+
         return redirect(url_for('user.contact'))
 
     return render_template('user/contact.html')

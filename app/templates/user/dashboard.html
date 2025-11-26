@@ -22,7 +22,8 @@
             <a href="{{ url_for('phone.compare') }}" class="text-decoration-none">
                 <div class="card text-center shadow-sm hover-lift">
                     <div class="card-body">
-                        <i class="bi bi-phone-compare" style="font-size: 3rem; color: #28A745;"></i>
+                        <img src="{{ url_for('static', filename='images/comparePhone.png') }}" alt="Compare Phones" style="width: 80px; height: 80px; object-fit: contain; margin-bottom: 1rem;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <i class="bi bi-phone-compare" style="font-size: 3rem; color: #28A745; display: none; margin-bottom: 1rem;"></i>
                         <h5 class="mt-2">Compare Phones</h5>
                     </div>
                 </div>

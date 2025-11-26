@@ -2,38 +2,149 @@
 API Routes
 RESTful API endpoints for AJAX requests and chatbot
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file, current_app
 from flask_login import login_required, current_user
-from app.models import Phone, PhoneSpecification, Brand
-from app.modules import ChatbotEngine, AIRecommendationEngine
+from app.models import Phone, PhoneSpecification, Brand, Comparison
+from app.modules import ChatbotEngine, AIRecommendationEngine, PhoneComparison
+from app import db
 import uuid
+import requests
+from io import BytesIO
+from datetime import datetime, timedelta
+import hashlib
 
 bp = Blueprint('api', __name__, url_prefix='/api')
 
-# Chatbot endpoints
-@bp.route('/chat', methods=['POST'])
-@login_required
-def chat():
-    """Process chatbot message"""
-    data = request.get_json()
-    message = data.get('message', '')
-    session_id = data.get('session_id') or str(uuid.uuid4())
+chatbot_engine = ChatbotEngine()
 
-    if not message:
-        return jsonify({'error': 'Message is required'}), 400
+# Authentication check endpoint
+@bp.route('/auth/check', methods=['GET'])
+def check_auth():
+    """
+    Check if user is authenticated (for session verification after logout).
+    Returns 200 if authenticated, 401 if not.
+    This endpoint is CRITICAL for preventing forward button access after logout.
 
-    # Process with chatbot engine
-    chatbot = ChatbotEngine()
-    response = chatbot.process_message(current_user.id, message, session_id)
+    Note: We don't use @login_required because we want to return 401 explicitly
+    instead of redirecting, which is better for AJAX calls.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({'authenticated': False, 'error': 'Not authenticated'}), 401
 
     return jsonify({
-        'success': True,
-        'response': response['response'],
-        'type': response.get('type', 'text'),
-        'metadata': response.get('metadata', {}),
-        'quick_replies': response.get('quick_replies', []),
-        'session_id': session_id
-    })
+        'authenticated': True,
+        'user_id': current_user.id,
+        'is_admin': current_user.is_admin
+    }), 200
+
+# Simple in-memory cache for images (could be replaced with Redis in production)
+image_cache = {}
+
+# Image proxy endpoint
+@bp.route('/image-proxy', methods=['GET'])
+def image_proxy():
+    """
+    Proxy external images to bypass CORS and hotlinking protection
+    Usage: /api/image-proxy?url=<encoded_image_url>
+    """
+    image_url = request.args.get('url')
+
+    if not image_url:
+        return jsonify({'error': 'URL parameter is required'}), 400
+
+    try:
+        # Generate cache key
+        cache_key = hashlib.md5(image_url.encode()).hexdigest()
+
+        # Check cache (valid for 1 hour)
+        if cache_key in image_cache:
+            cached_data, cached_time, content_type = image_cache[cache_key]
+            if datetime.utcnow() - cached_time < timedelta(hours=1):
+                return send_file(
+                    BytesIO(cached_data),
+                    mimetype=content_type,
+                    as_attachment=False,
+                    download_name='image.webp'
+                )
+
+        # Fetch image with proper headers to bypass hotlinking protection
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': 'https://www.mobile57.com/',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'image',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'cross-site'
+        }
+
+        # Fetch image with timeout
+        response = requests.get(image_url, headers=headers, timeout=10, stream=True)
+        response.raise_for_status()
+
+        # Get content type
+        content_type = response.headers.get('Content-Type', 'image/webp')
+
+        # Read image data
+        image_data = response.content
+
+        # Cache it (limit cache size to prevent memory issues)
+        if len(image_cache) < 100:  # Limit cache to 100 images
+            image_cache[cache_key] = (image_data, datetime.utcnow(), content_type)
+
+        # Return image
+        return send_file(
+            BytesIO(image_data),
+            mimetype=content_type,
+            as_attachment=False,
+            download_name='image.webp'
+        )
+
+    except requests.exceptions.Timeout:
+        current_app.logger.error(f"Image proxy timeout for URL: {image_url}")
+        return jsonify({'error': 'Image request timed out'}), 504
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Image proxy error for URL {image_url}: {str(e)}")
+        return jsonify({'error': 'Failed to fetch image'}), 500
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error in image proxy: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# Chatbot endpoints
+@bp.route('/chat', methods=['POST'])
+def chat():
+    """Process chatbot message (available for guests and logged-in users)"""
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        session_id = data.get('session_id') or str(uuid.uuid4())
+
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+
+        # Get user_id (None for guests)
+        user_id = current_user.id if current_user.is_authenticated else None    
+        response = chatbot_engine.process_message(user_id, message, session_id)
+      
+        return jsonify({
+            'success': True,
+            'response': response['response'],
+            'type': response.get('type', 'text'),
+            'metadata': response.get('metadata', {}),
+            # 'quick_replies': response.get('quick_replies', []),
+            'session_id': session_id
+        })
+    except Exception as e:
+        current_app.logger.error(f"Chatbot error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': 'Failed to process message',
+            'message': str(e)
+        }), 500
 
 @bp.route('/chat/history', methods=['GET'])
 @login_required
@@ -41,9 +152,8 @@ def chat_history():
     """Get chat history"""
     session_id = request.args.get('session_id')
     limit = request.args.get('limit', 50, type=int)
-
-    chatbot = ChatbotEngine()
-    history = chatbot.get_chat_history(current_user.id, session_id, limit)
+    
+    history = chatbot_engine.get_chat_history(current_user.id, session_id, limit)
 
     chat_list = [{
         'id': chat.id,
@@ -266,3 +376,57 @@ def get_stats():
             'max_price': max(prices) if prices else 0
         }
     })
+
+# Comparison save endpoint
+@bp.route('/comparison/save', methods=['POST'])
+@login_required
+def save_comparison():
+    """Save a comparison"""
+    try:
+        data = request.get_json()
+        phone1_id = data.get('phone1_id')
+        phone2_id = data.get('phone2_id')
+
+        if not phone1_id or not phone2_id:
+            return jsonify({
+                'success': False,
+                'error': 'Both phone IDs are required'
+            }), 400
+
+        # Check if comparison already exists
+        existing_comparison = Comparison.query.filter_by(
+            user_id=current_user.id,
+            phone1_id=phone1_id,
+            phone2_id=phone2_id
+        ).first()
+
+        if existing_comparison:
+            # Update existing comparison to saved
+            existing_comparison.is_saved = True
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'message': 'Comparison updated successfully'
+            })
+
+        # Create new saved comparison
+        comparison = Comparison(
+            user_id=current_user.id,
+            phone1_id=phone1_id,
+            phone2_id=phone2_id,
+            is_saved=True
+        )
+        db.session.add(comparison)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Comparison saved successfully'
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error saving comparison: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

@@ -1,9 +1,70 @@
 {% extends "base.html" %}
 
+{% block extra_js %}
+<!-- Logout Security: Clear browser storage if redirected from logout -->
+<script>
+    (function() {
+        'use strict';
+
+        // Check if user was just logged out (from URL parameter or flash message)
+        const urlParams = new URLSearchParams(window.location.search);
+        const flashMessages = document.querySelectorAll('.alert');
+
+        let justLoggedOut = urlParams.get('logged_out') === 'true';
+
+        // Also check if there's a logout success message
+        flashMessages.forEach(function(msg) {
+            if (msg.textContent.includes('logged out')) {
+                justLoggedOut = true;
+            }
+        });
+
+        if (justLoggedOut) {
+            console.log('Logout detected - securing browser history');
+
+            // Clear all browser storage
+            sessionStorage.clear();
+            localStorage.clear();
+
+            // CRITICAL: Clear forward history by replacing all future states
+            // This prevents forward button from accessing authenticated pages
+            const currentUrl = window.location.pathname;
+
+            // Replace the current state to remove logged_out parameter
+            window.history.replaceState(null, document.title, currentUrl);
+
+            // Push multiple states to override any forward history
+            // This ensures forward button cannot access old authenticated pages
+            for (let i = 0; i < 50; i++) {
+                window.history.pushState(null, document.title, currentUrl);
+            }
+
+            // Now go back to the first state (clean URL)
+            window.history.go(-49);
+
+            // Prevent ALL navigation (back and forward)
+            window.addEventListener('popstate', function(event) {
+                // User pressed back/forward - keep them on homepage
+                window.history.pushState(null, document.title, currentUrl);
+
+                // Show a message if they keep trying
+                if (!sessionStorage.getItem('back_warned')) {
+                    sessionStorage.setItem('back_warned', 'true');
+                    console.log('Cannot navigate back to authenticated pages after logout');
+                }
+            });
+
+            console.log('Logout complete: Browser storage cleared and history secured');
+        }
+    })();
+</script>
+{% endblock %}
+
 {% block content %}
 <!-- Hero Section -->
-<section class="hero-section bg-gradient-primary text-white py-5">
-    <div class="container">
+<section class="hero-section hero-section-bg text-white py-5">
+    <div class="hero-overlay"></div>
+    <div class="container position-relative" style="z-index: 2;">
         <div class="row align-items-center">
             <div class="col-lg-6">
                 <h1 class="display-4 fw-bold">Find Your Perfect Smartphone with AI-Powered Recommendations</h1>
@@ -42,8 +103,9 @@
             <div class="col-md-4">
                 <div class="card h-100 text-center shadow-sm">
                     <div class="card-body">
-                        <div class="feature-icon bg-success text-white rounded-circle mx-auto mb-3" style="width: 80px; height: 80px; line-height: 80px;">
-                            <i class="bi bi-phone-compare" style="font-size: 2rem;"></i>
+                        <div class="feature-icon rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; background-color: #a3b89c;">
+                            <img src="{{ url_for('static', filename='images/comparePhone.png') }}" alt="Compare Phones" style="width: 50px; height: 50px; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <i class="bi bi-phone-compare text-white" style="font-size: 2rem; display: none;"></i>                        
                         </div>
                         <h5 class="card-title">Phone Comparison</h5>
                         <p class="card-text">Compare phones side-by-side with detailed specifications</p>
@@ -64,6 +126,90 @@
         </div>
     </div>
 </section>
+
+<!-- Partner Advertisement Section -->
+<section class="py-5 bg-white">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Our Trusted Partners</h2>
+            <p class="text-muted">Explore more smartphone accessories and deals from our partners</p>
+        </div>
+        <div class="row g-4 justify-content-center">
+            <!-- Partner 1: Moss2U -->
+            <div class="col-md-6 col-lg-5">
+                <a href="https://www.moss2u.com.my/mobile-gadget-accessories-1" target="_blank" class="text-decoration-none">
+                    <div class="card h-100 partner-card shadow-hover border-0">
+                        <div class="card-body text-center p-4">
+                            <div class="partner-logo-container mb-4 p-4 bg-light rounded-3">
+                                <img src="{{ url_for('static', filename='images/partners/moss2u-logo.png') }}"
+                                     alt="Moss2U"
+                                     class="img-fluid partner-logo"
+                                     style="max-height: 80px; object-fit: contain;"
+                                     onerror="this.parentElement.innerHTML='<div class=\'text-primary display-4 fw-bold\'>MOSS2U</div>'">
+                            </div>
+                            <h5 class="card-title fw-bold text-dark mb-3">
+                                <i class="bi bi-bag-check-fill text-primary me-2"></i>
+                                Moss2U Malaysia
+                            </h5>
+                            <p class="card-text text-muted mb-3">
+                                Premium mobile gadgets and accessories marketplace. Your trusted source for quality smartphone accessories.
+                            </p>
+                            <div class="partner-badge">
+                                <span class="badge bg-primary bg-gradient">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>
+                                    Visit Store
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 text-center pb-3">
+                            <small class="text-muted">
+                                <i class="bi bi-shield-check text-success me-1"></i>
+                                Authorized Partner
+                            </small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Partner 2: SatuGadget -->
+            <div class="col-md-6 col-lg-5">
+                <a href="https://satugadget.com.my/brands/" target="_blank" class="text-decoration-none">
+                    <div class="card h-100 partner-card shadow-hover border-0">
+                        <div class="card-body text-center p-4">
+                            <div class="partner-logo-container mb-4 p-4 bg-light rounded-3">
+                                <img src="{{ url_for('static', filename='images/partners/satugadget-logo.png') }}"
+                                     alt="SatuGadget"
+                                     class="img-fluid partner-logo"
+                                     style="max-height: 80px; object-fit: contain;"
+                                     onerror="this.parentElement.innerHTML='<div class=\'text-success display-4 fw-bold\'>SatuGadget</div>'">
+                            </div>
+                            <h5 class="card-title fw-bold text-dark mb-3">
+                                <i class="bi bi-phone-fill text-success me-2"></i>
+                                SatuGadget Malaysia
+                            </h5>
+                            <p class="card-text text-muted mb-3">
+                                Leading smartphone retailer offering wide range of brands. Find the latest phones from top manufacturers.
+                            </p>
+                            <div class="partner-badge">
+                                <span class="badge bg-success bg-gradient">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>
+                                    Visit Store
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 text-center pb-3">
+                            <small class="text-muted">
+                                <i class="bi bi-shield-check text-success me-1"></i>
+                                Authorized Partner
+                            </small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
 
 <!-- Brand Showcase Section -->
 <section class="bg-light py-5">
@@ -105,7 +251,11 @@
                     {% endif %}
                     <div class="card-body">
                         <h5 class="card-title">{{ phone.model_name }}</h5>
+                        {% if phone.brand.website_url %}
+                        <p class="text-muted"><a href="{{ phone.brand.website_url }}" target="_blank" rel="noopener noreferrer">{{ phone.brand.name }}</a></p>
+                        {% else %}
                         <p class="text-muted">{{ phone.brand.name }}</p>
+                        {% endif %}
                         <h4 class="text-primary">RM {{ "{:,.2f}".format(phone.price) }}</h4>
 
                         {% if phone.specifications %}
@@ -147,6 +297,27 @@
 </section>
 
 <style>
+.hero-section-bg {
+    background: linear-gradient(135deg, #0B5ED7 0%, #6C757D 100%);
+    background-image: url("{{ url_for('static', filename='images/homeWallpaper1.png') }}");
+    background-size: cover;
+    background-position: right center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    position: relative;
+    min-height: 500px;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1;
+}
+
 .bg-gradient-primary {
     background: linear-gradient(135deg, #0B5ED7 0%, #6C757D 100%);
 }
@@ -157,6 +328,109 @@
 
 .hover-lift:hover {
     transform: translateY(-5px);
+}
+
+/* Partner Cards Styling */
+.partner-card {
+    border: 2px solid transparent;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.partner-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(13, 110, 253, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.partner-card:hover::before {
+    left: 100%;
+}
+
+.partner-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    border-color: #0d6efd;
+    box-shadow: 0 20px 40px rgba(13, 110, 253, 0.2),
+                0 0 0 1px rgba(13, 110, 253, 0.1);
+}
+
+.partner-logo-container {
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #e9ecef;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.partner-card:hover .partner-logo-container {
+    border-color: #0d6efd;
+    background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    transform: scale(1.05);
+}
+
+.partner-logo {
+    transition: transform 0.3s ease;
+    filter: grayscale(20%);
+}
+
+.partner-card:hover .partner-logo {
+    transform: scale(1.1);
+    filter: grayscale(0%);
+}
+
+.partner-badge {
+    transition: transform 0.3s ease;
+}
+
+.partner-card:hover .partner-badge {
+    transform: scale(1.1);
+}
+
+.shadow-hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+.partner-card .card-title {
+    font-size: 1.25rem;
+    letter-spacing: -0.5px;
+}
+
+.partner-card .card-text {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* Animated gradient background for badges */
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.partner-card:hover .badge {
+    background: linear-gradient(90deg, #0d6efd, #0a58ca, #0d6efd) !important;
+    background-size: 200% 200% !important;
+    animation: gradientShift 3s ease infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .partner-card {
+        margin-bottom: 1rem;
+    }
+
+    .partner-logo-container {
+        min-height: 100px;
+    }
 }
 </style>
 {% endblock %}

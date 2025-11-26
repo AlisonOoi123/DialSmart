@@ -15,7 +15,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-success text-white">
+            <div class="card admin-phones-card text-dark">
                 <div class="card-body">
                     <h3>{{ total_phones }}</h3>
                     <p>Active Phones</p>
@@ -23,7 +23,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-warning text-white">
+            <div class="card admin-brands-card text-dark">
                 <div class="card-body">
                     <h3>{{ total_brands }}</h3>
                     <p>Active Brands</p>
@@ -57,9 +57,17 @@
                     <a href="{{ url_for('admin.brands') }}" class="btn btn-outline-primary me-2">
                         <i class="bi bi-tag"></i> Manage Brands
                     </a>
-                    <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary">
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary me-2">
                         <i class="bi bi-people"></i> Manage Users
                     </a>
+                    <a href="{{ url_for('admin.messages') }}" class="btn btn-outline-info me-2">
+                        <i class="bi bi-envelope"></i> Reply Messages
+                    </a>
+                    {% if current_user.is_super_admin %}
+                    <a href="{{ url_for('admin.create_admin') }}" class="btn btn-success">
+                        <i class="bi bi-shield-plus"></i> Create New Admin
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -122,4 +130,31 @@
         </div>
     </div>
 </div>
+
+
+<style>
+
+/* Custom Card Colors */
+.admin-phones-card {
+    background-color: #B7C9B0;
+}
+
+.admin-phones-card:hover {
+    background-color: #a3b89c;
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(183, 201, 176, 0.3);
+    transition: all 0.3s ease;
+}
+
+.admin-brands-card {
+    background-color: #E8D9A8;
+}
+
+.admin-brands-card:hover {
+    background-color: #dcc794;
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(232, 217, 168, 0.3);
+    transition: all 0.3s ease;
+}
+</style>
 {% endblock %}

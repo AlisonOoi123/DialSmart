@@ -4,9 +4,56 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Manage Phones</h2>
-        <a href="{{ url_for('admin.add_phone') }}" class="btn btn-primary">
+        <a href="{{ url_for('admin.add_phone') }}" class="btn btn-add-new">
             <i class="bi bi-plus-circle"></i> Add New Phone
         </a>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('admin.phones') }}" class="row g-3">
+                <div class="col-md-6">
+                    <label for="search" class="form-label">Search by Model Name</label>
+                    <input type="text" class="form-control" id="search" name="search"
+                           value="{{ search }}" placeholder="Enter phone model name...">
+                </div>
+                <div class="col-md-4">
+                    <label for="brand_id" class="form-label">Filter by Brand</label>
+                    <select class="form-select" id="brand_id" name="brand_id">
+                        <option value="">All Brands</option>
+                        {% for brand in brands %}
+                        <option value="{{ brand.id }}" {% if brand_id == brand.id %}selected{% endif %}>
+                            {{ brand.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </form>
+            {% if search or brand_id %}
+            <div class="mt-3">
+                <a href="{{ url_for('admin.phones') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear Filters
+                </a>
+                <span class="text-muted ms-2">
+                    Showing results for:
+                    {% if search %}<span class="badge bg-info">Search: "{{ search }}"</span>{% endif %}
+                    {% if brand_id %}
+                        {% for brand in brands %}
+                            {% if brand.id == brand_id %}
+                                <span class="badge bg-primary">Brand: {{ brand.name }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </span>
+            </div>
+            {% endif %}
+        </div>
     </div>
 
     <div class="table-responsive">
@@ -30,7 +77,7 @@
                     <td>RM {{ "{:,.0f}".format(phone.price) }}</td>
                     <td><span class="badge {% if phone.is_active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Active' if phone.is_active else 'Inactive' }}</span></td>
                     <td>
-                        <a href="{{ url_for('admin.edit_phone', phone_id=phone.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                        <a href="{{ url_for('admin.edit_phone', phone_id=phone.id) }}" class="btn btn-sm btn-edit">Edit</a>
                         <form method="POST" action="{{ url_for('admin.delete_phone', phone_id=phone.id) }}" class="d-inline">
                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this phone?')">Delete</button>
                         </form>
@@ -48,7 +95,7 @@
             {% for page_num in phones.iter_pages() %}
             {% if page_num %}
             <li class="page-item {% if page_num == phones.page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('admin.phones', page=page_num) }}">{{ page_num }}</a>
+                <a class="page-link" href="{{ url_for('admin.phones', page=page_num, search=search, brand_id=brand_id) }}">{{ page_num }}</a>
             </li>
             {% endif %}
             {% endfor %}
@@ -56,4 +103,38 @@
     </nav>
     {% endif %}
 </div>
+
+<style>
+/* Custom Admin Button Colors */
+.btn-add-new {
+    background-color: #B7C9B0;
+    border-color: #B7C9B0;
+    color: #000;
+    transition: all 0.3s ease;
+}
+
+.btn-add-new:hover {
+    background-color: #a3b89c;
+    border-color: #a3b89c;
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(183, 201, 176, 0.3);
+}
+
+.btn-edit {
+    background-color: #E8D9A8;
+    border-color: #E8D9A8;
+    color: #000;
+    transition: all 0.3s ease;
+}
+
+.btn-edit:hover {
+    background-color: #dcc794;
+    border-color: #dcc794;
+    color: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(232, 217, 168, 0.3);
+}
+</style>
+
 {% endblock %}

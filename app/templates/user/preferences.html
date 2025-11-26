@@ -2,37 +2,214 @@
 {% block title %}My Preferences - DialSmart{% endblock %}
 {% block content %}
 <div class="container py-4">
-    <h2>Preference Settings</h2>
+    <h2><i class="bi bi-gear"></i> Preference Settings</h2>
+    <p class="text-muted">Set your default preferences for personalized phone recommendations</p>
+
     <form method="POST" class="mt-4">
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Min Budget (RM)</label>
-                <input type="number" name="min_budget" class="form-control" value="{{ preferences.min_budget if preferences else 500 }}">
+        <!-- Budget Preferences -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="bi bi-cash-stack"></i> Budget Range</h5>
             </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">Max Budget (RM)</label>
-                <input type="number" name="max_budget" class="form-control" value="{{ preferences.max_budget if preferences else 5000 }}">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Budget (RM)</label>
+                        <input type="number" name="min_budget" class="form-control" value="{{ preferences.min_budget if preferences else 500 }}" min="0">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Maximum Budget (RM)</label>
+                        <input type="number" name="max_budget" class="form-control" value="{{ preferences.max_budget if preferences else 5000 }}" min="0">
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="setBudget(0, 1000)">Under RM1000</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="setBudget(1000, 2000)">RM1000-2000</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="setBudget(2000, 3000)">RM2000-3000</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="setBudget(3000, 10000)">RM3000+</button>
+                </div>
             </div>
         </div>
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Min RAM (GB)</label>
-                <input type="number" name="min_ram" class="form-control" value="{{ preferences.min_ram if preferences else 4 }}">
+
+        <!-- Primary Usage -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5><i class="bi bi-star"></i> Primary Usage</h5>
             </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Min Storage (GB)</label>
-                <input type="number" name="min_storage" class="form-control" value="{{ preferences.min_storage if preferences else 64 }}">
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Min Camera (MP)</label>
-                <input type="number" name="min_camera" class="form-control" value="{{ preferences.min_camera if preferences else 12 }}">
+            <div class="card-body">
+                <p class="text-muted small">Select what you primarily use your phone for</p>
+                <div class="row">
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="primary_usage" value="Photography" id="usage1" {% if preferences and 'Photography' in (preferences.primary_usage or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="usage1">
+                                <i class="bi bi-camera"></i> Photography
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="primary_usage" value="Gaming" id="usage2" {% if preferences and 'Gaming' in (preferences.primary_usage or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="usage2">
+                                <i class="bi bi-controller"></i> Gaming
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="primary_usage" value="Work" id="usage3" {% if preferences and 'Work' in (preferences.primary_usage or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="usage3">
+                                <i class="bi bi-briefcase"></i> Work/Productivity
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="primary_usage" value="Social Media" id="usage4" {% if preferences and 'Social Media' in (preferences.primary_usage or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="usage4">
+                                <i class="bi bi-share"></i> Social Media
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="primary_usage" value="Entertainment" id="usage5" {% if preferences and 'Entertainment' in (preferences.primary_usage or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="usage5">
+                                <i class="bi bi-play-circle"></i> Entertainment
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="form-check mb-3">
-            <input type="checkbox" name="requires_5g" class="form-check-input" {% if preferences and preferences.requires_5g %}checked{% endif %}>
-            <label class="form-check-label">Requires 5G</label>
+
+        <!-- Important Features -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5><i class="bi bi-check2-circle"></i> Important Features</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Select features that matter most to you</p>
+                <div class="row">
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="important_features" value="Battery" id="feat1" {% if preferences and 'Battery' in (preferences.important_features or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="feat1">Long Battery Life</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="important_features" value="Camera" id="feat2" {% if preferences and 'Camera' in (preferences.important_features or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="feat2">Great Camera</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="important_features" value="Performance" id="feat3" {% if preferences and 'Performance' in (preferences.important_features or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="feat3">Fast Performance</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="important_features" value="Storage" id="feat4" {% if preferences and 'Storage' in (preferences.important_features or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="feat4">Large Storage</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="important_features" value="5G" id="feat5" {% if preferences and '5G' in (preferences.important_features or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="feat5">5G Connectivity</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="important_features" value="Design" id="feat6" {% if preferences and 'Design' in (preferences.important_features or '') %}checked{% endif %}>
+                            <label class="form-check-label" for="feat6">Premium Design</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <button type="submit" class="btn btn-primary">Save Preferences</button>
+
+        <!-- Technical Specifications -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning">
+                <h5><i class="bi bi-cpu"></i> Technical Specifications</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <label class="form-label">Min RAM (GB)</label>
+                        <input type="number" name="min_ram" class="form-control" value="{{ preferences.min_ram if preferences else 4 }}" min="1">
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <label class="form-label">Min Storage (GB)</label>
+                        <input type="number" name="min_storage" class="form-control" value="{{ preferences.min_storage if preferences else 64 }}" min="16">
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <label class="form-label">Min Camera (MP)</label>
+                        <input type="number" name="min_camera" class="form-control" value="{{ preferences.min_camera if preferences else 12 }}" min="1">
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <label class="form-label">Min Battery (mAh)</label>
+                        <input type="number" name="min_battery" class="form-control" value="{{ preferences.min_battery if preferences else 3000 }}" min="1000">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Min Screen Size (inches)</label>
+                        <input type="number" name="min_screen_size" step="0.1" class="form-control" value="{{ preferences.min_screen_size if preferences else 5.5 }}" min="4">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Max Screen Size (inches)</label>
+                        <input type="number" name="max_screen_size" step="0.1" class="form-control" value="{{ preferences.max_screen_size if preferences else 7.0 }}" min="4">
+                    </div>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" name="requires_5g" class="form-check-input" id="require5g" {% if preferences and preferences.requires_5g %}checked{% endif %}>
+                    <label class="form-check-label" for="require5g">
+                        Require 5G Support
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Brand Preferences -->
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                <h5><i class="bi bi-shop"></i> Brand Preferences</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Select your preferred brands (optional)</p>
+                <div class="row">
+                    {% for brand in brands %}
+                    <div class="col-md-3 col-sm-4 col-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="preferred_brands" value="{{ brand.id }}" id="brand{{ brand.id }}"
+                                {% if preferences and preferences.preferred_brands and brand.id|string in preferences.preferred_brands %}checked{% endif %}>
+                            <label class="form-check-label" for="brand{{ brand.id }}">
+                                {{ brand.name }}
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i> Save Preferences
+            </button>
+            <a href="{{ url_for('user.dashboard') }}" class="btn btn-secondary btn-lg">Cancel</a>
+        </div>
     </form>
 </div>
+
+<script>
+function setBudget(min, max) {
+    document.querySelector('input[name="min_budget"]').value = min;
+    document.querySelector('input[name="max_budget"]').value = max;
+}
+</script>
 {% endblock %}

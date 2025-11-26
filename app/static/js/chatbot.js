@@ -82,8 +82,8 @@ $(document).ready(function() {
                         appendQuickReplies(response.quick_replies);
                     }
 
-                    // Handle phone recommendations
-                    if (response.type === 'recommendation' && response.metadata.phones) {
+                    // Handle phone recommendations and phone details
+                    if ((response.type === 'recommendation' || response.type === 'phone_details') && response.metadata.phones) {
                         appendPhoneCards(response.metadata.phones);
                     }
                 } else {
@@ -99,9 +99,25 @@ $(document).ready(function() {
 
     function appendMessage(message, type) {
         var messageClass = type === 'user' ? 'user-message' : 'bot-message';
+
+        // Convert markdown links to HTML for bot messages
+        var processedMessage = message;
+        if (type === 'bot') {
+            // Convert [text](url) to <a href="url">text</a>
+            processedMessage = processedMessage.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
+                return `<a href="${escapeHtml(url)}" class="text-primary text-decoration-underline" target="_blank">${escapeHtml(text)}</a>`;
+            });
+            // Convert **text** to <strong>text</strong>
+            processedMessage = processedMessage.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Convert line breaks
+            processedMessage = processedMessage.replace(/\n/g, '<br>');
+        } else {
+            processedMessage = escapeHtml(message);
+        }
+
         var messageHtml = `
             <div class="chat-message ${messageClass}">
-                <div class="message-content">${escapeHtml(message)}</div>
+                <div class="message-content">${processedMessage}</div>
             </div>
         `;
 
@@ -111,17 +127,57 @@ $(document).ready(function() {
 
     function appendPhoneCards(phones) {
         var cardsHtml = '<div class="phone-recommendations mt-2">';
+        var timestamp = Date.now();
+        var cardIds = [];
 
-        phones.forEach(function(phone) {
+        phones.forEach(function(phone, index) {
+            // Get image URL or use placeholder
+            var placeholderUrl = 'https://via.placeholder.com/120x120/e0e0e0/666666?text=No+Image';
+            var rawImageUrl = phone.image || placeholderUrl;
+
+            // Use image proxy for external URLs to bypass CORS and hotlinking issues
+            var imageUrl = rawImageUrl;
+            if (rawImageUrl && rawImageUrl.startsWith('http') && !rawImageUrl.includes('placeholder')) {
+                imageUrl = '/api/image-proxy?url=' + encodeURIComponent(rawImageUrl);
+            }
+
+            var brandName = phone.brand || '';
+            var displayName = brandName ? `${brandName} ${phone.name}` : phone.name;
+
+            // Generate unique ID for this card
+            var cardId = 'phone-card-' + phone.id + '-' + timestamp + '-' + index;
+            cardIds.push(cardId);
+
             cardsHtml += `
                 <div class="card mb-2" style="max-width: 100%;">
-                    <div class="card-body p-2">
-                        <h6 class="card-title mb-1">${escapeHtml(phone.name)}</h6>
-                        <p class="card-text mb-1 small">
-                            <strong class="text-primary">RM ${phone.price.toFixed(2)}</strong>
-                            ${phone.match_score ? `<span class="badge bg-success ms-2">${phone.match_score}% Match</span>` : ''}
-                        </p>
-                        <a href="/phone/${phone.id}" class="btn btn-sm btn-primary" target="_blank">View Details</a>
+                    <div class="row g-0">
+                        <div class="col-4 position-relative">
+                            <div class="phone-img-wrapper" style="position: relative; min-height: 100px; background: #f5f5f5;">
+                                <div class="phone-img-loader-${cardId}" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none;">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                                <img
+                                    id="${cardId}"
+                                    data-src="${escapeHtml(imageUrl)}"
+                                    src="${escapeHtml(placeholderUrl)}"
+                                    class="img-fluid rounded-start phone-card-img"
+                                    alt="${escapeHtml(displayName)}"
+                                    style="object-fit: cover; height: 100%; width: 100%; min-height: 100px; opacity: 0; transition: opacity 0.3s ease;"
+                                    onerror="this.style.opacity='1'; this.src='${placeholderUrl}';">
+                            </div>
+                        </div>
+                        <div class="col-8">
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1">${escapeHtml(displayName)}</h6>
+                                <p class="card-text mb-1 small">
+                                    <strong class="text-primary">RM ${phone.price.toFixed(2)}</strong>
+                                    ${phone.match_score ? `<span class="badge bg-success ms-2">${phone.match_score}% Match</span>` : ''}
+                                </p>
+                                <a href="/phone/${phone.id}" class="btn btn-sm btn-primary" target="_blank">View Details</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -129,6 +185,66 @@ $(document).ready(function() {
 
         cardsHtml += '</div>';
         $('#chat-messages').append(cardsHtml);
+
+        // Load images progressively to prevent blinking with retry logic
+        cardIds.forEach(function(cardId) {
+            var imgElement = document.getElementById(cardId);
+            if (imgElement) {
+                var actualImageUrl = imgElement.getAttribute('data-src');
+                var loader = document.querySelector('.phone-img-loader-' + cardId);
+
+                // Show loader
+                if (loader) loader.style.display = 'block';
+
+                // Function to load image with retry
+                var loadImageWithRetry = function(url, retries) {
+                    retries = retries || 0;
+                    var maxRetries = 2;
+
+                    var img = new Image();
+                    var loadTimeout;
+
+                    img.onload = function() {
+                        if (loadTimeout) clearTimeout(loadTimeout);
+                        imgElement.src = url;
+                        imgElement.style.opacity = '1';
+                        if (loader) loader.style.display = 'none';
+                    };
+
+                    img.onerror = function() {
+                        if (loadTimeout) clearTimeout(loadTimeout);
+                        if (retries < maxRetries) {
+                            // Retry after a delay
+                            setTimeout(function() {
+                                loadImageWithRetry(url, retries + 1);
+                            }, 1000 * (retries + 1)); // Exponential backoff: 1s, 2s
+                        } else {
+                            // Max retries reached, show placeholder
+                            imgElement.style.opacity = '1';
+                            if (loader) loader.style.display = 'none';
+                        }
+                    };
+
+                    // Set timeout for image loading (8 seconds)
+                    loadTimeout = setTimeout(function() {
+                        img.src = ''; // Cancel loading
+                        if (retries < maxRetries) {
+                            loadImageWithRetry(url, retries + 1);
+                        } else {
+                            imgElement.style.opacity = '1';
+                            if (loader) loader.style.display = 'none';
+                        }
+                    }, 8000);
+
+                    // Start loading
+                    img.src = url;
+                };
+
+                // Start loading with retry logic
+                loadImageWithRetry(actualImageUrl);
+            }
+        });
+
         scrollToBottom();
     }
 
@@ -249,6 +365,20 @@ $(document).ready(function() {
             .phone-recommendations .card:hover {
                 box-shadow: 0 2px 8px rgba(0,0,0,0.15);
                 transform: translateY(-2px);
+            }
+
+            .phone-img-wrapper {
+                overflow: hidden;
+            }
+
+            .phone-card-img {
+                display: block;
+                width: 100%;
+            }
+
+            .phone-card-img[src*="placeholder"] {
+                background: linear-gradient(45deg, #f5f5f5 25%, #e8e8e8 25%, #e8e8e8 50%, #f5f5f5 50%, #f5f5f5 75%, #e8e8e8 75%, #e8e8e8);
+                background-size: 40px 40px;
             }
         `)
         .appendTo('head');

@@ -4,9 +4,12 @@ Common utility functions used across the application
 """
 import os
 import json
+import re
 from werkzeug.utils import secure_filename
 from flask import current_app
 from datetime import datetime
+from app.utils.email import send_verification_email, send_password_reset_email, is_token_expired
+
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -54,39 +57,110 @@ def format_date(date):
         return date.strftime('%d %b %Y')
     return date
 
+def validate_password(password):
+    """
+    Validate password strength
+    Returns: (is_valid, error_message)
+
+    Requirements:
+    - Minimum 8 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one number
+    - At least one special character
+    """
+    if not password:
+        return False, "Password is required."
+
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+
+    if not re.search(r'[A-Z]', password):
+        return False, "Password must contain at least one uppercase letter."
+
+    if not re.search(r'[a-z]', password):
+        return False, "Password must contain at least one lowercase letter."
+
+    if not re.search(r'\d', password):
+        return False, "Password must contain at least one number."
+
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        return False, "Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)."
+
+    return True, "Password is valid."
+
 def calculate_match_score(user_prefs, phone, phone_specs):
     """
     Calculate how well a phone matches user preferences
     Returns a score from 0-100
+    Priority: Budget (HARD FILTER) > Brand > Features > Specs
     """
+    # CRITICAL: Budget is a HARD REQUIREMENT
+    # Phones outside budget range get ZERO score immediately
+    if phone.price < user_prefs.min_budget or phone.price > user_prefs.max_budget:
+        return 0  # Immediately disqualify phones outside budget
+
     score = 0
     max_score = 0
 
-    # Budget match (weight: 30)
-    max_score += 30
-    if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
-        score += 30
-    elif phone.price < user_prefs.min_budget:
-        # Slight penalty for cheaper phones
-        score += 20
+    # Brand preference (weight: 50 - HIGHEST PRIORITY after budget)
+    max_score += 50
+    preferred_brands = []
+
+    # Handle both list and JSON string formats
+    if hasattr(user_prefs, 'preferred_brands'):
+        if isinstance(user_prefs.preferred_brands, list):
+            preferred_brands = user_prefs.preferred_brands
+        elif isinstance(user_prefs.preferred_brands, str) and user_prefs.preferred_brands:
+            try:
+                preferred_brands = json.loads(user_prefs.preferred_brands)
+            except (json.JSONDecodeError, ValueError):
+                preferred_brands = []
+
+    # Convert brand IDs to integers if they're strings
+    try:
+        preferred_brands = [int(b) for b in preferred_brands if b]
+    except (ValueError, TypeError):
+        preferred_brands = []
+
+    # If user selected specific brands, heavily prioritize them
+    if preferred_brands:
+        if phone.brand_id in preferred_brands:
+            score += 50  # Full points for matching brand
+        else:
+            # Brand doesn't match preference - give partial points
+            score += 10  # Small points for being within budget but wrong brand
     else:
-        # Penalty for over-budget phones
-        over_budget = phone.price - user_prefs.max_budget
-        penalty = min(30, (over_budget / user_prefs.max_budget) * 30)
-        score += max(0, 30 - penalty)
+        score += 50  # No brand preference, give full points to all
+
+    # Budget match (weight: 25) - Already within budget, give bonus for being optimal
+    max_score += 25
+    budget_midpoint = (user_prefs.min_budget + user_prefs.max_budget) / 2
+    budget_range = user_prefs.max_budget - user_prefs.min_budget
+
+    # Give more points for phones near the budget midpoint
+    if budget_range > 0:
+        distance_from_midpoint = abs(phone.price - budget_midpoint)
+        # Phones at midpoint get full 25 points, phones at edges get 15 points
+        budget_score = 25 - (distance_from_midpoint / budget_range) * 10
+        score += max(15, budget_score)
+    else:
+        score += 25  # Exact budget match
 
     if phone_specs:
         # RAM match (weight: 10)
         max_score += 10
         if phone_specs.ram_options:
-            ram_values = [int(r.replace('GB', '')) for r in phone_specs.ram_options.split(',') if 'GB' in r]
+            import re
+            ram_values = [int(r) for r in re.findall(r'\d+', phone_specs.ram_options) if r]
             if ram_values and max(ram_values) >= user_prefs.min_ram:
                 score += 10
 
         # Storage match (weight: 10)
         max_score += 10
         if phone_specs.storage_options:
-            storage_values = [int(s.replace('GB', '')) for s in phone_specs.storage_options.split(',') if 'GB' in s]
+            import re
+            storage_values = [int(s) for s in re.findall(r'\d+', phone_specs.storage_options) if s]
             if storage_values and max(storage_values) >= user_prefs.min_storage:
                 score += 10
 
@@ -123,6 +197,27 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
     """Generate human-readable reasoning for recommendation"""
     reasons = []
 
+    # Brand preference (HIGHEST PRIORITY)
+    preferred_brands = []
+    if hasattr(user_prefs, 'preferred_brands'):
+        if isinstance(user_prefs.preferred_brands, list):
+            preferred_brands = user_prefs.preferred_brands
+        elif isinstance(user_prefs.preferred_brands, str) and user_prefs.preferred_brands:
+            try:
+                preferred_brands = json.loads(user_prefs.preferred_brands)
+            except (json.JSONDecodeError, ValueError):
+                preferred_brands = []
+
+    # Convert to integers
+    try:
+        preferred_brands = [int(b) for b in preferred_brands if b]
+    except (ValueError, TypeError):
+        preferred_brands = []
+
+    # Mention brand match if user selected specific brands
+    if preferred_brands and phone.brand_id in preferred_brands:
+        reasons.append(f"✓ From your preferred brand: {phone.brand.name}")
+
     # Budget
     if user_prefs.min_budget <= phone.price <= user_prefs.max_budget:
         reasons.append(f"Within your budget of {format_price(user_prefs.min_budget)} - {format_price(user_prefs.max_budget)}")
@@ -130,7 +225,8 @@ def generate_recommendation_reasoning(match_score, user_prefs, phone, phone_spec
     if phone_specs:
         # Performance
         if phone_specs.ram_options:
-            ram_values = [int(r.replace('GB', '')) for r in phone_specs.ram_options.split(',') if 'GB' in r]
+            import re
+            ram_values = [int(r) for r in re.findall(r'\d+', phone_specs.ram_options) if r]
             if ram_values:
                 max_ram = max(ram_values)
                 if max_ram >= user_prefs.min_ram:

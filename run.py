@@ -3,6 +3,23 @@ DialSmart Application Entry Point
 Run this file to start the DialSmart web application
 """
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Debug: Print email configuration to verify .env is loaded
+print("\n" + "="*60)
+print("ENVIRONMENT CONFIGURATION CHECK")
+print("="*60)
+print(f"MAIL_SERVER: {os.getenv('MAIL_SERVER')}")
+print(f"MAIL_PORT: {os.getenv('MAIL_PORT')}")
+print(f"MAIL_USERNAME: {os.getenv('MAIL_USERNAME')}")
+print(f"MAIL_PASSWORD: {'***' + os.getenv('MAIL_PASSWORD', '')[-4:] if os.getenv('MAIL_PASSWORD') else 'NOT SET'}")
+print(f"MAIL_DEFAULT_SENDER: {os.getenv('MAIL_DEFAULT_SENDER')}")
+print(f"MAIL_USE_TLS: {os.getenv('MAIL_USE_TLS')}")
+print("="*60 + "\n")
+
 from app import create_app, db
 from app.models import User, Brand, Phone, PhoneSpecification
 
