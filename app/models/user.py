@@ -27,6 +27,7 @@ class User(UserMixin, db.Model):
 
     # Account settings
     is_admin = db.Column(db.Boolean, default=False)
+    is_super_admin = db.Column(db.Boolean, default=False)  
     is_active = db.Column(db.Boolean, default=True)
     force_password_change = db.Column(db.Boolean, default=False)  # Force password change on next login
     created_by_admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Track who created this admin
@@ -51,6 +52,9 @@ class User(UserMixin, db.Model):
     audit_logs = db.relationship('AuditLog', foreign_keys='AuditLog.user_id', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     created_admins = db.relationship('User', backref=db.backref('created_by_admin', remote_side=[id]), foreign_keys=[created_by_admin_id])
 
+    def __repr__(self):
+        admin_type = "Super Admin" if self.is_super_admin else "Admin" if self.is_admin else "User"
+        return f'<User {self.email} ({admin_type})>'
 
     def set_password(self, password):
         """Hash and set user password"""

@@ -62,11 +62,16 @@ def create_admin_user():
         if not full_name:
             full_name = "Administrator"
 
+        # Ask if this should be a super admin
+        is_super = input("Make this a SUPER ADMIN? (y/n): ").strip().lower() == 'y'
+
+
         # Create admin user
         admin = User(
             email=email,
             full_name=full_name,
             is_admin=True,
+            is_super_admin=is_super,
             is_active=True,
             user_category='Admin'
         )
@@ -97,13 +102,15 @@ def create_default_admins():
         admins_data = [
             {
                 'email': 'admin@dialsmart.my',
-                'password': 'admin123',
-                'full_name': 'System Administrator'
+                'password': 'abcD1234#',
+                'full_name': 'System Administrator',
+                'is_super_admin': False  # Regular admin
             },
             {
                 'email': 'superadmin@dialsmart.my',
-                'password': 'super123',
-                'full_name': 'Super Administrator'
+                'password': 'super123#',
+                'full_name': 'Super Administrator',
+                'is_super_admin': True  # Super admin
             }
         ]
 
@@ -115,14 +122,22 @@ def create_default_admins():
                 print(f"⚠  Admin already exists: {admin_data['email']}")
                 if not existing.is_admin:
                     existing.is_admin = True
+                    existing.is_super_admin = admin_data['is_super_admin']
                     db.session.commit()
-                    print(f"   ✓ Converted to admin")
+                    print(f"   ✓ Converted to {'super admin' if admin_data['is_super_admin'] else 'admin'}")
+                else:
+                    # Update super admin status if needed
+                    if admin_data['is_super_admin'] and not existing.is_super_admin:
+                        existing.is_super_admin = True
+                        db.session.commit()
+                        print(f"   ✓ Upgraded to super admin")
                 continue
 
             admin = User(
                 email=admin_data['email'],
                 full_name=admin_data['full_name'],
                 is_admin=True,
+                is_super_admin=admin_data['is_super_admin'],
                 is_active=True,
                 user_category='Admin'
             )
@@ -138,9 +153,11 @@ def create_default_admins():
         print(f"✅ Created {created} new admin account(s)")
         print("=" * 70)
         print("\nDefault Admin Accounts:")
-        print("  1. admin@dialsmart.my / admin123")
-        print("  2. superadmin@dialsmart.my / super123")
+        print("  1. admin@dialsmart.my / abcD1234# (Regular Admin)")
+        print("  2. superadmin@dialsmart.my / super123# (SUPER ADMIN)")
         print("\nLogin at: http://localhost:5000/auth/login")
+        print("=" * 70)
+        print("\n⚠  IMPORTANT: Only the SUPER ADMIN can create new admin accounts!")
         print("=" * 70)
 
 if __name__ == '__main__':
