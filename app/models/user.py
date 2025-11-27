@@ -27,6 +27,7 @@ class User(UserMixin, db.Model):
 
     # Account settings
     is_admin = db.Column(db.Boolean, default=False)
+    is_super_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
 
     # Timestamps

@@ -24,6 +24,16 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def super_admin_required(f):
+    """Decorator to require super admin access"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_super_admin:
+            flash('Only super administrators can perform this action.', 'danger')
+            return redirect(url_for('admin.users'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @bp.route('/')
 @bp.route('/dashboard')
 @login_required
@@ -448,9 +458,9 @@ def user_details(user_id):
 
 @bp.route('/users/<int:user_id>/toggle-status', methods=['POST'])
 @login_required
-@admin_required
+@super_admin_required
 def toggle_user_status(user_id):
-    """Activate or suspend user"""
+    """Activate or suspend user (Super Admin Only)"""
     user = User.query.get_or_404(user_id)
 
     if user.is_admin:

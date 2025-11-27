@@ -28,7 +28,7 @@
                     <td><span class="badge {% if user.is_active %}bg-success{% else %}bg-danger{% endif %}">{{ 'Active' if user.is_active else 'Suspended' }}</span></td>
                     <td>
                         <a href="{{ url_for('admin.user_details', user_id=user.id) }}" class="btn btn-sm btn-info">View</a>
-                        {% if not user.is_admin %}
+                        {% if not user.is_admin and current_user.is_super_admin %}
                         <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=user.id) }}" class="d-inline">
                             <button type="submit" class="btn btn-sm btn-{% if user.is_active %}warning{% else %}success{% endif %}">
                                 {{ 'Suspend' if user.is_active else 'Activate' }}
