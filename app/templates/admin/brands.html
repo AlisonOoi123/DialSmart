@@ -31,12 +31,9 @@
                     <td><span class="badge {% if brand.is_active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Active' if brand.is_active else 'Inactive' }}</span></td>
                     <td>
                         <a href="{{ url_for('admin.edit_brand', brand_id=brand.id) }}" class="btn btn-sm btn-edit">Edit</a>
-                        <button class="btn btn-sm btn-danger" 
-                                data-brand-id="{{ brand.id }}" 
-                                data-brand-name="{{ brand.name }}"
-                                onclick="deleteBrand(this.dataset.brandId, this.dataset.brandName)">
-                                Delete
-                        </button>
+                        <form method="POST" action="{{ url_for('admin.delete_brand', brand_id=brand.id) }}" class="d-inline delete-form" data-brand-name="{{ brand.name }}" data-phone-count="{{ brand.get_phone_count() }}">
+                            <button type="button" class="btn btn-sm btn-danger delete-btn">Delete</button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
@@ -45,18 +42,6 @@
     </div>
 </div>
 
-<script>
-function deleteBrand(brandId, brandName) {
-    if (confirm(`Are you sure you want to delete "${brandName}"? This will also delete all phones associated with this brand. This action cannot be undone.`)) {
-        // Create a form and submit it
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/brands/delete/${brandId}`;
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-</script>
 
 <style>
 /* Custom Admin Button Colors */
@@ -90,4 +75,33 @@ function deleteBrand(brandId, brandName) {
     box-shadow: 0 4px 8px rgba(232, 217, 168, 0.3);
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle delete button clicks
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const form = this.closest('.delete-form');
+            const brandName = form.getAttribute('data-brand-name');
+            const phoneCount = form.getAttribute('data-phone-count');
+
+            let message = `Are you sure you want to delete the brand "${brandName}"?`;
+
+            if (phoneCount > 0) {
+                message += `\n\nWarning: This brand has ${phoneCount} associated phone(s). You cannot delete this brand until all phones are deleted or reassigned.`;
+            } else {
+                message += '\n\nThis action cannot be undone.';
+            }
+
+            if (confirm(message)) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+
 {% endblock %}
