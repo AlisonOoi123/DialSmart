@@ -31,8 +31,8 @@
                     <td><span class="badge {% if phone.is_active %}bg-success{% else %}bg-secondary{% endif %}">{{ 'Active' if phone.is_active else 'Inactive' }}</span></td>
                     <td>
                         <a href="{{ url_for('admin.edit_phone', phone_id=phone.id) }}" class="btn btn-sm btn-edit">Edit</a>
-                        <form method="POST" action="{{ url_for('admin.delete_phone', phone_id=phone.id) }}" class="d-inline">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this phone?')">Delete</button>
+                        <form method="POST" action="{{ url_for('admin.delete_phone', phone_id=phone.id) }}" class="d-inline delete-form" data-phone-name="{{ phone.model_name }}" data-phone-brand="{{ phone.brand.name }}" data-phone-price="{{ phone.price }}">
+                            <button type="button" class="btn btn-sm btn-danger delete-btn">Delete</button>
                         </form>
                     </td>
                 </tr>
@@ -89,4 +89,27 @@
     box-shadow: 0 4px 8px rgba(232, 217, 168, 0.3);
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle delete button clicks
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const form = this.closest('.delete-form');
+            const phoneName = form.getAttribute('data-phone-name');
+            const phoneBrand = form.getAttribute('data-phone-brand');
+            const phonePrice = parseFloat(form.getAttribute('data-phone-price')).toFixed(2);
+
+            const message = `Are you sure you want to delete this phone?\n\nPhone: ${phoneBrand} ${phoneName}\nPrice: RM ${phonePrice}\n\nThis action cannot be undone and will also delete:\n- All phone specifications\n- All associated recommendations\n- All comparison history`;
+
+            if (confirm(message)) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

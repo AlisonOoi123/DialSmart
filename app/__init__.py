@@ -5,12 +5,14 @@ Initializes and configures the Flask application
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_mail import Mail
 from config import config
 import os
 
 # Initialize extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
+mail = Mail()
 
 def create_app(config_name='default'):
     """Application factory pattern"""
@@ -24,6 +26,7 @@ def create_app(config_name='default'):
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
+    mail.init_app(app)
 
     # Create upload folder if it doesn't exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)

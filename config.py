@@ -31,6 +31,14 @@ class Config:
     # AI Model settings
     AI_MODEL_PATH = os.path.join(BASE_DIR, 'models', 'recommendation_model.pkl')
 
+    # Email settings
+    MAIL_SERVER = os.environ.get('MAIL_SERVER') or 'smtp.gmail.com'
+    MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'noreply@dialsmart.com'
+
     # Malaysian Ringgit price ranges
     PRICE_RANGES = {
         'budget': (0, 1000),

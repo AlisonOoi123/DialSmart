@@ -8,6 +8,7 @@ from functools import wraps
 from app import db
 from app.models import User, Phone, PhoneSpecification, Brand, Recommendation
 from app.utils.helpers import save_uploaded_file
+from app.utils.email import send_user_suspended_email, send_user_activated_email
 from datetime import datetime, timedelta
 import json
 
@@ -375,6 +376,26 @@ def edit_brand(brand_id):
 
     return render_template('admin/brand_form.html', brand=brand)
 
+@bp.route('/brands/delete/<int:brand_id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_brand(brand_id):
+    """Delete brand"""
+    brand = Brand.query.get_or_404(brand_id)
+    brand_name = brand.name
+
+    # Check if brand has associated phones
+    phone_count = Phone.query.filter_by(brand_id=brand_id).count()
+    if phone_count > 0:
+        flash(f'Cannot delete brand "{brand_name}". It has {phone_count} associated phone(s). Please delete or reassign the phones first.', 'danger')
+        return redirect(url_for('admin.brands'))
+
+    db.session.delete(brand)
+    db.session.commit()
+
+    flash(f'Brand "{brand_name}" deleted successfully.', 'success')
+    return redirect(url_for('admin.brands'))
+
 # User Management
 @bp.route('/users')
 @login_required
@@ -440,7 +461,16 @@ def toggle_user_status(user_id):
     db.session.commit()
 
     status = 'activated' if user.is_active else 'suspended'
-    flash(f'User "{user.full_name}" has been {status}.', 'success')
+
+    # Send email notification
+    try:
+        if user.is_active:
+            send_user_activated_email(user)
+        else:
+            send_user_suspended_email(user)
+        flash(f'User "{user.full_name}" has been {status}. Email notification sent.', 'success')
+    except Exception as e:
+        flash(f'User "{user.full_name}" has been {status}, but email notification failed to send.', 'warning')
 
     return redirect(url_for('admin.users'))
 
