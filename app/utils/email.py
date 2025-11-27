@@ -2,7 +2,7 @@
 Email Utility Module
 Handles sending emails for notifications
 """
-from flask import current_app, render_template_string
+from flask import current_app, render_template_string, url_for
 from flask_mail import Message
 from app import mail
 import threading
@@ -190,6 +190,13 @@ def send_user_activated_email(user):
     """
     subject = 'Your DialSmart Account Has Been Activated'
 
+    # Generate login URL
+    try:
+        login_url = url_for('auth.login', _external=True)
+    except Exception:
+        # Fallback if url_for fails (shouldn't happen in app context)
+        login_url = 'http://localhost:5000/auth/login'
+
     text_body = f"""Dear {user.full_name},
 
 Good news! Your DialSmart account has been activated by an administrator.
@@ -200,7 +207,7 @@ Account Details:
 - Account Type: {user.user_category or 'Standard'}
 
 You can now:
-- Access your account at http://dialsmart.com
+- Access your account at {login_url}
 - Use our AI-powered chatbot to get personalized phone recommendations
 - Compare phones side-by-side
 - Save and view your recommendation history
@@ -303,7 +310,7 @@ The DialSmart Team
             </div>
 
             <p style="text-align: center;">
-                <a href="http://dialsmart.com" class="button">Access Your Account</a>
+                <a href="{login_url}" class="button">Access Your Account</a>
             </p>
 
             <p>Thank you for being a part of DialSmart!</p>
