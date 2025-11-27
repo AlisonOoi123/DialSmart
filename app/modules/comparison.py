@@ -74,6 +74,28 @@ class PhoneComparison:
             else:
                 return 1 if v1 < v2 else 2
 
+        # Helper function to extract maximum value from RAM/Storage strings
+        def extract_max_value(text):
+            """
+            Extract maximum numeric value from strings like '8GB', '12GB / 16GB', '128GB / 256GB'
+            Returns the maximum value as integer (in GB)
+            """
+            if not text:
+                return 0
+            import re
+            # Find all numbers followed by GB or TB
+            matches = re.findall(r'(\d+)\s*([GT])B', text.upper())
+            if not matches:
+                return 0
+            # Convert to GB and get maximum
+            values = []
+            for num, unit in matches:
+                if unit == 'T':  # Convert TB to GB
+                    values.append(int(num) * 1024)
+                else:  # GB
+                    values.append(int(num))
+            return max(values) if values else 0
+
         comparison = {
             'price': {
                 'label': 'Price',
@@ -144,14 +166,20 @@ class PhoneComparison:
                 'label': 'RAM',
                 'phone1': specs1.ram_options or 'N/A',
                 'phone2': specs2.ram_options or 'N/A',
-                'winner': None
+                'winner': get_numeric_winner(
+                    extract_max_value(specs1.ram_options),
+                    extract_max_value(specs2.ram_options)
+                )
             }
 
             comparison['storage'] = {
                 'label': 'Storage',
                 'phone1': specs1.storage_options or 'N/A',
                 'phone2': specs2.storage_options or 'N/A',
-                'winner': None
+                'winner': get_numeric_winner(
+                    extract_max_value(specs1.storage_options),
+                    extract_max_value(specs2.storage_options)
+                )
             }
 
             # Helper function for boolean comparisons (defined here for expandable_storage)
