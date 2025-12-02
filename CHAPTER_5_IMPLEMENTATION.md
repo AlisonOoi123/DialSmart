@@ -18,7 +18,7 @@ The DialSmart system implements responsive web design principles to ensure optim
 
 ### 5.2.2 Server
 
-Conversely, the server acts as the central hub managing and processing client requests. The server, upon receiving user-initiated actions, meticulously crafts and delivers tailored responses back to the client. It is responsible for storing and retrieving data from the database, executing business logic, implementing the AI recommendation algorithm, and ensuring the overall functionality of the application. In the DialSmart system, the server handles user requests related to smartphone recommendations, phone specifications retrieval, brand information, comparison operations, and chatbot interactions. It interacts with a SQLite database to maintain user information, phone details, specifications, and recommendation history, ensuring data consistency and security.
+Conversely, the server acts as the central hub managing and processing client requests. The server, upon receiving user-initiated actions, meticulously crafts and delivers tailored responses back to the client. It is responsible for storing and retrieving data from the database, executing business logic, implementing the AI recommendation algorithm, and ensuring the overall functionality of the application. In the DialSmart system, the server handles user requests related to smartphone recommendations, phone specifications retrieval, brand information, comparison operations, and chatbot interactions. It interacts with an Oracle database to maintain user information, phone details, specifications, and recommendation history, ensuring data consistency and security.
 
 The DialSmart server is built using Flask, a lightweight Python web framework that follows the WSGI (Web Server Gateway Interface) standard. The application is configured to run on host `0.0.0.0` and port `5000`, allowing access from both local and network clients. The server initialization is managed through the application entry point as shown below:
 
@@ -1794,7 +1794,7 @@ class Config:
     # Database settings
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(BASE_DIR, 'dialsmart.db')
+        'oracle+cx_oracle://username:password@localhost:1521/dialsmart'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Session settings
@@ -1833,7 +1833,7 @@ class ProductionConfig(Config):
 class TestingConfig(Config):
     """Testing configuration"""
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_DATABASE_URI = 'oracle+cx_oracle://test_user:test_pass@localhost:1521/test_db'
 
 # Configuration dictionary
 config = {
@@ -2176,6 +2176,7 @@ Flask-Login==0.6.3
 
 # Database
 SQLAlchemy==2.0.23
+cx_Oracle==8.3.0
 
 # Security
 Werkzeug==3.0.1
@@ -2197,7 +2198,8 @@ flask-shell-ipython==0.4.1
 
 - **Backend Framework:** Flask 3.0.0 - Lightweight WSGI web application framework
 - **ORM:** SQLAlchemy 2.0.23 - SQL toolkit and Object-Relational Mapping
-- **Database:** SQLite (Development), supports PostgreSQL/MySQL (Production)
+- **Database:** Oracle Database - Enterprise-grade relational database management system
+- **Database Interface:** cx_Oracle - Python extension module for Oracle Database
 - **Authentication:** Flask-Login 0.6.3 - User session management
 - **Security:** Werkzeug 3.0.1 - Password hashing and security utilities
 - **Frontend:** Bootstrap 5, HTML5, CSS3, JavaScript
@@ -2233,15 +2235,26 @@ if __name__ == '__main__':
 # Database settings
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-    'sqlite:///' + os.path.join(BASE_DIR, 'dialsmart.db')
+    'oracle+cx_oracle://username:password@localhost:1521/dialsmart'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+# Oracle-specific configuration
+SQLALCHEMY_ENGINE_OPTIONS = {
+    'pool_size': 10,
+    'pool_recycle': 3600,
+    'pool_pre_ping': True
+}
 ```
 
 **Database Configuration:**
-- **Development:** SQLite database (dialsmart.db)
-- **Connection Pooling:** Managed automatically by SQLAlchemy
+- **Database System:** Oracle Database accessed via SQL*Plus
+- **Connection String Format:** `oracle+cx_oracle://username:password@host:port/service_name`
+- **Port:** 1521 (Default Oracle Database listener port)
+- **Connection Pooling:** Managed by SQLAlchemy with pool_size=10
+- **Pool Recycle:** Connections recycled every 3600 seconds (1 hour)
+- **Pre-ping:** Enabled to verify connection validity before use
 - **Query Optimization:** Indexes on frequently queried columns
-- **Backup Strategy:** Regular database exports recommended for production
+- **Backup Strategy:** Regular Oracle RMAN backups recommended for production
 
 ---
 
