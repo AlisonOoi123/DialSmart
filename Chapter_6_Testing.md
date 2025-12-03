@@ -32,7 +32,7 @@ In the context of the DialSmart AI-powered Smartphone Recommendation System, Use
 
 ## 6.2 Test Plan
 
-The Test Plan for the DialSmart AI-powered Smartphone Recommendation System encompasses a comprehensive strategy to ensure the software's reliability, functionality, and performance. The testing process will cover various modules, including User Authentication, AI Recommendation Engine, Chatbot System, Phone Management, Comparison Feature, User Preferences, and Admin Panel. Each module will be subjected to a series of tests to validate its individual functions, followed by integrated tests to ensure seamless interactions across the entire system. This strategic and all-encompassing approach not only seeks to identify and rectify potential issues at the micro-level but also aims to guarantee a seamless and robust user experience at the macro level, aligning with the overarching goal of delivering a high-quality and user-friendly application.
+The Test Plan for the DialSmart AI-powered Smartphone Recommendation System encompasses a comprehensive strategy to ensure the software's reliability, functionality, and performance. The testing process will cover various modules, including User Authentication, AI Recommendation Engine, Chatbot System, Phone Management, Comparison Feature, User Preferences, Admin Panel, and Contact and Support. Each module will be subjected to a series of tests to validate its individual functions, followed by integrated tests to ensure seamless interactions across the entire system. This strategic and all-encompassing approach not only seeks to identify and rectify potential issues at the micro-level but also aims to guarantee a seamless and robust user experience at the macro level, aligning with the overarching goal of delivering a high-quality and user-friendly application.
 
 ### 6.2.1 Testing Phrase
 
@@ -68,7 +68,7 @@ The provided template serves as a structured format for documenting essential te
 
 ### 6.2.3 Testing Items
 
-The Testing Items section functions as a comprehensive checklist, cataloguing specific functions within critical modules such as User Authentication, AI Recommendation Engine, Chatbot System, Phone Management, User Preferences, Comparison Feature, and Admin Panel. This detailed inventory serves as a guide for the meticulous testing of each function, aiming to identify and rectify potential issues. The goal is to ensure the seamless operation and user satisfaction of the DialSmart AI-powered Smartphone Recommendation System.
+The Testing Items section functions as a comprehensive checklist, cataloguing specific functions within critical modules such as User Authentication, AI Recommendation Engine, Chatbot System, Phone Management, User Preferences, Comparison Feature, Admin Panel, and Contact and Support. This detailed inventory serves as a guide for the meticulous testing of each function, aiming to identify and rectify potential issues. The goal is to ensure the seamless operation and user satisfaction of the DialSmart AI-powered Smartphone Recommendation System.
 
 **Table 6.2**: Test Item checklist of User Authentication Module
 
@@ -82,6 +82,8 @@ The Testing Items section functions as a comprehensive checklist, cataloguing sp
 | | CreateUserSession() |
 | | LogoutUser() |
 | | ResetPassword() |
+| | SendPasswordResetEmail() |
+| | ValidateResetToken() |
 | | UpdateUserProfile() |
 | | ChangePassword() |
 
@@ -167,9 +169,26 @@ The Testing Items section functions as a comprehensive checklist, cataloguing sp
 | | ManageBrands() |
 | | ViewAnalytics() |
 | | ToggleUserStatus() |
+| | SendSuspensionEmail() |
+| | SendReactivationEmail() |
 | | ViewSystemLogs() |
 | | ExportReports() |
 | | UpdateSystemSettings() |
+
+**Table 6.9**: Test Item checklist of Contact and Support Module
+
+| Module | Test Item |
+|--------|-----------|
+| Contact and Support Module | SubmitContactForm() |
+| | ValidateContactForm() |
+| | SaveContactRequest() |
+| | SendAutoAcknowledgment() |
+| | NotifyAdmin() |
+| | ViewContactRequests() |
+| | ComposeReply() |
+| | SendReplyEmail() |
+| | SaveReplyHistory() |
+| | UpdateRequestStatus() |
 
 ---
 
@@ -263,6 +282,123 @@ This section presents detailed test cases for the DialSmart AI-powered Smartphon
 | **Post-conditions:** |
 |----------------------|
 | 1. User remains on login page<br>2. Error message is displayed<br>3. No session is created<br>4. User can retry login |
+
+---
+
+**Test Case #**: TC-AUTH-004
+**Test Case Name**: Forgot Password with Email Reset Link
+
+| **Test Case #:** TC-AUTH-004 | **Test Case Name:** Forgot Password with Email Reset Link |
+|------------------------------|-----------------------------------------------------------|
+| **System:** DialSmart | **Subsystem:** User Authentication |
+| **Design By:** Developer | **Design Date:** 2024-01-15 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-01 |
+| **Short Description:** Verify that user receives password reset link via email when requesting password reset. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. User has registered account in system<br>2. User is on forgot password page (/auth/forgot-password)<br>3. Email service is configured and operational |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to login page | URL: /auth/login | Login page is displayed | | | |
+| 2 | Click "Forgot Password" link | Click forgot password link | Redirected to forgot password page (/auth/forgot-password) | | | |
+| 3 | Verify page elements | Check page content | Form with email input field and submit button displayed | | | |
+| 4 | Enter registered email | "ahmad@gmail.com" | Email field accepts input | | | |
+| 5 | Click Submit button | Submit form | Success message displayed: "Password reset instructions have been sent to your email." | | | |
+| 6 | Verify email sent | Check email system logs | Password reset email is sent to user's email address | | | |
+| 7 | Check email content | Open user's email inbox | Email received with password reset link and instructions | | | |
+| 8 | Verify reset link format | Check link in email | Reset link contains token: /auth/reset-password?token=<unique_token> | | | |
+| 9 | Verify token stored | Check database | Password reset token is stored with expiration timestamp (24 hours) | | | |
+| 10 | Test with unregistered email | Enter "nonexistent@test.com" | Warning message: "Email not found." No email sent | | | |
+| 11 | Click reset link | Click link in email | Redirected to password reset form with token validation | | | |
+| 12 | Enter new password | New password: "NewSecure123!" | Password reset form accepts new password | | | |
+| 13 | Confirm new password | Confirm: "NewSecure123!" | Confirmation matches new password | | | |
+| 14 | Submit password reset | Submit form | Password updated, token invalidated, success message shown | | | |
+| 15 | Login with new password | Use new credentials | User successfully logs in with new password | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. Password reset email sent to user<br>2. Reset link with unique token generated<br>3. Token stored in database with expiration<br>4. User can reset password using link<br>5. Old password no longer works<br>6. Token is invalidated after use<br>7. User can login with new password |
+
+---
+
+**Test Case #**: TC-AUTH-005
+**Test Case Name**: Admin Suspend User with Email Notification
+
+| **Test Case #:** TC-AUTH-005 | **Test Case Name:** Admin Suspend User with Email Notification |
+|------------------------------|----------------------------------------------------------------|
+| **System:** DialSmart | **Subsystem:** Admin User Management |
+| **Design By:** Developer | **Design Date:** 2024-01-15 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-01 |
+| **Short Description:** Verify that user receives email notification when admin suspends their account. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. Admin user is logged in<br>2. Target user account is active<br>3. Admin is on users management page (/admin/users)<br>4. Email notification service is operational |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to admin users page | URL: /admin/users | Users list is displayed with all registered users | | | |
+| 2 | Locate target user | Search for "Ahmad bin Abdullah" | User appears in the list with active status | | | |
+| 3 | View user details | Click on user name | User details page shows account information and activity | | | |
+| 4 | Verify current status | Check user status | User status shows "Active" with green indicator | | | |
+| 5 | Click suspend button | Click "Toggle Status" or "Suspend" button | Confirmation dialog appears | | | |
+| 6 | Confirm suspension | Confirm action | User status changed to "Suspended", success message displayed | | | |
+| 7 | Verify database update | Check user record | User.is_active field set to False in database | | | |
+| 8 | Verify email sent | Check email system logs | Suspension notification email sent to user's email | | | |
+| 9 | Check email content | Open user's email inbox | Email received with suspension notification and reason | | | |
+| 10 | Verify email details | Review email content | Email contains: suspension date, reason (if provided), contact support info | | | |
+| 11 | Test user login attempt | User tries to login | Login blocked with message: "Your account has been suspended. Please contact support." | | | |
+| 12 | Verify access denied | Check protected routes | Suspended user cannot access dashboard or user features | | | |
+| 13 | Admin reactivates user | Admin clicks "Toggle Status" again | User status changed to "Active" | | | |
+| 14 | Verify reactivation email | Check email system | Reactivation notification email sent to user | | | |
+| 15 | Test user can login | User logs in with credentials | Login successful, access restored to all features | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. User account is suspended (is_active = False)<br>2. Suspension email notification sent to user<br>3. User cannot login while suspended<br>4. Admin can reactivate account<br>5. Reactivation email sent when account restored<br>6. All actions logged in system<br>7. User regains full access after reactivation |
+
+---
+
+**Test Case #**: TC-AUTH-006
+**Test Case Name**: Contact Us with Admin Reply via Email
+
+| **Test Case #:** TC-AUTH-006 | **Test Case Name:** Contact Us with Admin Reply via Email |
+|------------------------------|-----------------------------------------------------------|
+| **System:** DialSmart | **Subsystem:** Contact and Support |
+| **Design By:** Developer | **Design Date:** 2024-01-15 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-01 |
+| **Short Description:** Verify that users can submit feedback/requests via contact form and receive admin reply via email. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. User is on contact page (/contact)<br>2. Contact form is accessible to all users (logged in or guest)<br>3. Email service and admin notification system operational |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to contact page | URL: /contact | Contact form displayed with fields: Name, Email, Subject, Message | | | |
+| 2 | Enter full name | "Ahmad bin Abdullah" | Name field accepts input | | | |
+| 3 | Enter email address | "ahmad@gmail.com" | Email field accepts valid email | | | |
+| 4 | Enter subject | "Inquiry about phone recommendations" | Subject field accepts input | | | |
+| 5 | Enter message | "I need help finding a phone for photography. Can you recommend some options under RM3000?" | Message textarea accepts multi-line input | | | |
+| 6 | Click Submit button | Submit contact form | Success message: "Thank you for contacting us. We will get back to you soon." | | | |
+| 7 | Verify form submission saved | Check database | Contact request stored in database with timestamp | | | |
+| 8 | Verify admin notification | Check admin email/dashboard | Admin receives notification of new contact request | | | |
+| 9 | Verify auto-reply sent | Check user's email | Auto-acknowledgment email sent: "We received your message and will respond within 24 hours" | | | |
+| 10 | Admin reviews request | Admin navigates to contact requests | Contact request visible in admin panel with all details | | | |
+| 11 | Admin composes reply | Admin writes response: "Here are some great camera phones..." | Reply form accepts admin's message | | | |
+| 12 | Admin sends reply | Click "Send Reply" button | Reply sent confirmation message displayed | | | |
+| 13 | Verify reply email sent | Check email system | Reply email sent from support@dialsmart.my to user | | | |
+| 14 | Check reply email content | Open user's email | Email contains: admin's reply, original message quoted, support contact info | | | |
+| 15 | Verify reply saved | Check database | Admin reply stored and linked to original contact request | | | |
+| 16 | Test empty form submission | Submit with empty fields | Validation errors displayed for required fields | | | |
+| 17 | Test invalid email format | Enter "invalid-email" | Email validation error: "Please enter a valid email address" | | | |
+| 18 | Test guest user submission | Submit as non-logged-in user | Form works for both guests and logged-in users | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. Contact request saved in database<br>2. Auto-acknowledgment email sent to user<br>3. Admin notified of new request<br>4. Admin can view and reply to requests<br>5. Reply email sent to user with admin's response<br>6. All communication history maintained<br>7. System tracks request status (pending/replied)<br>8. Users can submit multiple inquiries |
 
 ---
 
