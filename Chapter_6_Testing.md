@@ -402,6 +402,42 @@ This section presents detailed test cases for the DialSmart AI-powered Smartphon
 
 ---
 
+**Test Case #**: TC-USER-001
+**Test Case Name**: Edit User Profile
+
+| **Test Case #:** TC-USER-001 | **Test Case Name:** Edit User Profile |
+|------------------------------|---------------------------------------|
+| **System:** DialSmart | **Subsystem:** User Management |
+| **Design By:** Developer | **Design Date:** 2024-01-15 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-01 |
+| **Short Description:** Verify that logged-in users can successfully update their profile information. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. User is logged in<br>2. User is on profile page (/profile)<br>3. User has existing profile data |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to profile page | URL: /profile | Profile form displayed with current user information pre-filled | | | |
+| 2 | Verify existing data | Check all fields | Full name, email, user category, age range displayed correctly | | | |
+| 3 | Update full name | Change to "Ahmad Abdullah" | Full name field accepts new value | | | |
+| 4 | Update user category | Change to "Student" | User category dropdown accepts new selection | | | |
+| 5 | Update age range | Change to "18-25" | Age range dropdown accepts new selection | | | |
+| 6 | Enter current password | "SecurePass123!" | Current password field accepts input | | | |
+| 7 | Enter new password | "NewPassword456!" | New password field accepts input | | | |
+| 8 | Confirm new password | "NewPassword456!" | Confirm password field accepts matching input | | | |
+| 9 | Click Update Profile | Submit form | Profile updated successfully, success message displayed | | | |
+| 10 | Verify database update | Check user record | All changes persisted in database | | | |
+| 11 | Test password change | Logout and login with new password | Login successful with new password | | | |
+| 12 | Test wrong current password | Enter incorrect current password | Error message: "Current password is incorrect" | | | |
+| 13 | Test mismatched passwords | New and confirm passwords don't match | Validation error displayed | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. User profile information updated<br>2. Password changed successfully (if provided)<br>3. Changes reflected in database<br>4. User can login with new password<br>5. Old password no longer works |
+
+---
+
 ### 6.3.2 AI Recommendation Module - Unit Testing
 
 **Test Case #**: TC-AI-001
@@ -463,6 +499,39 @@ This section presents detailed test cases for the DialSmart AI-powered Smartphon
 
 ---
 
+**Test Case #**: TC-REC-001
+**Test Case Name**: View Recommendation History
+
+| **Test Case #:** TC-REC-001 | **Test Case Name:** View Recommendation History |
+|-----------------------------|--------------------------------------------------|
+| **System:** DialSmart | **Subsystem:** AI Recommendation Engine |
+| **Design By:** Developer | **Design Date:** 2024-01-16 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-02 |
+| **Short Description:** Verify that users can view their past recommendation history with details. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. User is logged in<br>2. User has previously requested recommendations<br>3. Recommendation history exists in database |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to dashboard | URL: /dashboard | Dashboard displays with recent recommendations section | | | |
+| 2 | Click "View All History" | Navigate to /recommendations/history | Recommendation history page loads | | | |
+| 3 | Verify history list | Check displayed data | List shows all past recommendations with timestamps | | | |
+| 4 | Check recommendation details | Review each entry | Each entry shows: recommended phones, match scores, criteria used, date/time | | | |
+| 5 | Verify sorting | Check order | Recommendations sorted by date (newest first) | | | |
+| 6 | Click on specific recommendation | Select a recommendation | Detailed view shows full criteria, all recommended phones, and match reasoning | | | |
+| 7 | Test pagination | Navigate through pages | If more than 10 recommendations, pagination works correctly | | | |
+| 8 | Filter by date range | Select date filter | History filtered by selected date range | | | |
+| 9 | View phone details | Click on recommended phone | Navigates to phone detail page | | | |
+| 10 | Test empty history | New user with no history | Message displayed: "No recommendation history yet. Get started!" | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. User can view complete recommendation history<br>2. All historical data displayed accurately<br>3. User can access detailed views<br>4. Pagination works for large history<br>5. Filters function correctly |
+
+---
+
 ### 6.3.3 Chatbot Module - Unit Testing
 
 **Test Case #**: TC-CHAT-001
@@ -521,6 +590,80 @@ This section presents detailed test cases for the DialSmart AI-powered Smartphon
 | **Post-conditions:** |
 |----------------------|
 | 1. Budget values are extracted correctly<br>2. Various input formats are handled<br>3. Edge cases return appropriate values<br>4. Extracted data can be used for filtering |
+
+---
+
+**Test Case #**: TC-CHAT-003
+**Test Case Name**: Chatbot FAQ and Fallback Responses
+
+| **Test Case #:** TC-CHAT-003 | **Test Case Name:** Chatbot FAQ and Fallback Responses |
+|------------------------------|---------------------------------------------------------|
+| **System:** DialSmart | **Subsystem:** Chatbot Engine |
+| **Design By:** Developer | **Design Date:** 2024-01-17 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-03 |
+| **Short Description:** Verify that chatbot handles frequently asked questions and provides fallback responses for unclear queries. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. User is logged in<br>2. Chatbot interface is accessible<br>3. Chat session is active |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Ask about system capabilities | "What can you do?" | Chatbot responds with list of capabilities (recommendations, search, comparison, etc.) | | | |
+| 2 | Ask about phone availability | "Do you have iPhone 15?" | Chatbot searches and responds with availability status | | | |
+| 3 | Ask about shipping/delivery | "Do you deliver phones?" | Fallback response explaining system is for recommendations, not sales | | | |
+| 4 | Ask unclear question | "asdfgh" or random text | Fallback response: "I didn't understand that. Can you rephrase?" with help suggestions | | | |
+| 5 | Ask about specs meaning | "What is 5G?" | Educational response explaining 5G technology | | | |
+| 6 | Ask comparison question | "Which is better Samsung or Apple?" | Chatbot suggests using comparison feature | | | |
+| 7 | Ask very long question | 500+ character query | Chatbot processes or requests shorter query | | | |
+| 8 | Send empty message | "" (empty string) | Validation error or prompt to enter message | | | |
+| 9 | Ask about previous conversation | "What did we talk about earlier?" | Chatbot references chat history if available | | | |
+| 10 | Request human assistance | "I want to talk to support" | Provides contact form link and support information | | | |
+| 11 | Test special characters | "!@#$%^&*()" | Chatbot handles gracefully without errors | | | |
+| 12 | Ask about price drop | "Will prices decrease?" | Appropriate response about price fluctuations | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. All FAQ questions receive appropriate responses<br>2. Fallback mechanism works for unclear queries<br>3. No chatbot crashes or errors<br>4. Context is maintained throughout conversation<br>5. Users directed to appropriate features or support |
+
+---
+
+**Test Case #**: TC-BROWSE-001
+**Test Case Name**: Browse and Filter Phones
+
+| **Test Case #:** TC-BROWSE-001 | **Test Case Name:** Browse and Filter Phones |
+|--------------------------------|----------------------------------------------|
+| **System:** DialSmart | **Subsystem:** Phone Browse Module |
+| **Design By:** Developer | **Design Date:** 2024-01-19 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-05 |
+| **Short Description:** Verify that users can browse all phones and apply various filters and sorting options. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. User is on browse page (/browse)<br>2. Multiple phones exist in database<br>3. Phones have different brands, prices, and specifications |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to browse page | URL: /browse | All active phones displayed in grid/list view | | | |
+| 2 | Verify initial display | Check page load | Phones displayed with image, name, brand, price, key specs | | | |
+| 3 | Count displayed phones | Check total | Correct count matches database active phones | | | |
+| 4 | Filter by brand (Samsung) | Select "Samsung" filter | Only Samsung phones displayed | | | |
+| 5 | Clear brand filter | Click "Clear" or "All Brands" | All phones displayed again | | | |
+| 6 | Filter by price range | Min: RM1000, Max: RM3000 | Only phones within price range shown | | | |
+| 7 | Apply multiple filters | Brand: Apple, Price: 2000-6000 | Phones matching both criteria displayed | | | |
+| 8 | Test no results scenario | Impossible filter combination | Message: "No phones match your criteria" with suggestion to adjust filters | | | |
+| 9 | Sort by price (low to high) | Select "Price: Low to High" | Phones sorted in ascending price order | | | |
+| 10 | Sort by price (high to low) | Select "Price: High to Low" | Phones sorted in descending price order | | | |
+| 11 | Sort by name (A-Z) | Select "Name: A-Z" | Phones sorted alphabetically | | | |
+| 12 | Sort by newest first | Select "Newest First" | Phones sorted by release date/creation date (newest first) | | | |
+| 13 | Test pagination | Navigate to page 2 | Second page displays next set of phones | | | |
+| 14 | Change items per page | Select 24 per page | Display updates to show 24 phones per page | | | |
+| 15 | Click on phone card | Select a phone | Navigates to phone detail page | | | |
+| 16 | Test responsive grid | Resize browser window | Grid layout adjusts (4 cols → 3 cols → 2 cols → 1 col) | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. All phones are browsable<br>2. Filters work correctly individually and combined<br>3. Sorting options function properly<br>4. Pagination works for large datasets<br>5. No phones are excluded inappropriately<br>6. User can easily find desired phones |
 
 ---
 
@@ -595,6 +738,83 @@ This section presents detailed test cases for the DialSmart AI-powered Smartphon
 
 ---
 
+**Test Case #**: TC-PHONE-003
+**Test Case Name**: Delete Phone
+
+| **Test Case #:** TC-PHONE-003 | **Test Case Name:** Delete Phone |
+|-------------------------------|----------------------------------|
+| **System:** DialSmart | **Subsystem:** Phone Management (Admin) |
+| **Design By:** Developer | **Design Date:** 2024-01-18 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-04 |
+| **Short Description:** Verify that admin can delete a phone from the system. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. Admin is logged in<br>2. Phone to be deleted exists in database<br>3. Admin is on phones list page |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to phones list | URL: /admin/phones | List of all phones displayed | | | |
+| 2 | Locate phone to delete | Search for "Samsung Galaxy A54" | Phone appears in list | | | |
+| 3 | Click Delete button | Click "Delete" on phone entry | Confirmation dialog appears | | | |
+| 4 | Verify confirmation message | Read dialog | Message: "Are you sure you want to delete this phone? This action cannot be undone." | | | |
+| 5 | Cancel deletion | Click "Cancel" | Dialog closes, phone remains in list | | | |
+| 6 | Click Delete again | Click "Delete" button again | Confirmation dialog appears | | | |
+| 7 | Confirm deletion | Click "Confirm" or "Yes" | Phone deleted, success message: "Phone deleted successfully" | | | |
+| 8 | Verify phone removed from list | Check phones list | Deleted phone no longer appears in list | | | |
+| 9 | Verify database deletion | Query database | Phone record deleted or marked as inactive | | | |
+| 10 | Check phone specifications | Query specifications table | Phone specifications also deleted (cascade delete) | | | |
+| 11 | Test impact on recommendations | Request recommendations | Deleted phone not included in recommendations | | | |
+| 12 | Test impact on comparisons | Saved comparisons with deleted phone | Comparisons handled gracefully (shows "Phone no longer available") | | | |
+| 13 | Attempt to access deleted phone | Direct URL: /phone/<deleted_id> | 404 error or "Phone not found" message | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. Phone is deleted from database<br>2. Phone specifications are deleted<br>3. Phone removed from all active listings<br>4. Existing comparisons and recommendations handle deletion gracefully<br>5. System maintains data integrity |
+
+---
+
+**Test Case #**: TC-BRAND-001
+**Test Case Name**: Manage Phone Brands (Add/Edit/Delete)
+
+| **Test Case #:** TC-BRAND-001 | **Test Case Name:** Manage Phone Brands (Add/Edit/Delete) |
+|-------------------------------|------------------------------------------------------------|
+| **System:** DialSmart | **Subsystem:** Brand Management (Admin) |
+| **Design By:** Developer | **Design Date:** 2024-01-18 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-04 |
+| **Short Description:** Verify that admin can add, edit, and delete phone brands. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. Admin is logged in<br>2. Admin is on brands management page (/admin/brands) |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to brands page | URL: /admin/brands | List of all brands displayed | | | |
+| 2 | Click "Add New Brand" | Click button | Add brand form displayed | | | |
+| 3 | Enter brand name | "OnePlus" | Name field accepts input | | | |
+| 4 | Enter description | "Chinese smartphone manufacturer" | Description field accepts input | | | |
+| 5 | Enter tagline | "Never Settle" | Tagline field accepts input | | | |
+| 6 | Mark as featured | Check "Featured Brand" | Featured status set to true | | | |
+| 7 | Upload brand logo | Upload image file | Logo uploaded and preview shown | | | |
+| 8 | Submit new brand | Click "Save" | Brand created, success message, redirected to brands list | | | |
+| 9 | Verify brand in list | Check brands page | New brand appears with all details | | | |
+| 10 | Edit existing brand | Click "Edit" on a brand | Edit form loads with current data | | | |
+| 11 | Update brand info | Change description and tagline | Fields accept updates | | | |
+| 12 | Save brand updates | Click "Update" | Brand updated, success message shown | | | |
+| 13 | Verify updates | Check brand details | Changes reflected correctly | | | |
+| 14 | Test brand with phones | Add phone with this brand | Phone successfully linked to brand | | | |
+| 15 | Attempt to delete brand with phones | Click "Delete" on brand with phones | Warning: "Cannot delete brand with existing phones" | | | |
+| 16 | Delete empty brand | Delete brand with no phones | Confirmation dialog appears | | | |
+| 17 | Confirm brand deletion | Click "Confirm" | Brand deleted successfully | | | |
+| 18 | Test duplicate brand name | Try to add existing brand name | Validation error: "Brand already exists" | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. New brands can be added with all details<br>2. Existing brands can be edited<br>3. Brands without phones can be deleted<br>4. Brands with phones cannot be deleted (data integrity)<br>5. Duplicate brand names are prevented<br>6. All brand operations maintain database consistency |
+
+---
+
 ### 6.3.5 Comparison Module - Module Testing
 
 **Test Case #**: TC-COMP-001
@@ -629,6 +849,44 @@ This section presents detailed test cases for the DialSmart AI-powered Smartphon
 | **Post-conditions:** |
 |----------------------|
 | 1. Detailed comparison is displayed<br>2. Winners for each category are highlighted<br>3. Overall winner is determined<br>4. Comparison is saved to history<br>5. User can access saved comparison later |
+
+---
+
+**Test Case #**: TC-COMP-002
+**Test Case Name**: View Saved Comparison History
+
+| **Test Case #:** TC-COMP-002 | **Test Case Name:** View Saved Comparison History |
+|------------------------------|----------------------------------------------------|
+| **System:** DialSmart | **Subsystem:** Phone Comparison |
+| **Design By:** Developer | **Design Date:** 2024-01-19 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-05 |
+| **Short Description:** Verify that users can view their saved comparison history and access past comparisons. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. User is logged in<br>2. User has previously saved phone comparisons<br>3. Saved comparisons exist in database |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to dashboard | URL: /dashboard | Dashboard displays with saved comparisons section | | | |
+| 2 | Verify saved comparisons display | Check comparison cards | Recent saved comparisons shown (up to 5) | | | |
+| 3 | Click "View All Comparisons" | Navigate to comparisons list | Full comparison history page loads | | | |
+| 4 | Verify comparison list | Check displayed data | Each comparison shows: phone names, comparison date, thumbnail images | | | |
+| 5 | Verify sorting | Check order | Comparisons sorted by date (newest first) | | | |
+| 6 | Click on saved comparison | Select a comparison | Detailed comparison view loads with all previous data | | | |
+| 7 | Verify comparison details | Review comparison | All specifications, winners, and scores displayed as originally saved | | | |
+| 8 | Test unsave comparison | Click "Remove from Saved" | Confirmation dialog appears | | | |
+| 9 | Confirm removal | Click "Confirm" | Comparison removed from saved list (but may remain in history) | | | |
+| 10 | View comparison again | Recompare same phones | Fresh comparison generated with current data | | | |
+| 11 | Re-save comparison | Click "Save Comparison" | Comparison saved again to history | | | |
+| 12 | Test empty saved comparisons | User with no saved comparisons | Message: "You haven't saved any comparisons yet" with CTA button | | | |
+| 13 | Filter comparisons by brand | Select brand filter | Only comparisons with selected brand shown | | | |
+| 14 | Search in comparisons | Search for phone model | Relevant comparisons filtered | | | |
+| 15 | Export comparison | Click "Export" or "Share" | Comparison data exported (PDF/image) or share link generated | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. User can access all saved comparisons<br>2. Saved comparisons display correctly<br>3. User can remove comparisons from saved list<br>4. Search and filter work properly<br>5. Comparison data remains accurate<br>6. User can re-access any past comparison |
 
 ---
 
@@ -703,6 +961,118 @@ This section presents detailed test cases for the DialSmart AI-powered Smartphon
 | **Post-conditions:** |
 |----------------------|
 | 1. Admin sees accurate system overview<br>2. Statistics reflect real-time data<br>3. Charts and graphs display correctly<br>4. Admin can make informed decisions |
+
+---
+
+**Test Case #**: TC-ADMIN-002
+**Test Case Name**: Create New Admin (Super Admin Only)
+
+| **Test Case #:** TC-ADMIN-002 | **Test Case Name:** Create New Admin (Super Admin Only) |
+|-------------------------------|----------------------------------------------------------|
+| **System:** DialSmart | **Subsystem:** Admin Management |
+| **Design By:** Developer | **Design Date:** 2024-01-21 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-07 |
+| **Short Description:** Verify that only Super Admin can create new admin accounts. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. Super Admin is logged in<br>2. Super Admin is on admin management page<br>3. Super Admin has appropriate permissions |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to admin management | URL: /admin/admins or /admin/users | Admin management page displayed (Super Admin only feature) | | | |
+| 2 | Verify access restriction | Login as regular admin | Regular admin cannot see "Create New Admin" option | | | |
+| 3 | Login as Super Admin | Super Admin credentials | "Create New Admin" button visible | | | |
+| 4 | Click "Create New Admin" | Click button | Admin creation form displayed | | | |
+| 5 | Enter admin details | Name: "New Admin", Email: "newadmin@dialsmart.my" | Form accepts inputs | | | |
+| 6 | Set password | Password: "AdminPass123!" | Password field accepts input | | | |
+| 7 | Confirm password | "AdminPass123!" | Confirmation matches | | | |
+| 8 | Set admin level | Select "Admin" (not Super Admin) | Admin level set | | | |
+| 9 | Click Create Admin | Submit form | New admin account created, success message displayed | | | |
+| 10 | Verify admin created | Check database | New admin exists with is_admin=True, is_super_admin=False | | | |
+| 11 | Verify email sent | Check email system | Welcome email sent to new admin with login credentials | | | |
+| 12 | Test new admin login | Login with new credentials | New admin can login successfully | | | |
+| 13 | Verify admin permissions | Check admin panel | New admin has access to admin features but not super admin features | | | |
+| 14 | Test duplicate email | Create admin with existing email | Validation error: "Email already exists" | | | |
+| 15 | Test regular admin attempt | Regular admin tries to access create admin | Access denied or feature not visible | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. New admin account created successfully<br>2. Only Super Admin can create admins<br>3. New admin can login and access admin panel<br>4. Admin permissions properly restricted<br>5. Welcome email sent to new admin<br>6. Email uniqueness enforced |
+
+---
+
+**Test Case #**: TC-ADMIN-003
+**Test Case Name**: View System Logs and History
+
+| **Test Case #:** TC-ADMIN-003 | **Test Case Name:** View System Logs and History |
+|-------------------------------|--------------------------------------------------|
+| **System:** DialSmart | **Subsystem:** Admin Panel - System Logs |
+| **Design By:** Developer | **Design Date:** 2024-01-21 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-07 |
+| **Short Description:** Verify that admin can view system logs and activity history. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. Admin is logged in<br>2. System has logged activities<br>3. Admin is on logs page (/admin/logs) |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to logs page | URL: /admin/logs | System logs page displayed | | | |
+| 2 | Verify log entries | Check displayed logs | All recommendation activities logged with timestamps | | | |
+| 3 | Check log details | Review log entry | Each entry shows: user, action, timestamp, details | | | |
+| 4 | Verify sorting | Check default order | Logs sorted by timestamp (newest first) | | | |
+| 5 | Filter by user | Select specific user | Only logs for selected user displayed | | | |
+| 6 | Filter by action type | Select "Recommendations" | Only recommendation logs shown | | | |
+| 7 | Filter by date range | Select last 7 days | Logs within date range displayed | | | |
+| 8 | Search logs | Search for specific phone model | Relevant logs filtered | | | |
+| 9 | Test pagination | Navigate through pages | If more than 50 logs, pagination works | | | |
+| 10 | View log details | Click on log entry | Detailed view shows complete information | | | |
+| 11 | Export logs | Click "Export" button | Logs exported as CSV/PDF file | | | |
+| 12 | Check user activity | View specific user's log | All activities for user displayed chronologically | | | |
+| 13 | Monitor recent activity | Check recent section | Last 10-20 activities shown in dashboard widget | | | |
+| 14 | Verify log integrity | Check database consistency | All major actions are logged (user registration, recommendations, comparisons, admin actions) | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. All system activities properly logged<br>2. Logs accessible to admin<br>3. Filtering and searching work correctly<br>4. Logs can be exported for analysis<br>5. System maintains audit trail<br>6. Logs help identify system usage patterns |
+
+---
+
+**Test Case #**: TC-ADMIN-004
+**Test Case Name**: View User Details
+
+| **Test Case #:** TC-ADMIN-004 | **Test Case Name:** View User Details |
+|-------------------------------|---------------------------------------|
+| **System:** DialSmart | **Subsystem:** Admin User Management |
+| **Design By:** Developer | **Design Date:** 2024-01-21 |
+| **Executed By:** Tester | **Execution Date:** 2024-02-07 |
+| **Short Description:** Verify that admin can view comprehensive user details and activity. |
+
+| **Pre-conditions:** |
+|---------------------|
+| 1. Admin is logged in<br>2. Users exist in database with activity history<br>3. Admin is on users management page |
+
+| Step | Action/Functions | Test Data | Expected System Response | Actual Response | Pass/Fail | Comments |
+|------|------------------|-----------|-------------------------|-----------------|-----------|----------|
+| 1 | Navigate to users page | URL: /admin/users | List of all users displayed | | | |
+| 2 | Search for user | Search "Ahmad bin Abdullah" | User found and highlighted in list | | | |
+| 3 | Click on user | Select user from list | User details page loads | | | |
+| 4 | Verify user information | Check displayed data | Shows: full name, email, category, age range, registration date | | | |
+| 5 | Check account status | Review status | Active/Inactive status clearly displayed | | | |
+| 6 | View user preferences | Check preferences section | User's saved preferences displayed (budget, features, brands) | | | |
+| 7 | View recommendation history | Check recommendations | List of user's recommendations with dates and phones | | | |
+| 8 | Check comparison history | Review comparisons | User's saved comparisons displayed | | | |
+| 9 | View chatbot interactions | Check chat history | Recent chatbot conversations summary | | | |
+| 10 | Check user statistics | Review stats | Total recommendations, comparisons, chat sessions, last active date | | | |
+| 11 | Verify user timeline | Check activity timeline | Chronological view of all user activities | | | |
+| 12 | Test sorting/filtering | Apply filters | User activity filtered by type/date | | | |
+| 13 | View contact submissions | Check if user submitted contact forms | Contact requests by user displayed | | | |
+| 14 | Navigate back to users list | Click back button | Returns to users list page | | | |
+
+| **Post-conditions:** |
+|----------------------|
+| 1. Complete user profile visible to admin<br>2. All user activities accessible<br>3. User statistics accurate<br>4. Admin can understand user behavior<br>5. Data privacy maintained (passwords not shown)<br>6. Admin can make informed decisions about user management |
 
 ---
 
